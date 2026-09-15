@@ -1,0 +1,287 @@
+[
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/stone",
+		"entries": [
+			{ "item": "madfall:rock", "count": [1, 3], "weight": 3 },
+			{ "item": "madfall:stone", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/granite",
+		"entries": [{ "item": "madfall:rock", "count": [2, 4] }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/iron_ore",
+		"entries": [
+			{ "item": "madfall:scrap_iron", "count": [1, 3], "weight": 3 },
+			{ "item": "madfall:rock", "count": [1, 2], "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/dirt",
+		"entries": [{ "item": "madfall:dirt" }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/sand",
+		"entries": [{ "item": "madfall:sand" }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/gravel",
+		"entries": [{ "item": "madfall:rock", "count": [1, 2] }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/wood_frame",
+		"entries": [
+			{ "item": "madfall:wood_frame", "weight": 1 },
+			{ "item": "madfall:wood_plank", "count": [2, 3], "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/wood_debris",
+		"empty_weight": 1,
+		"entries": [{ "item": "madfall:wood_plank", "count": [1, 2] }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/concrete_frame",
+		"entries": [
+			{ "item": "madfall:rock", "count": [2, 4], "weight": 3 },
+			{ "item": "madfall:cement", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/rebar_concrete",
+		"rolls": 2,
+		"entries": [
+			{ "table": "madfall:loot/concrete_frame" },
+			{ "item": "madfall:scrap_iron", "count": [1, 3] }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/steel_beam",
+		"entries": [{ "item": "madfall:scrap_iron", "count": [4, 8] }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/rubble",
+		"entries": [
+			{ "item": "madfall:rock", "count": [1, 2], "weight": 4 },
+			{ "item": "madfall:scrap_iron", "weight": 1 }
+		]
+	},
+
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/food",
+		"entries": [
+			{ "item": "madfall:canned_food", "count": [1, 2], "weight": 3 },
+			{ "item": "madfall:water_bottle", "count": [1, 2], "weight": 3 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/medical",
+		"entries": [
+			{ "item": "madfall:bandage", "count": [1, 3], "weight": 4 },
+			{ "item": "madfall:cloth", "count": [1, 4], "weight": 3 },
+			{ "item": "madfall:antibiotics", "weight": 1, "tier": [2, 5] }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/tools",
+		"entries": [
+			{ "item": "madfall:stone_pickaxe", "weight": 3, "durability": [0.3, 0.9] },
+			{ "item": "madfall:stone_axe", "weight": 3, "durability": [0.3, 0.9] },
+			{ "item": "madfall:stone_shovel", "weight": 2, "durability": [0.3, 0.9] },
+			{ "item": "madfall:iron_pickaxe", "weight": 1, "tier": [3, 5], "min_game_stage": 10, "durability": [0.2, 0.7] },
+			{ "item": "madfall:mod_reinforced_grip", "weight": 1, "tier": [2, 5] }
+		]
+	},
+
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/scout_cache",
+		"rolls": [2, 3],
+		"empty_weight": 1,
+		"entries": [
+			{ "item": "madfall:coin", "count": [3, 12], "weight": 2 },
+			{ "table": "madfall:loot/food", "weight": 3 },
+			{ "table": "madfall:loot/medical", "weight": 2 },
+			{ "item": "madfall:wood_plank", "count": [4, 10], "weight": 2 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/cabin_supplies",
+		"rolls": [2, 4],
+		"rolls_per_tier": 0.5,
+		"entries": [
+			{ "item": "madfall:coin", "count": [4, 15], "weight": 2 },
+			{ "table": "madfall:loot/food", "weight": 4 },
+			{ "table": "madfall:loot/tools", "weight": 2 },
+			{ "item": "madfall:cloth", "count": [1, 3], "weight": 2 },
+			{ "item": "madfall:empty_bottle", "count": [1, 2], "weight": 2 },
+			{ "item": "madfall:corn_seed", "count": [2, 4], "weight": 1 },
+			{ "item": "madfall:fur_hat", "weight": 1 },
+			{ "item": "madfall:potato_seed", "count": [1, 3], "weight": 1 },
+			{ "item": "madfall:wood_plank", "count": [5, 15], "weight": 2 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/medical_cabinet",
+		"rolls": [1, 3],
+		"rolls_per_tier": 0.5,
+		"entries": [{ "table": "madfall:loot/medical" }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/ammo_crate",
+		"rolls": [2, 3],
+		"rolls_per_tier": 1.0,
+		"entries": [
+			{ "item": "madfall:coin", "count": [8, 25], "weight": 2 },
+			{ "item": "madfall:scrap_iron", "count": [3, 8], "weight": 4 },
+			{ "table": "madfall:loot/tools", "weight": 2 },
+			{ "item": "madfall:cement", "count": [1, 2], "weight": 1, "tier": [3, 5] }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/weapons_locker",
+		"rolls": [2, 4],
+		"rolls_per_tier": 1.0,
+		"entries": [
+			{ "item": "madfall:coin", "count": [10, 30], "weight": 2 },
+			{ "item": "madfall:wooden_club", "weight": 3, "durability": [0.4, 1.0] },
+			{ "table": "madfall:loot/tools", "weight": 3 },
+			{ "item": "madfall:mod_reinforced_grip", "weight": 1, "min_game_stage": 5 },
+			{ "item": "madfall:scrap_helmet", "weight": 1 },
+			{ "item": "madfall:scrap_vest", "weight": 1, "tier": [3, 5] }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/zombie",
+		"empty_weight": 3,
+		"entries": [
+			{ "item": "madfall:coin", "count": [1, 4], "weight": 2 },
+			{ "item": "madfall:cloth", "count": [1, 2], "weight": 2 },
+			{ "item": "madfall:canned_food", "weight": 1 },
+			{ "item": "madfall:scrap_iron", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/zombie_soldier",
+		"rolls": [1, 2],
+		"empty_weight": 1,
+		"entries": [
+			{ "item": "madfall:coin", "count": [3, 10], "weight": 2 },
+			{ "item": "madfall:scrap_iron", "count": [1, 3], "weight": 3 },
+			{ "table": "madfall:loot/medical", "weight": 1 },
+			{ "table": "madfall:loot/tools", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/leaves",
+		"empty_weight": 2,
+		"entries": [{ "item": "madfall:plant_fiber", "count": [1, 2] }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/berry_bush",
+		"rolls": [1, 2],
+		"entries": [
+			{ "item": "madfall:berries", "count": [2, 4], "weight": 3 },
+			{ "item": "madfall:plant_fiber", "count": [1, 2], "weight": 1 },
+			{ "item": "madfall:corn_seed", "count": [1, 2], "weight": 1 },
+			{ "item": "madfall:potato_seed", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/rabbit",
+		"entries": [
+			{ "item": "madfall:raw_meat", "always": true },
+			{ "item": "madfall:animal_hide", "weight": 1 },
+			{ "item": "madfall:plant_fiber", "weight": 2 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/deer",
+		"entries": [
+			{ "item": "madfall:raw_meat", "count": [3, 5], "always": true },
+			{ "item": "madfall:animal_hide", "count": [1, 2], "always": true }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/boar",
+		"entries": [
+			{ "item": "madfall:raw_meat", "count": [3, 4], "always": true },
+			{ "item": "madfall:animal_hide", "count": [1, 2], "always": true }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/wolf",
+		"entries": [
+			{ "item": "madfall:raw_meat", "count": [1, 2], "always": true },
+			{ "item": "madfall:animal_hide", "count": [2, 3], "always": true }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/corn_seedling",
+		"entries": [{ "item": "madfall:corn_seed", "always": true }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/corn_harvest",
+		"entries": [
+			{ "item": "madfall:corn", "count": [2, 3], "always": true },
+			{ "item": "madfall:corn_seed", "count": [1, 2], "always": true },
+			{ "item": "madfall:plant_fiber", "count": [1, 2], "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/potato_seedling",
+		"entries": [{ "item": "madfall:potato_seed", "always": true }]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/potato_harvest",
+		"entries": [
+			{ "item": "madfall:potato", "count": [3, 5], "always": true },
+			{ "item": "madfall:potato_seed", "count": [1, 2], "always": true }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/cactus",
+		"entries": [
+			{ "item": "madfall:plant_fiber", "count": [1, 3], "weight": 2 },
+			{ "item": "madfall:water_bottle", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/wood_door",
+		"entries": [{ "item": "madfall:wood_door" }]
+	}
+]

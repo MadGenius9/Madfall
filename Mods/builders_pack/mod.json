@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "builders_pack",
+	"name": "Builder's Pack",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "New building blocks with their own look and structural behaviour: brick walls (heavy, strong, short spans), timber beams (light, long spans) and corrugated metal sheets. New material classes with surface colours, a clay resource, recipes, and bricks in cabin loot. Exercises blocks, surfaces, items, recipes and loot patches.",
+	"authors": ["MadFall test mods"],
+	"license": "MIT"
+}

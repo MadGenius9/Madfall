@@ -1,0 +1,8 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "en",
+	"strings": {
+		"survival_tweaks.perks.iron_stomach": "Iron Stomach",
+		"survival_tweaks.perks.iron_stomach.description": "Eat less, and take a little more punishment."
+	}
+}

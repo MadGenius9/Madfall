@@ -1,0 +1,9 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "en",
+	"strings": {
+		"zombie_variety.zombies.crawler": "Crawler",
+		"zombie_variety.zombies.bloater": "Bloater",
+		"zombie_variety.zombies.night_stalker": "Night Stalker"
+	}
+}

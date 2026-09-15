@@ -1,0 +1,58 @@
+[
+	{
+		"schema": "madfall.item/1",
+		"id": "field_medic:first_aid_kit",
+		"display_name": "@field_medic.items.first_aid_kit",
+		"tags": ["item.medical"],
+		"max_stack": 5,
+		"weight_kg": 0.6,
+		"consumable": { "use_seconds": 4.0, "effects": { "health": 60.0, "infection": -10.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "field_medic:herbal_tea",
+		"display_name": "@field_medic.items.herbal_tea",
+		"tags": ["item.drink", "item.medical"],
+		"max_stack": 10,
+		"weight_kg": 0.3,
+		"consumable": { "use_seconds": 2.0, "effects": { "water": 20.0, "infection": -15.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "field_medic:energy_drink",
+		"display_name": "@field_medic.items.energy_drink",
+		"tags": ["item.drink"],
+		"max_stack": 10,
+		"weight_kg": 0.35,
+		"consumable": { "use_seconds": 1.0, "effects": { "stamina": 60.0, "water": 10.0, "food": -2.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "field_medic:steel_machete",
+		"extends": "madfall:base_tool",
+		"display_name": "@field_medic.items.steel_machete",
+		"tags": ["item.weapon", "weapon.melee", "weapon.blade", "tool.axe"],
+		"kind": "weapon",
+		"weight_kg": 1.1,
+		"tool": {
+			"damage": { "madfall:pierce": 42.0 },
+			"harvest_tags": ["tool.axe"],
+			"tier": 2,
+			"durability": 400,
+			"use_seconds": 0.55,
+			"stamina_cost": 4.0,
+			"range": 2.5,
+			"mod_slots": 2,
+			"repair_with": [{ "item": "madfall:scrap_iron", "count": 2 }]
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "field_medic:balanced_handle",
+		"display_name": "@field_medic.items.balanced_handle",
+		"tags": ["item.mod"],
+		"max_stack": 5,
+		"weight_kg": 0.2,
+		"mod": { "applies_to_tags": ["item.weapon"], "multipliers": { "damage": 1.2, "stamina_cost": 0.8 } }
+	}
+]

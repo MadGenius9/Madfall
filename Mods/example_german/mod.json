@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "example_german",
+	"name": "Example: German",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Tier-1 example translation pack. German text for part of the base game; anything it does not translate falls back to English. Select it with mad.Language de.",
+	"authors": ["MadFall"],
+	"license": "MIT"
+}

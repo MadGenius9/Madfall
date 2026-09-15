@@ -1,0 +1,14 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "fortifications",
+	"name": "Fortifications",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Horde-night defences built on the Builder's Pack: reinforced brick (extends its brick wall), sandbags that shrug off blunt damage, and cheaper metal sheets. Requires builders_pack and patches its recipe. Exercises dependencies, cross-mod inheritance and cross-mod patches.",
+	"authors": ["MadFall test mods"],
+	"license": "MIT",
+	"dependencies": [
+		{ "id": "builders_pack", "version": "^1.0.0" }
+	],
+	"load_after": ["example_scavenger"]
+}

@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "survival_tweaks",
+	"name": "Survival Tweaks",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "A balance pass: hunger and thirst drain 25% slower, stamina comes back faster, the Miner perk hits harder, and a new Iron Stomach perk. Exercises tuning and perk patches plus a new perk.",
+	"authors": ["MadFall test mods"],
+	"license": "MIT"
+}

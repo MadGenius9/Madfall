@@ -1,0 +1,22 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "example_scavenger:scrap_wall",
+		"extends": "madfall:wood_frame",
+		"display_name": "Scrap Wall",
+		"tags": ["block.building", "block.metal", "block.tier1"],
+		"material": {
+			"class": "madfall:steel",
+			"mass_kg": 600.0,
+			"hardness": 320.0,
+			"resistances": {
+				"madfall:blunt": 0.7,
+				"madfall:pierce": 0.5,
+				"madfall:explosive": 1.2,
+				"madfall:fire": 0.3
+			}
+		},
+		"structure": { "support_strength": 30000.0, "max_horizontal_span": 4 },
+		"drops": { "table": "madfall:loot/steel_beam" }
+	}
+]

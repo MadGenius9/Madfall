@@ -1,0 +1,11 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "example_scripted",
+	"name": "Example: Night Watch",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Tier-3 example mod, in Lua. Keeps a tally of zombie kills, blocks mined and nights survived in the world save, pays a bounty of arrows every 25 kills, hands out supplies at the dawn after a horde night, and adds console commands: mod.example_scripted.stats, mod.example_scripted.beacon and mod.example_scripted.selftest.",
+	"authors": ["MadFall"],
+	"license": "MIT",
+	"scripts": ["scripts/main.lua"]
+}

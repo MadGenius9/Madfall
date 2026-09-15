@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Unreal Engine generated
+# ---------------------------------------------------------------------------
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+# Base-game release metadata written by Scripts/Package.ps1; content mods are cooked against it.
+Releases/
+# Paks built by Scripts/PackageMod.ps1 from a mod's source plugin.
+Mods/*/Paks/
+Mods/*/*/Saved/
+Mods/*/*/Intermediate/
+Platforms/*/Binaries/
+Platforms/*/Build/
+Platforms/*/Intermediate/
+# Downloaded photo-scanned source textures (ambientCG, CC0, ~680 MB unzipped).
+# Scripts/import_surface_textures.py turns them into the Content/Surfaces assets
+# that ship; re-download with Scripts/fetch_surface_textures.ps1.
+SourceArt/
+
+# ---------------------------------------------------------------------------
+# IDE / toolchain
+# ---------------------------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+*.xcodeproj/
+*.xcworkspace/
+CMakeLists.txt
+Makefile
+compile_commands.json
+.ignore
+
+# ---------------------------------------------------------------------------
+# MadFall
+# ---------------------------------------------------------------------------
+# Local worlds are player data, never source.
+Saved/MadFallWorlds/
+Worlds/
+# Local-only engine path override for build scripts.
+Scripts/local.env
+# Unreal Insights traces are large; attach them to phase reports instead.
+*.utrace
+
+# ---------------------------------------------------------------------------
+# OS
+# ---------------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store

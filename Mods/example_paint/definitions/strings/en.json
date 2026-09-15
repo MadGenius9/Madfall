@@ -1,0 +1,7 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "en",
+	"strings": {
+		"example_paint.blocks.painted_concrete": "Painted Concrete"
+	}
+}

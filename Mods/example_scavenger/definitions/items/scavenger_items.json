@@ -1,0 +1,20 @@
+[
+	{
+		"schema": "madfall.item/1",
+		"id": "example_scavenger:scrap_knife",
+		"extends": "madfall:base_tool",
+		"display_name": "Scrap Knife",
+		"tags": ["item.weapon", "weapon.melee", "weapon.blade"],
+		"kind": "weapon",
+		"weight_kg": 0.6,
+		"tool": {
+			"damage": { "madfall:pierce": 28.0 },
+			"durability": 120,
+			"use_seconds": 0.4,
+			"stamina_cost": 3.0,
+			"range": 2.0,
+			"mod_slots": 1,
+			"repair_with": [{ "item": "madfall:scrap_iron", "count": 1 }]
+		}
+	}
+]

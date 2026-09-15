@@ -1,0 +1,117 @@
+[
+	{
+		"schema": "madfall.trader/1",
+		"id": "madfall:quartermaster",
+		"display_name": "@traders.quartermaster",
+		"greeting": "@traders.quartermaster_greeting",
+		"buy_factor": 0.3,
+		"restock_days": 3,
+		"stock": [
+			{
+				"item": "madfall:canned_food",
+				"count": [
+					3,
+					8
+				]
+			},
+			{
+				"item": "madfall:water_bottle",
+				"count": [
+					3,
+					8
+				]
+			},
+			{
+				"item": "madfall:bandage",
+				"count": [
+					2,
+					6
+				]
+			},
+			{
+				"item": "madfall:antibiotics",
+				"count": [
+					1,
+					2
+				],
+				"chance": 0.6
+			},
+			{
+				"item": "madfall:arrow",
+				"count": [
+					12,
+					30
+				]
+			},
+			{
+				"item": "madfall:wooden_bow",
+				"count": 1,
+				"chance": 0.5
+			},
+			{
+				"item": "madfall:iron_pickaxe",
+				"count": 1,
+				"chance": 0.4
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": [
+					10,
+					30
+				]
+			},
+			{
+				"item": "madfall:cement",
+				"count": [
+					8,
+					20
+				]
+			},
+			{
+				"item": "madfall:corn_seed",
+				"count": [
+					4,
+					10
+				]
+			},
+			{
+				"item": "madfall:potato_seed",
+				"count": [
+					4,
+					10
+				]
+			},
+			{
+				"item": "madfall:mod_reinforced_grip",
+				"count": 1,
+				"chance": 0.3
+			},
+			{
+				"item": "madfall:scrap_vest",
+				"count": 1,
+				"chance": 0.3
+			},
+			{
+				"item": "madfall:fur_coat",
+				"count": 1,
+				"chance": 0.3
+			},
+			{
+				"item": "madfall:rebar_concrete",
+				"count": [
+					4,
+					12
+				],
+				"price": 25
+			},
+			{
+				"item": "madfall:storage_barrel",
+				"count": [
+					1,
+					2
+				],
+				"price": 30
+			}
+		]
+	}
+]

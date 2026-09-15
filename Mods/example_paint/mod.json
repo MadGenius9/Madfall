@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "example_paint",
+	"name": "Example: Paint",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Tier-2 example mod. Ships a cooked material in its content plugin (ExamplePaint/) and a Painted Concrete block whose surface uses it. In the editor the plugin loads from source; for a packaged game build it with Scripts/PackageMod.ps1 -Mod example_paint.",
+	"authors": ["MadFall"],
+	"license": "MIT"
+}

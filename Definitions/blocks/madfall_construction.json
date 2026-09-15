@@ -1,0 +1,238 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:base_construction",
+		"display_name": "@blocks.base_construction",
+		"tags": ["block.building"],
+		"shape": {
+			"kind": "cubic",
+			"rotation_mode": "full_24",
+			"variants": ["full", "half", "ramp", "corner_in", "corner_out", "pillar", "plate", "arch"],
+			"collision": "mesh",
+			"occludes_neighbors": true
+		},
+		"material": {
+			"class": "madfall:generic",
+			"mass_kg": 500.0,
+			"hardness": 200.0,
+			"resistances": {
+				"madfall:blunt": 1.0,
+				"madfall:pierce": 1.0,
+				"madfall:explosive": 1.0,
+				"madfall:fire": 1.0
+			}
+		},
+		"structure": { "support_strength": 20000.0, "max_horizontal_span": 3 },
+		"placement": { "requires_support": true, "snap": "grid" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:wood_frame",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.wood_frame",
+		"tags": ["block.building", "block.wood", "block.tier0"],
+		"material": {
+			"class": "madfall:wood",
+			"mass_kg": 250.0,
+			"hardness": 100.0,
+			"resistances": {
+				"madfall:blunt": 1.10,
+				"madfall:pierce": 0.80,
+				"madfall:explosive": 1.50,
+				"madfall:fire": 2.50
+			},
+			"harvest": { "tool_tags": ["tool.axe"], "tier": 0 }
+		},
+		"structure": { "support_strength": 16000.0, "max_horizontal_span": 5, "debris_on_collapse": "madfall:wood_debris" },
+		"damage_states": [
+			{ "at": 0, "support_multiplier": 1.0 },
+			{ "at": 160, "support_multiplier": 0.4, "decal_set": "madfall:cracks_light", "sound": "madfall:wood_crack" },
+			{ "at": 255, "support_multiplier": 0.0 }
+		],
+		"drops": { "table": "madfall:loot/wood_frame", "on_collapse": "madfall:loot/wood_debris" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:wood_reinforced",
+		"extends": "madfall:wood_frame",
+		"display_name": "@blocks.wood_reinforced",
+		"tags": ["block.building", "block.wood", "block.tier1"],
+		"material": { "mass_kg": 400.0, "hardness": 260.0 },
+		"structure": { "support_strength": 40000.0, "max_horizontal_span": 6 },
+		"damage_states": [
+			{ "at": 0, "support_multiplier": 1.0 },
+			{ "at": 128, "support_multiplier": 0.6, "decal_set": "madfall:cracks_light" },
+			{ "at": 255, "support_multiplier": 0.0, "downgrade_to": "madfall:wood_frame" }
+		]
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:concrete_frame",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.concrete_frame",
+		"tags": ["block.building", "block.concrete", "block.tier2"],
+		"material": {
+			"class": "madfall:concrete",
+			"mass_kg": 1800.0,
+			"hardness": 520.0,
+			"resistances": {
+				"madfall:blunt": 0.45,
+				"madfall:pierce": 0.25,
+				"madfall:explosive": 1.40,
+				"madfall:fire": 0.05
+			},
+			"harvest": { "tool_tags": ["tool.pickaxe", "tool.jackhammer"], "tier": 2 }
+		},
+		"structure": { "support_strength": 400000.0, "max_horizontal_span": 6, "debris_on_collapse": "madfall:concrete_rubble" },
+		"damage_states": [
+			{ "at": 0, "support_multiplier": 1.0 },
+			{ "at": 112, "support_multiplier": 0.55, "decal_set": "madfall:cracks_light", "sound": "madfall:concrete_crack" },
+			{ "at": 200, "support_multiplier": 0.20, "decal_set": "madfall:cracks_heavy" },
+			{ "at": 255, "support_multiplier": 0.0 }
+		],
+		"drops": { "table": "madfall:loot/concrete_frame", "on_collapse": "madfall:loot/rubble" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:rebar_concrete",
+		"extends": "madfall:concrete_frame",
+		"display_name": "@blocks.rebar_concrete",
+		"tags": ["block.building", "block.concrete", "block.tier3"],
+		"material": {
+			"mass_kg": 2400.0,
+			"hardness": 850.0,
+			"resistances": {
+				"madfall:blunt": 0.35,
+				"madfall:pierce": 0.20,
+				"madfall:explosive": 1.40,
+				"madfall:fire": 0.05
+			},
+			"harvest": { "tool_tags": ["tool.pickaxe", "tool.jackhammer"], "tier": 3 }
+		},
+		"structure": { "support_strength": 900000.0, "max_horizontal_span": 9, "debris_on_collapse": "madfall:concrete_rubble" },
+		"damage_states": [
+			{ "at": 0, "support_multiplier": 1.00 },
+			{ "at": 96, "support_multiplier": 0.60, "decal_set": "madfall:cracks_light", "sound": "madfall:concrete_crack" },
+			{ "at": 176, "support_multiplier": 0.25, "decal_set": "madfall:cracks_heavy" },
+			{ "at": 255, "downgrade_to": "madfall:concrete_frame" }
+		],
+		"drops": { "table": "madfall:loot/rebar_concrete", "on_collapse": "madfall:loot/rubble" },
+		"flags": { "conductive": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:steel_beam",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.steel_beam",
+		"tags": ["block.building", "block.metal", "block.tier4"],
+		"shape": { "kind": "cubic", "rotation_mode": "full_24", "variants": ["straight", "corner", "tee", "cross"] },
+		"material": {
+			"class": "madfall:steel",
+			"mass_kg": 7800.0,
+			"hardness": 1400.0,
+			"resistances": {
+				"madfall:blunt": 0.25,
+				"madfall:pierce": 0.35,
+				"madfall:explosive": 0.90,
+				"madfall:fire": 0.10
+			},
+			"harvest": { "tool_tags": ["tool.wrench", "tool.torch"], "tier": 4 }
+		},
+		"structure": { "support_strength": 2500000.0, "max_horizontal_span": 14, "debris_on_collapse": "madfall:steel_debris" },
+		"drops": { "table": "madfall:loot/steel_beam" },
+		"flags": { "conductive": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:loot_crate",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.loot_crate",
+		"tags": ["block.container"],
+		"shape": { "kind": "cubic", "rotation_mode": "facing_4", "variants": [] },
+		"material": { "class": "madfall:wood", "mass_kg": 60.0, "hardness": 120.0 },
+		"structure": { "support_strength": 2000.0, "max_horizontal_span": 0 },
+		"drops": { "table": "madfall:loot/wood_debris" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:storage_barrel",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.storage_barrel",
+		"tags": ["block.container"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cylinder.Cylinder", "scale": [0.8, 0.8, 0.95] },
+		"material": { "class": "madfall:wood", "mass_kg": 40.0, "hardness": 100.0 },
+		"structure": { "support_strength": 1500.0, "max_horizontal_span": 0 },
+		"drops": { "table": "madfall:loot/wood_debris" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:workbench",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.workbench",
+		"tags": ["block.building", "block.station", "station.workbench"],
+		"shape": { "kind": "cubic", "rotation_mode": "facing_4", "variants": [] },
+		"material": { "class": "madfall:wood", "mass_kg": 120.0, "hardness": 250.0 },
+		"structure": { "support_strength": 4000.0, "max_horizontal_span": 0 }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:forge",
+		"extends": "madfall:base_construction",
+		"display_name": "@blocks.forge",
+		"tags": ["block.building", "block.station", "station.forge"],
+		"shape": { "kind": "cubic", "rotation_mode": "facing_4", "variants": [] },
+		"material": { "class": "madfall:stone", "mass_kg": 900.0, "hardness": 600.0 },
+		"structure": { "support_strength": 20000.0, "max_horizontal_span": 0 }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:concrete_rubble",
+		"display_name": "@blocks.concrete_rubble",
+		"tags": ["block.debris"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "mesh" },
+		"material": {
+			"class": "madfall:rubble",
+			"mass_kg": 1400.0,
+			"hardness": 80.0,
+			"harvest": { "tool_tags": ["tool.shovel", "tool.pickaxe"], "tier": 0 }
+		},
+		"structure": { "support_strength": 30000.0, "max_horizontal_span": 0 },
+		"drops": { "table": "madfall:loot/rubble" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:wood_debris",
+		"display_name": "@blocks.wood_debris",
+		"tags": ["block.debris"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "mesh" },
+		"material": {
+			"class": "madfall:wood",
+			"mass_kg": 300.0,
+			"hardness": 40.0,
+			"harvest": { "tool_tags": ["tool.axe", "tool.shovel"], "tier": 0 }
+		},
+		"structure": { "support_strength": 8000.0, "max_horizontal_span": 0 },
+		"drops": { "table": "madfall:loot/wood_debris" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:steel_debris",
+		"display_name": "@blocks.steel_debris",
+		"tags": ["block.debris"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "mesh" },
+		"material": {
+			"class": "madfall:steel",
+			"mass_kg": 2000.0,
+			"hardness": 300.0,
+			"harvest": { "tool_tags": ["tool.wrench", "tool.torch"], "tier": 0 }
+		},
+		"structure": { "support_strength": 60000.0, "max_horizontal_span": 0 },
+		"drops": { "table": "madfall:loot/steel_beam" },
+		"flags": { "conductive": true }
+	}
+]

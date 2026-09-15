@@ -1,0 +1,9 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "example_paint:painted_concrete",
+		"extends": "madfall:concrete_frame",
+		"display_name": "@example_paint.blocks.painted_concrete",
+		"material": { "class": "example_paint:paint" }
+	}
+]

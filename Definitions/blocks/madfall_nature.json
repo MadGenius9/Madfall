@@ -1,0 +1,111 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:base_log",
+		"display_name": "@blocks.oak_log",
+		"tags": ["block.natural", "block.wood"],
+		"shape": { "kind": "cubic", "rotation_mode": "axis", "variants": [], "collision": "mesh", "occludes_neighbors": true },
+		"material": {
+			"class": "madfall:bark",
+			"mass_kg": 150.0,
+			"hardness": 80.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 0.8, "madfall:explosive": 1.2, "madfall:fire": 2.0 }
+		},
+		"structure": { "support_strength": 20000.0, "max_horizontal_span": 2, "debris_on_collapse": "madfall:wood_debris" },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:oak_log",
+		"extends": "madfall:base_log",
+		"display_name": "@blocks.oak_log"
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:pine_log",
+		"extends": "madfall:base_log",
+		"display_name": "@blocks.pine_log",
+		"material": { "class": "madfall:pine_bark" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:base_leaves",
+		"display_name": "@blocks.oak_leaves",
+		"tags": ["block.natural", "block.foliage"],
+		"shape": { "kind": "cubic", "rotation_mode": "none", "variants": [], "collision": "mesh", "occludes_neighbors": true },
+		"material": {
+			"class": "madfall:leaves",
+			"mass_kg": 5.0,
+			"hardness": 5.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 1.0, "madfall:explosive": 2.0, "madfall:fire": 3.0 }
+		},
+		"structure": { "support_strength": 400.0, "max_horizontal_span": 4 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"drops": { "table": "madfall:loot/leaves", "on_collapse": "madfall:loot/leaves" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:oak_leaves",
+		"extends": "madfall:base_leaves",
+		"display_name": "@blocks.oak_leaves"
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:pine_leaves",
+		"extends": "madfall:base_leaves",
+		"display_name": "@blocks.pine_leaves",
+		"material": { "class": "madfall:pine_leaves" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:cactus",
+		"extends": "madfall:base_log",
+		"display_name": "@blocks.cactus",
+		"tags": ["block.natural", "block.foliage"],
+		"material": { "class": "madfall:cactus", "mass_kg": 60.0, "hardness": 40.0 },
+		"structure": { "support_strength": 3000.0, "max_horizontal_span": 1 },
+		"drops": { "table": "madfall:loot/cactus" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:torch",
+		"display_name": "@blocks.torch",
+		"tags": ["block.building", "block.light"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "occludes_neighbors": false },
+		"render": {
+			"mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+			"offset": [0.0, 0.0, -0.2],
+			"scale": [0.1, 0.1, 0.6],
+			"light": { "color": [1.0, 0.78, 0.54], "lumens": 150, "radius": 9, "offset": [0.0, 0.0, 0.2], "flame": 1.3 }
+		},
+		"material": {
+			"class": "madfall:bark",
+			"mass_kg": 1.0,
+			"hardness": 5.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 1.0, "madfall:explosive": 2.0, "madfall:fire": 3.0 }
+		},
+		"structure": { "support_strength": 100.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:berry_bush",
+		"display_name": "@blocks.berry_bush",
+		"tags": ["block.natural", "block.foliage"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, 0.0, -0.15], "scale": [0.8, 0.8, 0.7] },
+		"material": {
+			"class": "madfall:leaves",
+			"mass_kg": 8.0,
+			"hardness": 10.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 1.0, "madfall:explosive": 2.0, "madfall:fire": 3.0 }
+		},
+		"structure": { "support_strength": 200.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"drops": { "table": "madfall:loot/berry_bush" },
+		"flags": { "flammable": true }
+	}
+]

@@ -1,0 +1,10 @@
+[
+	{
+		"schema": "madfall.item/1",
+		"id": "builders_pack:clay",
+		"display_name": "@builders_pack.items.clay",
+		"tags": ["item.resource", "item.stone"],
+		"max_stack": 200,
+		"weight_kg": 1.2
+	}
+]

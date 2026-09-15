@@ -1,0 +1,41 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "fortifications:reinforced_brick",
+		"extends": "builders_pack:brick_wall",
+		"display_name": "@fortifications.blocks.reinforced_brick",
+		"tags": ["block.building", "block.stone", "block.tier2"],
+		"material": {
+			"mass_kg": 1600.0,
+			"hardness": 900.0,
+			"resistances": {
+				"madfall:blunt": 0.5,
+				"madfall:pierce": 0.3,
+				"madfall:explosive": 0.8
+			},
+			"harvest": { "tool_tags": ["tool.pickaxe"], "tier": 2 }
+		},
+		"structure": { "support_strength": 600000.0, "max_horizontal_span": 3 }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "fortifications:sandbag",
+		"extends": "madfall:base_construction",
+		"display_name": "@fortifications.blocks.sandbag",
+		"tags": ["block.building", "block.tier1"],
+		"material": {
+			"class": "fortifications:sandbag",
+			"mass_kg": 900.0,
+			"hardness": 450.0,
+			"resistances": {
+				"madfall:blunt": 0.35,
+				"madfall:pierce": 0.25,
+				"madfall:explosive": 0.6,
+				"madfall:fire": 0.1
+			},
+			"harvest": { "tool_tags": ["tool.shovel"], "tier": 0 }
+		},
+		"structure": { "support_strength": 60000.0, "max_horizontal_span": 1, "debris_on_collapse": "madfall:concrete_rubble" },
+		"drops": { "table": "madfall:loot/sand" }
+	}
+]

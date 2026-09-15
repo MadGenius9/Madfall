@@ -1,0 +1,5 @@
+[
+	{ "schema": "madfall.surface/1", "id": "builders_pack:brick",      "color": [0.45, 0.16, 0.10], "pattern": "brick" },
+	{ "schema": "madfall.surface/1", "id": "builders_pack:timber",     "color": [0.40, 0.25, 0.12], "impact": "wood", "pattern": "planks" },
+	{ "schema": "madfall.surface/1", "id": "builders_pack:corrugated", "color": [0.30, 0.34, 0.36], "impact": "metal", "pattern": "metal" }
+]

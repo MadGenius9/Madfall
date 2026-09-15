@@ -1,0 +1,47 @@
+[
+	{
+		"schema": "madfall.recipe/1",
+		"id": "field_medic:first_aid_kit",
+		"output": { "item": "field_medic:first_aid_kit", "count": 1 },
+		"ingredients": [
+			{ "item": "madfall:bandage", "count": 2 },
+			{ "item": "madfall:antibiotics", "count": 1 },
+			{ "item": "madfall:cloth", "count": 1 }
+		],
+		"craft_seconds": 5.0
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "field_medic:herbal_tea",
+		"output": { "item": "field_medic:herbal_tea", "count": 2 },
+		"ingredients": [
+			{ "item": "madfall:water_bottle", "count": 2 },
+			{ "item": "madfall:grass", "count": 3 }
+		],
+		"station": "madfall:forge",
+		"craft_seconds": 4.0
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "field_medic:steel_machete",
+		"output": { "item": "field_medic:steel_machete", "count": 1 },
+		"ingredients": [
+			{ "item": "madfall:scrap_iron", "count": 8 },
+			{ "item": "madfall:wood_plank", "count": 2 }
+		],
+		"station": "madfall:forge",
+		"craft_seconds": 12.0,
+		"required_level": 3
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "field_medic:balanced_handle",
+		"output": { "item": "field_medic:balanced_handle", "count": 1 },
+		"ingredients": [
+			{ "item": "madfall:wood_plank", "count": 3 },
+			{ "item": "madfall:cloth", "count": 2 }
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 6.0
+	}
+]

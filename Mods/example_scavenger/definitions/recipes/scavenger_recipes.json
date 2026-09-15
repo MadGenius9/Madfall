@@ -1,0 +1,24 @@
+[
+	{
+		"schema": "madfall.recipe/1",
+		"id": "example_scavenger:scrap_knife",
+		"output": { "item": "example_scavenger:scrap_knife", "count": 1 },
+		"ingredients": [
+			{ "item": "madfall:scrap_iron", "count": 3 },
+			{ "item": "madfall:cloth", "count": 1 }
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 4.0
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "example_scavenger:scrap_wall",
+		"output": { "item": "example_scavenger:scrap_wall", "count": 2 },
+		"ingredients": [
+			{ "item": "madfall:scrap_iron", "count": 4 },
+			{ "item": "madfall:wood_frame", "count": 1 }
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 6.0
+	}
+]

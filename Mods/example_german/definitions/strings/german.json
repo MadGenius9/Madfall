@@ -1,0 +1,22 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "de",
+	"strings": {
+		"blocks.dirt": "Erde",
+		"blocks.grass": "Gras",
+		"blocks.stone": "Stein",
+		"blocks.loot_crate": "Kiste",
+		"blocks.wood_frame": "Holzrahmen",
+		"blocks.workbench": "Werkbank",
+
+		"items.canned_food": "Konserve",
+		"items.rock": "Stein",
+		"items.stone_pickaxe": "Steinspitzhacke",
+		"items.water_bottle": "Wasserflasche",
+		"items.wood_plank": "Holzbrett",
+
+		"perks.miner": "Bergmann",
+
+		"zombies.civilian": "Wandler"
+	}
+}

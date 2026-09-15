@@ -1,0 +1,39 @@
+[
+	{
+		"schema": "madfall.recipe/1",
+		"id": "builders_pack:brick_wall",
+		"output": { "item": "builders_pack:brick_wall", "count": 2 },
+		"ingredients": [
+			{ "item": "builders_pack:clay", "count": 4 },
+			{ "item": "madfall:cement", "count": 1 }
+		],
+		"station": "madfall:forge",
+		"craft_seconds": 8.0
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "builders_pack:timber_beam",
+		"output": { "item": "builders_pack:timber_beam", "count": 1 },
+		"ingredients": [{ "item": "madfall:wood_plank", "count": 6 }],
+		"station": "madfall:workbench",
+		"craft_seconds": 3.0
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "builders_pack:metal_sheet",
+		"output": { "item": "builders_pack:metal_sheet", "count": 2 },
+		"ingredients": [{ "item": "madfall:scrap_iron", "count": 5 }],
+		"station": "madfall:forge",
+		"craft_seconds": 6.0
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "builders_pack:clay_from_dirt",
+		"output": { "item": "builders_pack:clay", "count": 2 },
+		"ingredients": [
+			{ "item": "madfall:dirt", "count": 4 },
+			{ "item": "madfall:water_bottle", "count": 1 }
+		],
+		"craft_seconds": 2.0
+	}
+]

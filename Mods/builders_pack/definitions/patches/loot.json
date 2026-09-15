@@ -1,0 +1,9 @@
+{
+	"schema": "madfall.patch/1",
+	"kind": "loot",
+	"target": "madfall:loot/cabin_supplies",
+	"ops": [
+		{ "op": "append", "path": "/entries", "value": { "item": "builders_pack:clay", "count": [2, 6], "weight": 2 } },
+		{ "op": "append", "path": "/entries", "value": { "item": "builders_pack:timber_beam", "count": [1, 2], "weight": 1 } }
+	]
+}

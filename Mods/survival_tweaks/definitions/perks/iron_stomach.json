@@ -1,0 +1,11 @@
+{
+	"schema": "madfall.perk/1",
+	"id": "survival_tweaks:iron_stomach",
+	"display_name": "@survival_tweaks.perks.iron_stomach",
+	"description": "@survival_tweaks.perks.iron_stomach.description",
+	"tags": ["perk.fortitude"],
+	"ranks": [
+		{ "level": 2, "modifiers": { "food_drain": 0.9, "max_health": 1.05 } },
+		{ "level": 6, "modifiers": { "food_drain": 0.75, "max_health": 1.1 } }
+	]
+}

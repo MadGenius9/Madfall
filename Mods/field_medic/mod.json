@@ -1,0 +1,11 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "field_medic",
+	"name": "Field Medic",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Medicine and a machete: first aid kits, herbal tea against infection, energy drinks, a steel machete and a Balanced Handle mod. Adds them to medical cabinets and zombie drops, with English and German text. Exercises consumables, weapons, item mods, loot patches and translations.",
+	"authors": ["MadFall test mods"],
+	"license": "MIT",
+	"load_after": ["example_german"]
+}

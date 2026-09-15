@@ -1,0 +1,43 @@
+{
+	"schema": "madfall.prefab/1",
+	"id": "madfall:trader_outpost",
+	"display_name": "Trader Outpost",
+	"tier": 1,
+	"tags": ["poi.trader", "poi.safe"],
+	"size": [15, 15, 6],
+	"placement": {
+		"rarity": 0,
+		"near_spawn": true,
+		"conform": "base",
+		"embed_depth": 1,
+		"max_slope": 5,
+		"foundation": "madfall:stone",
+		"max_foundation_depth": 10,
+		"underwater": false
+	},
+	"palette": [
+		{
+			"block": "*"
+		},
+		{
+			"block": "madfall:air"
+		},
+		{
+			"block": "madfall:stone"
+		},
+		{
+			"block": "madfall:wood_reinforced"
+		},
+		{
+			"block": "madfall:wood_frame"
+		},
+		{
+			"block": "madfall:torch"
+		}
+	],
+	"voxels": [225, 2, 6, 3, 3, 1, 7, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 3, 1, 1, 4, 5, 1, 1, 4, 3, 1, 2, 3, 3, 1, 1, 4, 5, 1, 1, 4, 3, 1, 2, 3, 3, 1, 1, 4, 1, 5, 3, 1, 1, 5, 1, 4, 3, 1, 2, 3, 3, 1, 7, 4, 3, 1, 2, 3, 13, 1, 22, 3, 3, 1, 7, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 13, 1, 2, 3, 3, 1, 1, 4, 5, 1, 1, 4, 3, 1, 2, 3, 3, 1, 1, 4, 5, 1, 1, 4, 3, 1, 2, 3, 3, 1, 1, 4, 5, 1, 1, 4, 3, 1, 2, 3, 3, 1, 7, 4, 3, 1, 2, 3, 13, 1, 17, 3, 13, 1, 1, 3, 124, 1, 1, 4, 5, 1, 1, 4, 8, 1, 1, 4, 5, 1, 1, 4, 8, 1, 1, 4, 5, 1, 1, 4, 8, 1, 7, 4, 19, 1, 1, 3, 13, 1, 1, 3, 1, 5, 13, 1, 1, 5, 124, 1, 7, 4, 8, 1, 7, 4, 8, 1, 7, 4, 8, 1, 7, 4, 19, 1, 1, 5, 13, 1, 1, 5, 225, 1],
+	"markers": [
+		{"type": "entrance", "position": [7, 0, 1]},
+		{"type": "trader", "position": [7, 10, 1], "trader": "madfall:quartermaster"}
+	]
+}

@@ -1,0 +1,141 @@
+[
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/trader",
+		"display_name": "@quests.trader",
+		"description": "@quests.trader.description",
+		"requires": ["madfall:quest/timber"],
+		"order": 35,
+		"objectives": [{ "type": "trade", "target": "madfall:quartermaster" }],
+		"rewards": { "experience": 60, "items": [{ "item": "madfall:coin", "count": 25 }] }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/first_tool",
+		"display_name": "@quests.first_tool",
+		"description": "@quests.first_tool.description",
+		"order": 10,
+		"objectives": [
+			{ "type": "craft", "target": "madfall:stone_axe" }
+		],
+		"rewards": { "experience": 25, "items": [{ "item": "madfall:rock", "count": 4 }] }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/timber",
+		"display_name": "@quests.timber",
+		"description": "@quests.timber.description",
+		"requires": ["madfall:quest/first_tool"],
+		"order": 20,
+		"objectives": [
+			{ "type": "break", "tag": "block.wood", "count": 4, "text": "@quests.timber.logs" },
+			{ "type": "have", "target": "madfall:wood_plank", "count": 12 }
+		],
+		"rewards": { "experience": 40 }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/break_ground",
+		"display_name": "@quests.break_ground",
+		"description": "@quests.break_ground.description",
+		"requires": ["madfall:quest/first_tool"],
+		"order": 25,
+		"objectives": [
+			{ "type": "craft", "target": "madfall:stone_pickaxe" },
+			{ "type": "have", "target": "madfall:rock", "count": 10 }
+		],
+		"rewards": { "experience": 40 }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/four_walls",
+		"display_name": "@quests.four_walls",
+		"description": "@quests.four_walls.description",
+		"requires": ["madfall:quest/timber"],
+		"order": 30,
+		"objectives": [
+			{ "type": "place", "tag": "block.building", "count": 20, "text": "@quests.four_walls.blocks" },
+			{ "type": "place", "target": "madfall:wood_door" }
+		],
+		"rewards": { "experience": 75, "items": [{ "item": "madfall:bandage", "count": 2 }] }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/place_to_wake",
+		"display_name": "@quests.place_to_wake",
+		"description": "@quests.place_to_wake.description",
+		"requires": ["madfall:quest/four_walls"],
+		"order": 40,
+		"objectives": [
+			{ "type": "craft", "target": "madfall:bedroll" },
+			{ "type": "set_spawn" }
+		],
+		"rewards": { "experience": 50 }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/clean_water",
+		"display_name": "@quests.clean_water",
+		"description": "@quests.clean_water.description",
+		"requires": ["madfall:quest/four_walls"],
+		"order": 45,
+		"objectives": [
+			{ "type": "place", "target": "madfall:campfire" },
+			{ "type": "craft", "target": "madfall:water_bottle" }
+		],
+		"rewards": { "experience": 50, "items": [{ "item": "madfall:empty_bottle", "count": 2 }] }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/hunter",
+		"display_name": "@quests.hunter",
+		"description": "@quests.hunter.description",
+		"requires": ["madfall:quest/clean_water"],
+		"order": 50,
+		"objectives": [
+			{ "type": "craft", "target": "madfall:wooden_bow" },
+			{ "type": "kill_animal", "tag": "animal.game", "text": "@quests.hunter.game" },
+			{ "type": "craft", "target": "madfall:cooked_meat" }
+		],
+		"rewards": { "experience": 100, "items": [{ "item": "madfall:arrow", "count": 12 }] }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/farmer",
+		"display_name": "@quests.farmer",
+		"description": "@quests.farmer.description",
+		"requires": ["madfall:quest/clean_water"],
+		"order": 55,
+		"objectives": [
+			{ "type": "craft", "target": "madfall:stone_hoe" },
+			{ "type": "place", "tag": "block.crop", "count": 3, "text": "@quests.farmer.plant" },
+			{ "type": "break", "tag": "block.ripe", "text": "@quests.farmer.harvest" }
+		],
+		"rewards": { "experience": 100, "items": [{ "item": "madfall:potato_seed", "count": 4 }] }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/dressed_for_winter",
+		"display_name": "@quests.dressed_for_winter",
+		"description": "@quests.dressed_for_winter.description",
+		"requires": ["madfall:quest/hunter"],
+		"order": 60,
+		"objectives": [
+			{ "type": "wear", "tag": "item.clothing", "count": 2, "text": "@quests.dressed_for_winter.wear" }
+		],
+		"rewards": { "experience": 75 }
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/seventh_night",
+		"display_name": "@quests.seventh_night",
+		"description": "@quests.seventh_night.description",
+		"requires": ["madfall:quest/four_walls"],
+		"order": 90,
+		"objectives": [
+			{ "type": "kill_zombie", "count": 10 },
+			{ "type": "reach_day", "count": 8 }
+		],
+		"rewards": { "experience": 300, "items": [{ "item": "madfall:antibiotics", "count": 1 }] }
+	}
+]

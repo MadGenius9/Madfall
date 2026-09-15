@@ -1,0 +1,18 @@
+[
+	{
+		"schema": "madfall.patch/1",
+		"kind": "loot",
+		"target": "madfall:loot/weapons_locker",
+		"ops": [
+			{ "op": "append", "path": "/entries", "value": { "item": "example_scavenger:scrap_knife", "weight": 2, "durability": [0.5, 1.0] } }
+		]
+	},
+	{
+		"schema": "madfall.patch/1",
+		"kind": "loot",
+		"target": "madfall:loot/tools",
+		"ops": [
+			{ "op": "append", "path": "/entries", "value": { "item": "example_scavenger:scrap_knife", "weight": 1, "durability": [0.2, 0.8] } }
+		]
+	}
+]

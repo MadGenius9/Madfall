@@ -1,0 +1,55 @@
+[
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:rabbit",
+		"display_name": "@animals.rabbit",
+		"tags": ["animal.game", "animal.small"],
+		"behaviour": "skittish",
+		"spawn": {
+			"biomes": ["madfall:plains", "madfall:forest", "madfall:desert", "madfall:tundra", "madfall:highlands"],
+			"weight": 4,
+			"herd": [1, 2],
+			"active": "always"
+		},
+		"stats": { "health": 12, "walk_speed": 0.9, "run_speed": 5.5 },
+		"senses": { "sight": 14, "hearing": 16, "flee": 7 },
+		"rewards": { "experience": 5, "loot_table": "madfall:loot/rabbit" },
+		"appearance": { "body": [34, 18, 20], "legs": 10, "neck": 4, "tint": [0.56, 0.49, 0.40] }
+	},
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:deer",
+		"display_name": "@animals.deer",
+		"tags": ["animal.game"],
+		"behaviour": "skittish",
+		"spawn": { "biomes": ["madfall:plains", "madfall:forest"], "weight": 2, "herd": [2, 3], "active": "day" },
+		"stats": { "health": 60, "walk_speed": 1.1, "run_speed": 7.0 },
+		"senses": { "sight": 24, "hearing": 30, "flee": 12 },
+		"rewards": { "experience": 15, "loot_table": "madfall:loot/deer" },
+		"appearance": { "body": [100, 32, 42], "legs": 62, "neck": 42, "tint": [0.58, 0.42, 0.27] }
+	},
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:boar",
+		"display_name": "@animals.boar",
+		"tags": ["animal.game", "animal.dangerous"],
+		"behaviour": "defensive",
+		"spawn": { "biomes": ["madfall:forest", "madfall:plains", "madfall:highlands"], "weight": 1.5, "herd": [1, 2], "active": "always" },
+		"stats": { "health": 90, "walk_speed": 0.9, "run_speed": 4.5, "attack_damage": 12, "attack_seconds": 1.4, "damage_type": "madfall:pierce" },
+		"senses": { "sight": 16, "hearing": 20, "flee": 5 },
+		"rewards": { "experience": 25, "loot_table": "madfall:loot/boar" },
+		"appearance": { "body": [92, 40, 48], "legs": 32, "neck": 12, "tint": [0.32, 0.25, 0.19] }
+	},
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:wolf",
+		"display_name": "@animals.wolf",
+		"tags": ["animal.predator", "animal.dangerous"],
+		"behaviour": "aggressive",
+		"spawn": { "biomes": ["madfall:forest", "madfall:tundra", "madfall:highlands"], "weight": 1, "herd": [2, 3], "active": "night" },
+		"stats": { "health": 70, "walk_speed": 1.3, "run_speed": 6.0, "attack_damage": 9, "attack_seconds": 1.0, "damage_type": "madfall:pierce" },
+		"senses": { "sight": 22, "hearing": 30, "flee": 5 },
+		"rewards": { "experience": 30, "loot_table": "madfall:loot/wolf" },
+		"appearance": { "body": [90, 26, 36], "legs": 48, "neck": 24, "tint": [0.47, 0.46, 0.44] }
+	}
+]

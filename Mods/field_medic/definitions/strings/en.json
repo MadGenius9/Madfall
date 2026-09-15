@@ -1,0 +1,11 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "en",
+	"strings": {
+		"field_medic.items.first_aid_kit": "First Aid Kit",
+		"field_medic.items.herbal_tea": "Herbal Tea",
+		"field_medic.items.energy_drink": "Energy Drink",
+		"field_medic.items.steel_machete": "Steel Machete",
+		"field_medic.items.balanced_handle": "Balanced Handle"
+	}
+}

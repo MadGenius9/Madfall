@@ -1,0 +1,13 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"FriendlyName": "Example: Paint (content)",
+	"Description": "Source content for the example_paint Tier-2 mod. Cooked into a pak with Scripts/PackageMod.ps1; the game never loads this plugin directly.",
+	"Category": "MadFall Mods",
+	"CreatedBy": "MadFall",
+	"CanContainContent": true,
+	"ExplicitlyLoaded": false,
+	"EnabledByDefault": true,
+	"Modules": []
+}

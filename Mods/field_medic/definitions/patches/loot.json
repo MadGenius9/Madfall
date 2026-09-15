@@ -1,0 +1,27 @@
+[
+	{
+		"schema": "madfall.patch/1",
+		"kind": "loot",
+		"target": "madfall:loot/medical_cabinet",
+		"ops": [
+			{ "op": "append", "path": "/entries", "value": { "table": "field_medic:loot/field_kit", "weight": 3 } }
+		]
+	},
+	{
+		"schema": "madfall.patch/1",
+		"kind": "loot",
+		"target": "madfall:loot/weapons_locker",
+		"ops": [
+			{ "op": "append", "path": "/entries", "value": { "item": "field_medic:steel_machete", "weight": 1, "durability": [0.4, 1.0] } },
+			{ "op": "append", "path": "/entries", "value": { "item": "field_medic:balanced_handle", "weight": 1 } }
+		]
+	},
+	{
+		"schema": "madfall.patch/1",
+		"kind": "loot",
+		"target": "madfall:loot/zombie",
+		"ops": [
+			{ "op": "append", "path": "/entries", "value": { "item": "field_medic:energy_drink", "weight": 1 } }
+		]
+	}
+]

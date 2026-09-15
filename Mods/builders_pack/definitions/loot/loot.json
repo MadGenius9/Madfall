@@ -1,0 +1,10 @@
+[
+	{
+		"schema": "madfall.loot/1",
+		"id": "builders_pack:loot/brick_wall",
+		"entries": [
+			{ "item": "builders_pack:brick_wall", "weight": 1 },
+			{ "item": "builders_pack:clay", "count": [1, 3], "weight": 2 }
+		]
+	}
+]

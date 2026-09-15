@@ -1,0 +1,21 @@
+[
+	{
+		"schema": "madfall.loot/1",
+		"id": "zombie_variety:loot/crawler",
+		"empty_weight": 2,
+		"entries": [
+			{ "item": "madfall:rock", "count": [1, 3], "weight": 2 },
+			{ "item": "madfall:cloth", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "zombie_variety:loot/bloater",
+		"rolls": [2, 3],
+		"entries": [
+			{ "table": "madfall:loot/zombie", "weight": 2 },
+			{ "item": "madfall:antibiotics", "weight": 1 },
+			{ "item": "madfall:canned_food", "count": [1, 2], "weight": 2 }
+		]
+	}
+]

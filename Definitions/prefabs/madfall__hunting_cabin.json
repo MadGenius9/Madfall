@@ -1,0 +1,41 @@
+{
+	"schema": "madfall.prefab/1",
+	"id": "madfall:hunting_cabin",
+	"display_name": "Hunting Cabin",
+	"tier": 1,
+	"tags": ["poi.residential", "poi.shelter"],
+	"size": [9, 11, 7],
+	"placement": {
+		"rarity": 1.5,
+		"conform": "base",
+		"embed_depth": 1,
+		"max_slope": 7,
+		"foundation": "madfall:stone",
+		"max_foundation_depth": 8,
+		"biomes": ["madfall:forest", "madfall:plains", "madfall:tundra"],
+		"underwater": false
+	},
+	"palette": [
+		{ "block": "*" },
+		{ "block": "madfall:air" },
+		{ "block": "madfall:wood_reinforced" },
+		{ "block": "madfall:wood_frame" },
+		{ "block": "madfall:stone" },
+		{ "block": "madfall:loot_crate" }
+	],
+	"voxels": [
+		99, 3, 4, 2, 1, 1, 5, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2,
+		7, 1, 2, 2, 5, 1, 1, 5, 1, 1, 2, 2, 6, 1, 1, 4, 14, 2, 1, 1, 5, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1,
+		2, 2, 7, 1, 1, 2, 9, 1, 1, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 6, 1, 1, 4, 20, 2, 7, 1, 2, 2,
+		7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 7, 1, 2, 2, 6, 1, 1, 4,
+		10, 2, 88, 3, 1, 4, 10, 3, 1, 0, 7, 3, 2, 0, 7, 3, 2, 0, 7, 3, 2, 0, 7, 3, 2, 0, 7, 3, 2, 0, 7, 3,
+		2, 0, 7, 3, 2, 0, 7, 3, 2, 0, 7, 3, 2, 0, 6, 3, 1, 4, 2, 0, 7, 3, 4, 0, 3, 3, 6, 0, 3, 3, 6, 0,
+		3, 3, 6, 0, 3, 3, 6, 0, 3, 3, 6, 0, 3, 3, 6, 0, 3, 3, 6, 0, 3, 3, 6, 0, 3, 3, 6, 0, 3, 3, 1, 0,
+		1, 4, 4, 0, 3, 3, 3, 0
+	],
+	"markers": [
+		{ "type": "entrance", "position": [4, 0, 1] },
+		{ "type": "loot", "position": [6, 8, 1], "loot_table": "madfall:loot/cabin_supplies" },
+		{ "type": "spawn", "position": [2, 8, 1], "spawn_group": "madfall:zombies/civilian", "count": 1 }
+	]
+}

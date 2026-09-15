@@ -1,0 +1,11 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "en",
+	"strings": {
+		"builders_pack.blocks.brick_wall": "Brick Wall",
+		"builders_pack.blocks.timber_beam": "Timber Beam",
+		"builders_pack.blocks.metal_sheet": "Metal Sheet",
+		"builders_pack.blocks.fence_post": "Fence Post",
+		"builders_pack.items.clay": "Clay"
+	}
+}

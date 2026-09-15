@@ -1,0 +1,3 @@
+[
+	{ "schema": "madfall.surface/1", "id": "example_paint:paint", "color": [0.70, 0.20, 0.15], "impact": "stone", "material": "/ExamplePaint/M_Paint.M_Paint" }
+]

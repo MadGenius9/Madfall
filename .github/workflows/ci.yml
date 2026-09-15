@@ -1,0 +1,75 @@
+name: CI
+
+# Unreal Engine is ~150 GB installed and is not available on GitHub-hosted
+# runners, so this workflow targets a self-hosted Windows runner that has:
+#   - Unreal Engine 5.8 (a Launcher install is sufficient for the current
+#     single-player scope)
+#   - Visual Studio 2022 with the C++ game development workload
+#   - git-lfs
+#   - MADFALL_UE_ROOT pointing at the engine root
+#
+# The dedicated server build is skipped by default. When Phase 6 (multiplayer)
+# starts, set REQUIRE_SERVER=true in the repository variables - which also means
+# the runner must then have a SOURCE build of the engine, since a Launcher
+# install cannot build Server targets at all.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build client + server, run automation tests
+    runs-on: [self-hosted, windows, unreal]
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Verify LFS objects
+        shell: pwsh
+        run: git lfs fsck
+
+      - name: Verify engine
+        shell: pwsh
+        run: |
+          if (-not $env:MADFALL_UE_ROOT) { throw "MADFALL_UE_ROOT is not set on this runner." }
+          $v = Get-Content -Raw (Join-Path $env:MADFALL_UE_ROOT 'Engine\Build\Build.version') | ConvertFrom-Json
+          Write-Host "Engine $($v.MajorVersion).$($v.MinorVersion).$($v.PatchVersion) ($($v.BranchName))"
+          if ($v.MajorVersion -ne 5 -or $v.MinorVersion -lt 8) { throw "MadFall requires Unreal Engine 5.8 or newer." }
+
+      - name: CI gate
+        shell: pwsh
+        run: |
+          $extra = @()
+          if ('${{ vars.REQUIRE_SERVER }}' -eq 'true') { $extra += '-RequireServer' }
+          & .\Scripts\CI.ps1 @extra
+
+      - name: Upload automation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-report
+          path: Saved/Automation/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: Saved/CI/
+          retention-days: 14
+          if-no-files-found: warn

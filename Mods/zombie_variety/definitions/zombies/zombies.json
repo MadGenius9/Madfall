@@ -1,0 +1,69 @@
+[
+	{
+		"schema": "madfall.zombie/1",
+		"id": "zombie_variety:crawler",
+		"display_name": "@zombie_variety.zombies.crawler",
+		"tags": ["zombie.common", "zombie.digger"],
+		"spawn_groups": ["madfall:zombies/wander", "madfall:zombies/horde"],
+		"spawn_weight": 3,
+		"min_game_stage": 3,
+		"stats": {
+			"health": 60,
+			"walk_speed": 0.8,
+			"run_speed": 1.8,
+			"attack_damage": 5,
+			"block_damage": 55,
+			"attack_seconds": 1.0,
+			"damage_type": "madfall:blunt",
+			"infection_per_hit": 5
+		},
+		"senses": { "sight": 14, "hearing": 30 },
+		"rewards": { "experience": 15, "loot_table": "zombie_variety:loot/crawler" },
+		"appearance": { "scale": 0.75, "tint": [0.42, 0.38, 0.30] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "zombie_variety:bloater",
+		"display_name": "@zombie_variety.zombies.bloater",
+		"tags": ["zombie.heavy"],
+		"spawn_groups": ["madfall:zombies/civilian", "madfall:zombies/horde"],
+		"spawn_weight": 2,
+		"min_game_stage": 6,
+		"stats": {
+			"health": 420,
+			"walk_speed": 0.9,
+			"run_speed": 2.0,
+			"attack_damage": 18,
+			"block_damage": 40,
+			"attack_seconds": 1.6,
+			"damage_type": "madfall:blunt",
+			"infection_per_hit": 8
+		},
+		"senses": { "sight": 18, "hearing": 28 },
+		"rewards": { "experience": 60, "loot_table": "zombie_variety:loot/bloater" },
+		"resistances": { "madfall:blunt": 0.6, "madfall:pierce": 1.5 },
+		"appearance": { "scale": 1.3, "tint": [0.50, 0.55, 0.32] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "zombie_variety:night_stalker",
+		"display_name": "@zombie_variety.zombies.night_stalker",
+		"tags": ["zombie.fast"],
+		"spawn_groups": ["madfall:zombies/horde"],
+		"spawn_weight": 1,
+		"min_game_stage": 14,
+		"stats": {
+			"health": 140,
+			"walk_speed": 1.6,
+			"run_speed": 5.5,
+			"attack_damage": 12,
+			"block_damage": 25,
+			"attack_seconds": 0.8,
+			"damage_type": "madfall:pierce",
+			"infection_per_hit": 3
+		},
+		"senses": { "sight": 36, "hearing": 60 },
+		"rewards": { "experience": 70, "loot_table": "madfall:loot/zombie_soldier" },
+		"appearance": { "scale": 0.95, "tint": [0.15, 0.15, 0.20] }
+	}
+]

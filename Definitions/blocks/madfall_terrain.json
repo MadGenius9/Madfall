@@ -1,0 +1,129 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:bedrock",
+		"display_name": "@blocks.bedrock",
+		"tags": ["block.terrain", "block.indestructible"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "mesh" },
+		"material": {
+			"class": "madfall:bedrock",
+			"mass_kg": 5000.0,
+			"hardness": 100000.0,
+			"resistances": {
+				"madfall:blunt": 0.0,
+				"madfall:pierce": 0.0,
+				"madfall:explosive": 0.0,
+				"madfall:fire": 0.0
+			}
+		},
+		"structure": { "support_strength": 1000000.0, "max_horizontal_span": 64, "is_anchor": true },
+		"flags": { "transparent": false }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:base_stone",
+		"display_name": "@blocks.base_stone",
+		"tags": ["block.terrain"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "mesh" },
+		"material": {
+			"class": "madfall:stone",
+			"mass_kg": 2600.0,
+			"hardness": 400.0,
+			"resistances": {
+				"madfall:blunt": 0.60,
+				"madfall:pierce": 0.30,
+				"madfall:explosive": 1.30,
+				"madfall:fire": 0.05
+			},
+			"harvest": { "tool_tags": ["tool.pickaxe"], "tier": 1 }
+		},
+		"structure": { "support_strength": 6000.0, "max_horizontal_span": 6, "is_anchor": true },
+		"damage_states": [
+			{ "at": 0, "support_multiplier": 1.0 },
+			{ "at": 128, "support_multiplier": 0.5, "decal_set": "madfall:cracks_light" },
+			{ "at": 255, "support_multiplier": 0.0 }
+		]
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:stone",
+		"extends": "madfall:base_stone",
+		"display_name": "@blocks.stone",
+		"drops": { "table": "madfall:loot/stone", "requires_tool_tags": ["tool.pickaxe"] }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:granite",
+		"extends": "madfall:base_stone",
+		"display_name": "@blocks.granite",
+		"tags": ["block.terrain", "block.hard"],
+		"material": { "class": "madfall:granite", "mass_kg": 2750.0, "hardness": 700.0 },
+		"structure": { "support_strength": 9000.0, "max_horizontal_span": 8, "is_anchor": true },
+		"drops": { "table": "madfall:loot/granite", "requires_tool_tags": ["tool.pickaxe"] }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:iron_ore",
+		"extends": "madfall:base_stone",
+		"display_name": "@blocks.iron_ore",
+		"tags": ["block.terrain", "block.ore"],
+		"material": { "class": "madfall:ore_iron", "mass_kg": 3200.0, "hardness": 550.0,
+			"harvest": { "tool_tags": ["tool.pickaxe"], "tier": 2 } },
+		"drops": { "table": "madfall:loot/iron_ore", "requires_tool_tags": ["tool.pickaxe"] }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:dirt",
+		"display_name": "@blocks.dirt",
+		"tags": ["block.terrain", "block.soft", "block.tillable"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "mesh" },
+		"material": {
+			"class": "madfall:dirt",
+			"mass_kg": 1500.0,
+			"hardness": 90.0,
+			"resistances": { "madfall:blunt": 1.20, "madfall:explosive": 1.60 },
+			"harvest": { "tool_tags": ["tool.shovel"], "tier": 0 }
+		},
+		"structure": { "support_strength": 1200.0, "max_horizontal_span": 2, "is_anchor": true },
+		"drops": { "table": "madfall:loot/dirt" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:grass",
+		"extends": "madfall:dirt",
+		"display_name": "@blocks.grass",
+		"tags": ["block.terrain", "block.soft", "block.surface", "block.tillable"],
+		"material": { "class": "madfall:grass" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:sand",
+		"extends": "madfall:dirt",
+		"display_name": "@blocks.sand",
+		"tags": ["block.terrain", "block.soft", "block.loose"],
+		"material": { "class": "madfall:sand", "mass_kg": 1600.0, "hardness": 60.0 },
+		"structure": { "support_strength": 400.0, "max_horizontal_span": 0, "is_anchor": true },
+		"drops": { "table": "madfall:loot/sand" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:water",
+		"display_name": "@blocks.water",
+		"tags": ["block.liquid"],
+		"shape": { "kind": "isosurface", "rotation_mode": "none", "collision": "none", "occludes_neighbors": false },
+		"material": { "class": "madfall:water", "mass_kg": 1000.0, "hardness": 0.0 },
+		"structure": { "support_strength": 0.0, "max_horizontal_span": 0 },
+		"flags": { "transparent": true, "liquid": true, "climbable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:gravel_path",
+		"extends": "madfall:dirt",
+		"display_name": "@blocks.gravel_path",
+		"tags": ["block.terrain", "block.road"],
+		"material": { "class": "madfall:gravel", "mass_kg": 1700.0, "hardness": 120.0 },
+		"structure": { "support_strength": 1500.0, "max_horizontal_span": 1, "is_anchor": true },
+		"drops": { "table": "madfall:loot/gravel" }
+	}
+]

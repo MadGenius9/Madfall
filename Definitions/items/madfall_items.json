@@ -1,0 +1,410 @@
+[
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:coin",
+		"display_name": "@items.coin",
+		"tags": ["item.currency"],
+		"max_stack": 999,
+		"weight_kg": 0.01,
+		"value": 1
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:wood_plank", "value": 1,
+		"display_name": "@items.wood_plank",
+		"tags": ["item.resource", "item.wood"],
+		"max_stack": 200,
+		"weight_kg": 0.5
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:scrap_iron", "value": 3,
+		"display_name": "@items.scrap_iron",
+		"tags": ["item.resource", "item.metal"],
+		"max_stack": 200,
+		"weight_kg": 0.3
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:rock", "value": 1,
+		"display_name": "@items.rock",
+		"tags": ["item.resource", "item.stone"],
+		"max_stack": 200,
+		"weight_kg": 1.0
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:cement", "value": 4,
+		"display_name": "@items.cement",
+		"tags": ["item.resource"],
+		"max_stack": 100,
+		"weight_kg": 2.0
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:cloth", "value": 3,
+		"display_name": "@items.cloth",
+		"tags": ["item.resource"],
+		"max_stack": 100,
+		"weight_kg": 0.1
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:plant_fiber", "value": 1,
+		"display_name": "@items.plant_fiber",
+		"tags": ["item.resource"],
+		"max_stack": 200,
+		"weight_kg": 0.05
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:berries", "value": 2,
+		"display_name": "@items.berries",
+		"tags": ["item.food"],
+		"max_stack": 50,
+		"weight_kg": 0.05,
+		"consumable": { "use_seconds": 0.8, "effects": { "food": 6.0, "water": 3.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:corn_seed", "value": 3,
+		"display_name": "@items.corn_seed",
+		"tags": ["item.seed"],
+		"max_stack": 50,
+		"weight_kg": 0.02,
+		"places_block": "madfall:corn_sprout"
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:potato_seed", "value": 3,
+		"display_name": "@items.potato_seed",
+		"tags": ["item.seed"],
+		"max_stack": 50,
+		"weight_kg": 0.1,
+		"places_block": "madfall:potato_sprout"
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:corn", "value": 3,
+		"display_name": "@items.corn",
+		"tags": ["item.food"],
+		"max_stack": 50,
+		"weight_kg": 0.3,
+		"consumable": { "use_seconds": 1.0, "effects": { "food": 9.0, "water": 3.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:potato", "value": 3,
+		"display_name": "@items.potato",
+		"tags": ["item.food"],
+		"max_stack": 50,
+		"weight_kg": 0.25,
+		"consumable": { "use_seconds": 1.0, "effects": { "food": 7.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:raw_meat", "value": 4,
+		"display_name": "@items.raw_meat",
+		"tags": ["item.food", "item.meat"],
+		"max_stack": 20,
+		"weight_kg": 0.4,
+		"consumable": { "use_seconds": 1.2, "effects": { "food": 10.0, "infection": 5.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:cooked_meat", "value": 8,
+		"display_name": "@items.cooked_meat",
+		"tags": ["item.food", "item.meat"],
+		"max_stack": 20,
+		"weight_kg": 0.35,
+		"consumable": { "use_seconds": 1.2, "effects": { "food": 36.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:animal_hide", "value": 5,
+		"display_name": "@items.animal_hide",
+		"tags": ["item.resource"],
+		"max_stack": 30,
+		"weight_kg": 0.6
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:grilled_corn", "value": 8,
+		"display_name": "@items.grilled_corn",
+		"tags": ["item.food"],
+		"max_stack": 20,
+		"weight_kg": 0.3,
+		"consumable": { "use_seconds": 1.2, "effects": { "food": 22.0, "water": 2.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:baked_potato", "value": 8,
+		"display_name": "@items.baked_potato",
+		"tags": ["item.food"],
+		"max_stack": 20,
+		"weight_kg": 0.25,
+		"consumable": { "use_seconds": 1.2, "effects": { "food": 26.0 } }
+	},
+
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:base_tool",
+		"display_name": "@items.base_tool",
+		"tags": ["item.tool"],
+		"kind": "tool",
+		"max_stack": 1,
+		"weight_kg": 2.0,
+		"tool": {
+			"damage": { "madfall:blunt": 10.0 },
+			"harvest_tags": [],
+			"tier": 0,
+			"durability": 200,
+			"use_seconds": 0.6,
+			"stamina_cost": 2.0,
+			"range": 4.0,
+			"mod_slots": 0,
+			"repair_fraction": 0.25
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:stone_pickaxe", "value": 15,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.stone_pickaxe",
+		"tags": ["item.tool", "tool.pickaxe"],
+		"tool": {
+			"damage": { "madfall:blunt": 28.0 },
+			"harvest_tags": ["tool.pickaxe"],
+			"tier": 1,
+			"durability": 250,
+			"repair_with": [{ "item": "madfall:rock", "count": 2 }]
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:stone_axe", "value": 12,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.stone_axe",
+		"tags": ["item.tool", "tool.axe"],
+		"tool": {
+			"damage": { "madfall:blunt": 22.0 },
+			"harvest_tags": ["tool.axe"],
+			"tier": 1,
+			"durability": 250,
+			"repair_with": [{ "item": "madfall:wood_plank", "count": 2 }]
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:stone_shovel", "value": 12,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.stone_shovel",
+		"tags": ["item.tool", "tool.shovel"],
+		"tool": {
+			"damage": { "madfall:blunt": 30.0 },
+			"harvest_tags": ["tool.shovel"],
+			"tier": 1,
+			"durability": 250,
+			"repair_with": [{ "item": "madfall:rock", "count": 2 }]
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:stone_hoe", "value": 12,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.stone_hoe",
+		"tags": ["item.tool", "tool.hoe"],
+		"till": "madfall:farmland",
+		"tool": {
+			"damage": { "madfall:blunt": 12.0 },
+			"harvest_tags": [],
+			"tier": 1,
+			"durability": 150,
+			"repair_with": [{ "item": "madfall:rock", "count": 1 }]
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:fur_hat", "value": 20,
+		"display_name": "@items.fur_hat",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 0.3,
+		"wear": { "slot": "head", "cold": 5, "armor": 0.05 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:fur_coat", "value": 60,
+		"display_name": "@items.fur_coat",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 1.5,
+		"wear": { "slot": "body", "cold": 12, "armor": 0.1 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:hide_trousers", "value": 40,
+		"display_name": "@items.hide_trousers",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 0.8,
+		"wear": { "slot": "legs", "cold": 6, "armor": 0.08 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:hide_boots", "value": 25,
+		"display_name": "@items.hide_boots",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 0.6,
+		"wear": { "slot": "feet", "cold": 4, "armor": 0.05 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:straw_hat", "value": 10,
+		"display_name": "@items.straw_hat",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 0.2,
+		"wear": { "slot": "head", "heat": 8 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:scrap_helmet", "value": 45,
+		"display_name": "@items.scrap_helmet",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 1.2,
+		"wear": { "slot": "head", "cold": 2, "armor": 0.2 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:scrap_vest", "value": 80,
+		"display_name": "@items.scrap_vest",
+		"tags": ["item.clothing"],
+		"max_stack": 1,
+		"weight_kg": 4.0,
+		"wear": { "slot": "body", "cold": 3, "armor": 0.25 }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:wooden_bow", "value": 30,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.wooden_bow",
+		"tags": ["item.weapon", "weapon.ranged"],
+		"kind": "weapon",
+		"tool": {
+			"damage": { "madfall:pierce": 40.0 },
+			"durability": 120,
+			"use_seconds": 1.0,
+			"stamina_cost": 4.0,
+			"range": 2.0,
+			"repair_with": [{ "item": "madfall:wood_plank", "count": 1 }, { "item": "madfall:plant_fiber", "count": 1 }],
+			"ranged": { "ammo": "madfall:arrow", "speed": 45.0, "gravity": 0.5, "recover_chance": 0.5 }
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:arrow", "value": 2,
+		"display_name": "@items.arrow",
+		"tags": ["item.ammo"],
+		"max_stack": 50,
+		"weight_kg": 0.03
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:iron_pickaxe", "value": 120,
+		"extends": "madfall:stone_pickaxe",
+		"display_name": "@items.iron_pickaxe",
+		"weight_kg": 3.0,
+		"tool": {
+			"damage": { "madfall:blunt": 60.0 },
+			"tier": 3,
+			"durability": 800,
+			"use_seconds": 0.55,
+			"mod_slots": 2,
+			"repair_with": [{ "item": "madfall:scrap_iron", "count": 3 }]
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:wooden_club", "value": 10,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.wooden_club",
+		"tags": ["item.weapon", "weapon.melee"],
+		"kind": "weapon",
+		"tool": {
+			"damage": { "madfall:blunt": 35.0 },
+			"durability": 150,
+			"use_seconds": 0.8,
+			"stamina_cost": 5.0,
+			"range": 2.5,
+			"repair_with": [{ "item": "madfall:wood_plank", "count": 1 }]
+		}
+	},
+
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:canned_food", "value": 15,
+		"display_name": "@items.canned_food",
+		"tags": ["item.food"],
+		"max_stack": 10,
+		"weight_kg": 0.4,
+		"consumable": { "use_seconds": 1.5, "effects": { "food": 35.0, "water": 5.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:water_bottle", "value": 8,
+		"display_name": "@items.water_bottle",
+		"tags": ["item.drink"],
+		"max_stack": 10,
+		"weight_kg": 0.5,
+		"consumable": { "use_seconds": 1.0, "effects": { "water": 40.0 }, "returns": "madfall:empty_bottle" }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:empty_bottle", "value": 4,
+		"display_name": "@items.empty_bottle",
+		"tags": ["item.resource", "item.container"],
+		"max_stack": 10,
+		"weight_kg": 0.2,
+		"fill": "madfall:murky_water"
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:murky_water", "value": 2,
+		"display_name": "@items.murky_water",
+		"tags": ["item.drink"],
+		"max_stack": 10,
+		"weight_kg": 0.5,
+		"consumable": { "use_seconds": 1.0, "effects": { "water": 25.0, "infection": 6.0 }, "returns": "madfall:empty_bottle" }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:bandage", "value": 12,
+		"display_name": "@items.bandage",
+		"tags": ["item.medical"],
+		"max_stack": 20,
+		"weight_kg": 0.05,
+		"consumable": { "use_seconds": 2.0, "effects": { "health": 25.0 } }
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:antibiotics", "value": 60,
+		"display_name": "@items.antibiotics",
+		"tags": ["item.medical"],
+		"max_stack": 10,
+		"weight_kg": 0.05,
+		"consumable": { "use_seconds": 1.0, "effects": { "infection": -40.0 } }
+	},
+
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:mod_reinforced_grip", "value": 90,
+		"display_name": "@items.mod_reinforced_grip",
+		"tags": ["item.mod"],
+		"max_stack": 5,
+		"weight_kg": 0.2,
+		"mod": { "applies_to_tags": ["item.tool", "item.weapon"], "multipliers": { "durability": 1.5, "stamina_cost": 0.85 } }
+	}
+]

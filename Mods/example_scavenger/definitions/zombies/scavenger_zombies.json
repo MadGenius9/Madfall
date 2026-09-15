@@ -1,0 +1,23 @@
+[
+	{
+		"schema": "madfall.zombie/1",
+		"id": "example_scavenger:zombie_runner",
+		"display_name": "Runner",
+		"tags": ["zombie.fast"],
+		"spawn_groups": ["madfall:zombies/horde", "madfall:zombies/wander"],
+		"spawn_weight": 2,
+		"min_game_stage": 12,
+		"stats": {
+			"health": 80,
+			"walk_speed": 2.0,
+			"run_speed": 5.0,
+			"attack_damage": 6,
+			"block_damage": 10,
+			"attack_seconds": 0.9,
+			"infection_per_hit": 2
+		},
+		"senses": { "sight": 30, "hearing": 50 },
+		"rewards": { "experience": 30, "loot_table": "madfall:loot/zombie" },
+		"appearance": { "scale": 0.9, "tint": [0.55, 0.40, 0.25] }
+	}
+]

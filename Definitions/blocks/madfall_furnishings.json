@@ -1,0 +1,87 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:wood_door",
+		"display_name": "@blocks.wood_door",
+		"tags": ["block.building", "block.door", "block.wood"],
+		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "box", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "scale": [0.12, 1.0, 1.0] },
+		"material": {
+			"class": "madfall:wood",
+			"mass_kg": 40.0,
+			"hardness": 180.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 0.8, "madfall:explosive": 1.5, "madfall:fire": 2.5 }
+		},
+		"structure": { "support_strength": 1500.0, "max_horizontal_span": 1 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"interact": { "toggle_to": "madfall:wood_door_open" },
+		"drops": { "table": "madfall:loot/wood_door" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:wood_door_open",
+		"extends": "madfall:wood_door",
+		"display_name": "@blocks.wood_door_open",
+		"tags": ["block.door", "block.wood"],
+		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "none", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, -0.44, 0.0], "scale": [1.0, 0.12, 1.0] },
+		"interact": { "toggle_to": "madfall:wood_door" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:ladder",
+		"display_name": "@blocks.ladder",
+		"tags": ["block.building", "block.wood"],
+		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "none", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.45, 0.0, 0.0], "scale": [0.06, 0.8, 1.0] },
+		"material": {
+			"class": "madfall:wood",
+			"mass_kg": 10.0,
+			"hardness": 60.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 1.0, "madfall:explosive": 1.5, "madfall:fire": 2.5 }
+		},
+		"structure": { "support_strength": 400.0, "max_horizontal_span": 1 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"flags": { "climbable": true, "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:bedroll",
+		"display_name": "@blocks.bedroll",
+		"tags": ["block.building", "block.bed"],
+		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "box", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, 0.0, -0.44], "scale": [1.0, 0.7, 0.12] },
+		"material": {
+			"class": "madfall:cloth",
+			"mass_kg": 5.0,
+			"hardness": 30.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 1.0, "madfall:explosive": 2.0, "madfall:fire": 3.0 }
+		},
+		"structure": { "support_strength": 300.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"interact": { "spawn_point": true },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:campfire",
+		"display_name": "@blocks.campfire",
+		"tags": ["block.building", "block.station", "station.campfire", "block.light"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "collision": "box", "occludes_neighbors": false },
+		"render": {
+			"mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
+			"offset": [0.0, 0.0, -0.4],
+			"scale": [0.8, 0.8, 0.2],
+			"light": { "color": [1.0, 0.72, 0.46], "lumens": 140, "radius": 10, "offset": [0.0, 0.0, -0.1], "flame": 2.2 }
+		},
+		"material": {
+			"class": "madfall:stone",
+			"mass_kg": 30.0,
+			"hardness": 80.0,
+			"resistances": { "madfall:blunt": 0.8, "madfall:pierce": 0.5, "madfall:explosive": 1.2, "madfall:fire": 0.0 }
+		},
+		"structure": { "support_strength": 2000.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" }
+	}
+]

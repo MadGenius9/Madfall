@@ -1,0 +1,9 @@
+{
+	"schema": "madfall.patch/1",
+	"kind": "recipe",
+	"target": "builders_pack:metal_sheet",
+	"ops": [
+		{ "op": "set", "path": "/ingredients/0/count", "value": 3 },
+		{ "op": "set", "path": "/output/count", "value": 3 }
+	]
+}

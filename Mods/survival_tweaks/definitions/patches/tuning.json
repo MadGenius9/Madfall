@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.patch/1",
+	"kind": "tuning",
+	"target": "madfall:survival",
+	"ops": [
+		{ "op": "set", "path": "/values/food_per_minute", "value": 0.375 },
+		{ "op": "set", "path": "/values/water_per_minute", "value": 0.6 },
+		{ "op": "set", "path": "/values/stamina_regen_per_second", "value": 20.0 }
+	]
+}

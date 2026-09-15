@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "example_scavenger",
+	"name": "Example: Scavenger",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Tier-1 example mod. Adds a scrap knife, a scrap wall block and a fast zombie, and patches first-party loot so the knife can be found. No code, no assets - only JSON.",
+	"authors": ["MadFall"],
+	"license": "MIT"
+}

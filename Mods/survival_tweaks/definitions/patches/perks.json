@@ -1,0 +1,9 @@
+{
+	"schema": "madfall.patch/1",
+	"kind": "perk",
+	"target": "madfall:miner",
+	"ops": [
+		{ "op": "set", "path": "/ranks/0/modifiers/mining_damage", "value": 1.25 },
+		{ "op": "set", "path": "/ranks/1/modifiers/mining_damage", "value": 1.45 }
+	]
+}

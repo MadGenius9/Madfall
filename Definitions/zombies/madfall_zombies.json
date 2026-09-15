@@ -1,0 +1,133 @@
+[
+	{
+		"schema": "madfall.zombie/1",
+		"id": "madfall:zombie_civilian",
+		"display_name": "@zombies.civilian",
+		"tags": ["zombie.common"],
+		"spawn_groups": ["madfall:zombies/civilian", "madfall:zombies/horde", "madfall:zombies/wander"],
+		"spawn_weight": 6,
+		"stats": {
+			"health": 110,
+			"walk_speed": 1.2,
+			"run_speed": 3.0,
+			"attack_damage": 8,
+			"block_damage": 22,
+			"attack_seconds": 1.3,
+			"damage_type": "madfall:blunt",
+			"infection_per_hit": 3
+		},
+		"senses": { "sight": 22, "hearing": 36 },
+		"rewards": { "experience": 20, "loot_table": "madfall:loot/zombie" },
+		"appearance": { "scale": 1.0, "tint": [0.36, 0.44, 0.30] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "madfall:zombie_soldier",
+		"display_name": "@zombies.soldier",
+		"tags": ["zombie.armoured"],
+		"spawn_groups": ["madfall:zombies/soldier", "madfall:zombies/horde"],
+		"spawn_weight": 3,
+		"min_game_stage": 8,
+		"stats": {
+			"health": 220,
+			"walk_speed": 1.3,
+			"run_speed": 3.6,
+			"attack_damage": 14,
+			"block_damage": 35,
+			"attack_seconds": 1.2,
+			"infection_per_hit": 4
+		},
+		"senses": { "sight": 28, "hearing": 40 },
+		"rewards": { "experience": 45, "loot_table": "madfall:loot/zombie_soldier" },
+		"resistances": { "madfall:pierce": 0.5, "madfall:blunt": 0.85, "madfall:explosive": 0.8 },
+		"appearance": { "scale": 1.05, "tint": [0.28, 0.33, 0.22] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "madfall:zombie_brute",
+		"display_name": "@zombies.brute",
+		"tags": ["zombie.heavy"],
+		"spawn_groups": ["madfall:zombies/brute", "madfall:zombies/horde"],
+		"spawn_weight": 1,
+		"min_game_stage": 16,
+		"stats": {
+			"health": 650,
+			"walk_speed": 1.0,
+			"run_speed": 2.4,
+			"attack_damage": 30,
+			"block_damage": 120,
+			"attack_seconds": 1.8,
+			"infection_per_hit": 6
+		},
+		"senses": { "sight": 20, "hearing": 30 },
+		"rewards": { "experience": 150, "loot_table": "madfall:loot/zombie_soldier" },
+		"resistances": { "madfall:blunt": 0.7, "madfall:pierce": 0.85, "madfall:fire": 1.3 },
+		"appearance": { "scale": 1.45, "tint": [0.42, 0.30, 0.28] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "madfall:zombie_spitter",
+		"display_name": "@zombies.spitter",
+		"tags": ["zombie.ranged"],
+		"spawn_groups": ["madfall:zombies/civilian", "madfall:zombies/horde", "madfall:zombies/wander"],
+		"spawn_weight": 2,
+		"min_game_stage": 4,
+		"stats": {
+			"health": 90,
+			"walk_speed": 1.1,
+			"run_speed": 2.8,
+			"attack_damage": 6,
+			"block_damage": 15,
+			"attack_seconds": 1.4,
+			"infection_per_hit": 3
+		},
+		"abilities": { "ranged": { "damage": 9, "range": 16, "seconds": 2.6, "speed": 24 } },
+		"senses": { "sight": 24, "hearing": 36 },
+		"rewards": { "experience": 30, "loot_table": "madfall:loot/zombie" },
+		"appearance": { "scale": 0.95, "tint": [0.52, 0.55, 0.22] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "madfall:zombie_screamer",
+		"display_name": "@zombies.screamer",
+		"tags": ["zombie.caller"],
+		"spawn_groups": ["madfall:zombies/civilian", "madfall:zombies/wander"],
+		"spawn_weight": 1,
+		"min_game_stage": 6,
+		"stats": {
+			"health": 70,
+			"walk_speed": 1.3,
+			"run_speed": 3.6,
+			"attack_damage": 5,
+			"block_damage": 10,
+			"attack_seconds": 1.2,
+			"infection_per_hit": 2
+		},
+		"abilities": { "scream": { "radius": 60, "seconds": 40, "summons": 3 } },
+		"senses": { "sight": 26, "hearing": 44 },
+		"rewards": { "experience": 40, "loot_table": "madfall:loot/zombie" },
+		"appearance": { "scale": 0.9, "tint": [0.62, 0.58, 0.55] }
+	},
+	{
+		"schema": "madfall.zombie/1",
+		"id": "madfall:zombie_climber",
+		"display_name": "@zombies.climber",
+		"tags": ["zombie.climber"],
+		"spawn_groups": ["madfall:zombies/horde", "madfall:zombies/wander"],
+		"spawn_weight": 1,
+		"min_game_stage": 8,
+		"stats": {
+			"health": 60,
+			"walk_speed": 1.4,
+			"run_speed": 3.4,
+			"attack_damage": 5,
+			"block_damage": 8,
+			"attack_seconds": 1.0,
+			"infection_per_hit": 2
+		},
+		"abilities": { "climbs_walls": true },
+		"senses": { "sight": 22, "hearing": 36 },
+		"rewards": { "experience": 35, "loot_table": "madfall:loot/zombie" },
+		"appearance": { "scale": 0.85, "tint": [0.35, 0.40, 0.45] }
+	}
+]

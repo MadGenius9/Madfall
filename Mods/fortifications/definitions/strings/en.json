@@ -1,0 +1,8 @@
+{
+	"schema": "madfall.strings/1",
+	"language": "en",
+	"strings": {
+		"fortifications.blocks.reinforced_brick": "Reinforced Brick",
+		"fortifications.blocks.sandbag": "Sandbag"
+	}
+}

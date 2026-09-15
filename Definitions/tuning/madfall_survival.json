@@ -1,0 +1,27 @@
+{
+	"schema": "madfall.tuning/1",
+	"id": "madfall:survival",
+	"values": {
+		"food_per_minute": 0.5,
+		"water_per_minute": 0.8,
+		"sprint_drain_multiplier": 2.5,
+		"stamina_regen_per_second": 15.0,
+		"sprint_stamina_per_second": 10.0,
+		"weak_threshold": 20.0,
+		"starvation_damage_per_second": 0.5,
+		"dehydration_damage_per_second": 0.8,
+		"health_regen_per_second": 0.15,
+		"well_fed_threshold": 60.0,
+		"comfort_min": 5.0,
+		"comfort_max": 30.0,
+		"core_drift_per_second_per_degree": 0.0005,
+		"core_recovery_per_second": 0.05,
+		"hypothermia_below": 35.0,
+		"hyperthermia_above": 39.0,
+		"exposure_damage_per_second_per_degree": 0.4,
+		"hyperthermia_water_per_second": 0.05,
+		"infection_growth_per_second": 0.02,
+		"infection_damage_above": 50.0,
+		"infection_damage_per_second_at_full": 1.0
+	}
+}

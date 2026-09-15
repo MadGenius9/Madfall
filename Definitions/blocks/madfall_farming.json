@@ -1,0 +1,80 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:farmland",
+		"extends": "madfall:dirt",
+		"display_name": "@blocks.farmland",
+		"tags": ["block.terrain", "block.soft", "block.farmland"],
+		"shape": { "kind": "cubic", "rotation_mode": "none", "collision": "box" },
+		"material": { "class": "madfall:farmland" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:corn_plant",
+		"display_name": "@blocks.corn_plant",
+		"tags": ["block.crop", "block.foliage", "block.ripe"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "collision": "none", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cylinder.Cylinder", "offset": [0.0, 0.0, 0.0], "scale": [0.35, 0.35, 1.0] },
+		"material": {
+			"class": "madfall:corn",
+			"mass_kg": 3.0,
+			"hardness": 8.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 1.0, "madfall:explosive": 2.0, "madfall:fire": 3.0 }
+		},
+		"structure": { "support_strength": 100.0, "max_horizontal_span": 0 },
+		"placement": { "on_tag": "block.farmland", "requires_support": true, "snap": "grid" },
+		"drops": { "table": "madfall:loot/corn_harvest" },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:corn_young",
+		"extends": "madfall:corn_plant",
+		"display_name": "@blocks.corn_young",
+		"tags": ["block.crop", "block.foliage"],
+		"render": { "mesh": "/Engine/BasicShapes/Cylinder.Cylinder", "offset": [0.0, 0.0, -0.2], "scale": [0.25, 0.25, 0.6] },
+		"material": { "class": "madfall:crop" },
+		"grow": { "into": "madfall:corn_plant", "hours": 12 },
+		"drops": { "table": "madfall:loot/corn_seedling" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:corn_sprout",
+		"extends": "madfall:corn_plant",
+		"display_name": "@blocks.corn_sprout",
+		"tags": ["block.crop", "block.foliage"],
+		"render": { "mesh": "/Engine/BasicShapes/Cone.Cone", "offset": [0.0, 0.0, -0.35], "scale": [0.2, 0.2, 0.3] },
+		"material": { "class": "madfall:crop" },
+		"grow": { "into": "madfall:corn_young", "hours": 12 },
+		"drops": { "table": "madfall:loot/corn_seedling" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:potato_plant",
+		"extends": "madfall:corn_plant",
+		"display_name": "@blocks.potato_plant",
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, 0.0, -0.25], "scale": [0.7, 0.7, 0.5] },
+		"material": { "class": "madfall:crop" },
+		"drops": { "table": "madfall:loot/potato_harvest" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:potato_young",
+		"extends": "madfall:potato_plant",
+		"display_name": "@blocks.potato_young",
+		"tags": ["block.crop", "block.foliage"],
+		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, 0.0, -0.35], "scale": [0.4, 0.4, 0.3] },
+		"grow": { "into": "madfall:potato_plant", "hours": 9 },
+		"drops": { "table": "madfall:loot/potato_seedling" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:potato_sprout",
+		"extends": "madfall:potato_plant",
+		"display_name": "@blocks.potato_sprout",
+		"tags": ["block.crop", "block.foliage"],
+		"render": { "mesh": "/Engine/BasicShapes/Cone.Cone", "offset": [0.0, 0.0, -0.38], "scale": [0.2, 0.2, 0.24] },
+		"grow": { "into": "madfall:potato_young", "hours": 9 },
+		"drops": { "table": "madfall:loot/potato_seedling" }
+	}
+]

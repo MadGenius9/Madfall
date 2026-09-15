@@ -1,0 +1,10 @@
+{
+	"schema": "madfall.mod/1",
+	"id": "zombie_variety",
+	"name": "Zombie Variety",
+	"version": "1.0.0",
+	"api_version": "0.1",
+	"description": "Three new zombies: the Crawler (weak, but chews through walls), the Bloater (a slow tank) and the Night Stalker (fast, late game). They join wandering groups and horde nights and drop their own loot. Exercises zombie definitions, spawn groups and loot tables.",
+	"authors": ["MadFall test mods"],
+	"license": "MIT"
+}

@@ -1,0 +1,12 @@
+[
+	{
+		"schema": "madfall.loot/1",
+		"id": "field_medic:loot/field_kit",
+		"rolls": [1, 2],
+		"entries": [
+			{ "item": "field_medic:first_aid_kit", "weight": 1 },
+			{ "item": "field_medic:herbal_tea", "count": [1, 2], "weight": 2 },
+			{ "item": "field_medic:energy_drink", "count": [1, 3], "weight": 2 }
+		]
+	}
+]

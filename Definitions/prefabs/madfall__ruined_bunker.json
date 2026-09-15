@@ -1,0 +1,43 @@
+{
+	"schema": "madfall.prefab/1",
+	"id": "madfall:ruined_bunker",
+	"display_name": "Ruined Bunker",
+	"tier": 2,
+	"tags": ["poi.military", "poi.shelter"],
+	"size": [13, 11, 7],
+	"placement": {
+		"rarity": 1,
+		"conform": "base",
+		"embed_depth": 1,
+		"max_slope": 6,
+		"foundation": "madfall:concrete_frame",
+		"max_foundation_depth": 10,
+		"biomes": ["madfall:plains", "madfall:tundra", "madfall:forest", "madfall:desert", "madfall:highlands"],
+		"underwater": false
+	},
+	"palette": [
+		{ "block": "*" },
+		{ "block": "madfall:air" },
+		{ "block": "madfall:rebar_concrete" },
+		{ "block": "madfall:steel_beam" },
+		{ "block": "madfall:concrete_frame" },
+		{ "block": "madfall:loot_crate" }
+	],
+	"voxels": [
+		143, 4, 5, 2, 3, 1, 6, 2, 11, 1, 2, 2, 9, 1, 1, 5, 1, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2,
+		11, 1, 2, 2, 11, 1, 2, 2, 1, 1, 1, 5, 9, 1, 2, 2, 11, 1, 19, 2, 3, 1, 6, 2, 11, 1, 2, 2, 11, 1, 2, 2,
+		11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 19, 2, 3, 1, 6, 2,
+		11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2,
+		11, 1, 28, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2, 11, 1, 2, 2,
+		11, 1, 2, 2, 11, 1, 14, 2, 86, 3, 3, 1, 10, 3, 3, 1, 10, 3, 3, 1, 28, 3, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2,
+		1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 13, 0, 1, 2, 11, 0, 1, 2, 13, 0, 1, 2, 11, 0, 1, 2,
+		13, 0, 1, 2, 11, 0, 1, 2, 13, 0, 1, 2, 11, 0, 1, 2, 13, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2,
+		1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2
+	],
+	"markers": [
+		{ "type": "entrance", "position": [6, 0, 1] },
+		{ "type": "loot", "position": [2, 8, 1], "loot_table": "madfall:loot/ammo_crate" },
+		{ "type": "loot", "position": [10, 2, 1], "loot_table": "madfall:loot/medical_cabinet" },
+		{ "type": "spawn", "position": [6, 6, 1], "spawn_group": "madfall:zombies/soldier", "count": 3 }
+	]
+}

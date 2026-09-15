@@ -1,0 +1,75 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "builders_pack:brick_wall",
+		"extends": "madfall:base_construction",
+		"display_name": "@builders_pack.blocks.brick_wall",
+		"tags": ["block.building", "block.stone", "block.tier1"],
+		"material": {
+			"class": "builders_pack:brick",
+			"mass_kg": 1400.0,
+			"hardness": 380.0,
+			"resistances": {
+				"madfall:blunt": 0.8,
+				"madfall:pierce": 0.5,
+				"madfall:explosive": 1.1,
+				"madfall:fire": 0.2
+			},
+			"harvest": { "tool_tags": ["tool.pickaxe"], "tier": 1 }
+		},
+		"structure": { "support_strength": 250000.0, "max_horizontal_span": 2, "debris_on_collapse": "madfall:concrete_rubble" },
+		"damage_states": [
+			{ "at": 0, "support_multiplier": 1.0 },
+			{ "at": 150, "support_multiplier": 0.5 },
+			{ "at": 255, "support_multiplier": 0.0 }
+		],
+		"drops": { "table": "builders_pack:loot/brick_wall", "on_collapse": "madfall:loot/rubble" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "builders_pack:timber_beam",
+		"extends": "madfall:wood_frame",
+		"display_name": "@builders_pack.blocks.timber_beam",
+		"tags": ["block.building", "block.wood", "block.tier1"],
+		"material": {
+			"class": "builders_pack:timber",
+			"mass_kg": 180.0,
+			"hardness": 140.0
+		},
+		"structure": { "support_strength": 22000.0, "max_horizontal_span": 8, "debris_on_collapse": "madfall:wood_debris" }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "builders_pack:metal_sheet",
+		"extends": "madfall:base_construction",
+		"display_name": "@builders_pack.blocks.metal_sheet",
+		"tags": ["block.building", "block.metal", "block.tier2"],
+		"material": {
+			"class": "builders_pack:corrugated",
+			"mass_kg": 120.0,
+			"hardness": 260.0,
+			"resistances": {
+				"madfall:blunt": 0.9,
+				"madfall:pierce": 0.6,
+				"madfall:explosive": 1.3,
+				"madfall:fire": 0.4
+			},
+			"harvest": { "tool_tags": ["tool.wrench", "tool.torch", "tool.pickaxe"], "tier": 1 }
+		},
+		"structure": { "support_strength": 12000.0, "max_horizontal_span": 6, "debris_on_collapse": "madfall:steel_debris" },
+		"drops": { "table": "madfall:loot/steel_beam" },
+		"flags": { "conductive": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "builders_pack:fence_post",
+		"extends": "madfall:base_construction",
+		"display_name": "@builders_pack.blocks.fence_post",
+		"tags": ["block.building", "block.wood"],
+		"shape": { "kind": "model", "rotation_mode": "full_24", "variants": [], "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cylinder.Cylinder", "offset": [0.0, 0.0, 0.0], "scale": [0.3, 0.3, 1.0] },
+		"material": { "class": "builders_pack:timber", "mass_kg": 30.0, "hardness": 80.0 },
+		"structure": { "support_strength": 3000.0, "max_horizontal_span": 1 },
+		"flags": { "flammable": true }
+	}
+]

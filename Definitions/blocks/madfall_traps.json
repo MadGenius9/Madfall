@@ -1,0 +1,54 @@
+[
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:wood_spikes",
+		"display_name": "@blocks.wood_spikes",
+		"tags": ["block.building", "block.trap", "block.wood"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "collision": "none", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cone.Cone", "offset": [0.0, 0.0, -0.2], "scale": [0.9, 0.9, 0.6] },
+		"material": {
+			"class": "madfall:wood",
+			"mass_kg": 20.0,
+			"hardness": 160.0,
+			"resistances": { "madfall:blunt": 1.0, "madfall:pierce": 0.5, "madfall:explosive": 1.5, "madfall:fire": 2.5 }
+		},
+		"structure": { "support_strength": 600.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"trap": { "damage": 14, "seconds": 0.8, "wear": 12, "slow": 0.7 },
+		"flags": { "flammable": true }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:iron_spikes",
+		"display_name": "@blocks.iron_spikes",
+		"tags": ["block.building", "block.trap", "block.metal"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "collision": "none", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cone.Cone", "offset": [0.0, 0.0, -0.2], "scale": [0.8, 0.8, 0.65] },
+		"material": {
+			"class": "madfall:steel",
+			"mass_kg": 45.0,
+			"hardness": 420.0,
+			"resistances": { "madfall:blunt": 0.6, "madfall:pierce": 0.3, "madfall:explosive": 1.0, "madfall:fire": 0.1 }
+		},
+		"structure": { "support_strength": 1200.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"trap": { "damage": 30, "seconds": 0.8, "wear": 10, "slow": 0.6 }
+	},
+	{
+		"schema": "madfall.block/1",
+		"id": "madfall:barbed_wire",
+		"display_name": "@blocks.barbed_wire",
+		"tags": ["block.building", "block.trap", "block.metal"],
+		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "collision": "none", "occludes_neighbors": false },
+		"render": { "mesh": "/Engine/BasicShapes/Cylinder.Cylinder", "offset": [0.0, 0.0, -0.25], "scale": [0.95, 0.95, 0.45] },
+		"material": {
+			"class": "madfall:steel",
+			"mass_kg": 12.0,
+			"hardness": 140.0,
+			"resistances": { "madfall:blunt": 0.8, "madfall:pierce": 0.3, "madfall:explosive": 1.2, "madfall:fire": 0.1 }
+		},
+		"structure": { "support_strength": 400.0, "max_horizontal_span": 0 },
+		"placement": { "requires_support": true, "snap": "grid" },
+		"trap": { "damage": 3, "seconds": 1.0, "wear": 3, "slow": 0.35 }
+	}
+]
