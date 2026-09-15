@@ -7,6 +7,7 @@
 #include "MadHumanoidRig.generated.h"
 
 class UMaterialInstanceDynamic;
+class USkeletalMeshComponent;
 class UStaticMeshComponent;
 
 /** The rig's pose for one frame: joint pitches in degrees, negative leaning or swinging forward. */
@@ -35,8 +36,16 @@ namespace MadFall::Humanoid
 }
 
 /**
- * A humanoid made of boxes, animated in code.
+ * A humanoid: Epic's UE5 mannequin animated by UMadCharacterAnimInstance when
+ * those assets are installed (Scripts/copy_mannequin.ps1) and the game renders,
+ * otherwise a figure made of boxes, animated in code.
  *
+ * WHY THE BOXES STAY: the mannequins cannot be committed (see the script), so a
+ * fresh clone, a dedicated server and every -nullrhi CI run use the box figure;
+ * gameplay never depends on which body is drawn. `mad.characters.Skeletal 0`
+ * forces the boxes.
+ *
+ * The box figure:
  * Stand-in for a skeletal mesh: no art exists and a tinted cylinder read as a
  * post, not a threat. Six box parts on joints (hips, shoulders, neck, and the
  * feet as the fall pivot), posed each frame from the owner's velocity plus
@@ -87,6 +96,8 @@ private:
 
 	UStaticMeshComponent* MakePart(const TCHAR* Name, USceneComponent* Parent, const FVector& Location, const FVector& SizeCm, EPart Part);
 	void Build();
+	/** The mannequin body; false (and nothing built) when its assets are missing or nothing renders. */
+	bool BuildSkeletal();
 	/** Pushes colours and style into every part's material; Flash 0..1 is the hit flash. */
 	void ApplyTint(float Flash);
 
@@ -110,6 +121,10 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Parts;
 
+	/** The mannequin, when drawn instead of the boxes. */
+	UPROPERTY(Transient)
+	TObjectPtr<USkeletalMeshComponent> Skeletal;
+
 	/** One per part (size and part differ), parallel to PartKinds. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> PartMaterials;
@@ -130,4 +145,6 @@ private:
 	float HitFlash = 0.0f;
 	float DeathProgress = 0.0f;
 	bool bDying = false;
+	float SinceHit = 1000.0f;
+	float SinceDeath = -1.0f;
 };

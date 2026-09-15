@@ -19,6 +19,9 @@ Platforms/*/Intermediate/
 # Scripts/import_surface_textures.py turns them into the Content/Surfaces assets
 # that ship; re-download with Scripts/fetch_surface_textures.ps1.
 SourceArt/
+# Epic's UE5 mannequins, copied from the local engine by Scripts/copy_mannequin.ps1
+# (the EULA does not allow publishing uncooked Epic content in a source repo).
+Content/Characters/Mannequins/
 
 # ---------------------------------------------------------------------------
 # IDE / toolchain

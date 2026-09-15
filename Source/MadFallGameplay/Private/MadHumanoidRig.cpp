@@ -3,9 +3,14 @@
 #include "MadHumanoidRig.h"
 
 #include "MadBasicShapes.h"
+#include "MadCharacterAnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/App.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 
@@ -20,6 +25,15 @@ namespace
 	constexpr float HumanAttackPoseSeconds = 0.45f;
 	constexpr float HumanHitSeconds = 0.15f;
 	constexpr float HumanDeathSeconds = 0.6f;
+
+	TAutoConsoleVariable<int32> CVarSkeletalCharacters(
+		TEXT("mad.characters.Skeletal"),
+		1,
+		TEXT("Draw humanoids as the UE5 mannequin when its assets are installed (Scripts/copy_mannequin.ps1). 0 draws the box figures. Applies to characters built after the change."),
+		ECVF_Default);
+
+	const TCHAR* MannyPath = TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple");
+	const TCHAR* QuinnPath = TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple");
 }
 
 FMadHumanoidPose MadFall::Humanoid::ComputePose(float Phase, float SpeedFactor, float Attack, float Death)
@@ -99,6 +113,11 @@ void UMadHumanoidRigComponent::Build()
 	}
 	bBuilt = true;
 
+	if (BuildSkeletal())
+	{
+		return;
+	}
+
 	auto Joint = [this](const TCHAR* Name, USceneComponent* Parent, const FVector& Location)
 	{
 		USceneComponent* Component = NewObject<USceneComponent>(GetOwner(), Name, RF_Transient);
@@ -125,6 +144,74 @@ void UMadHumanoidRigComponent::Build()
 	MakePart(TEXT("RigRightArm"), RightShoulder, FVector(0.0, 0.0, -32.0), FVector(15.0, 15.0, 66.0), EPart::Skin);
 	MakePart(TEXT("RigHead"), Neck, FVector(2.0, 0.0, 14.0), FVector(24.0, 24.0, 24.0), EPart::Head);
 	ApplyTint(0.0f);
+}
+
+bool UMadHumanoidRigComponent::BuildSkeletal()
+{
+	// Nothing to see without a renderer, and animating a horde nobody can see
+	// would only cost the server and CI.
+	if (CVarSkeletalCharacters.GetValueOnGameThread() == 0 || !FApp::CanEverRender())
+	{
+		return false;
+	}
+	// Two builds, a man and a woman; a third of zombies and half the living are Quinn.
+	const bool bQuinn = bLiving ? (Seed & 1) != 0 : (Seed % 3) == 0;
+	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, bQuinn ? QuinnPath : MannyPath);
+	if (Mesh == nullptr)
+	{
+		return false;
+	}
+
+	USkeletalMeshComponent* Body = NewObject<USkeletalMeshComponent>(GetOwner(), TEXT("RigMannequin"), RF_Transient);
+	Body->SetupAttachment(this);
+	// The mannequin faces +Y and stands on its origin; the rig's origin is the feet, facing +X.
+	Body->SetRelativeRotation(FRotator(0.0, -90.0, 0.0));
+	Body->SetSkeletalMesh(Mesh);
+	Body->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	Body->SetAnimInstanceClass(UMadCharacterAnimInstance::StaticClass());
+	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Body->SetGenerateOverlapEvents(false);
+	Body->SetCanEverAffectNavigation(false);
+	// A horde behind the survivor is not evaluated, and distant ones update less
+	// often: skeletal animation is the one per-character cost that grows with
+	// the horde on the game and worker threads alike.
+	Body->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	Body->bEnableUpdateRateOptimizations = true;
+	// No collision, so no bodies to move with the bones, and a fixed bound from
+	// the mesh rather than one refitted to the pose each frame: 30 zombies in
+	// view cost 0.54 ms of game-thread animation a frame before, 0.46 after.
+	Body->KinematicBonesUpdateType = EKinematicBonesUpdateToPhysics::SkipAllBones;
+	Body->bComponentUseFixedSkelBounds = true;
+	Body->RegisterComponent();
+
+	UMadCharacterAnimInstance* Anim = Cast<UMadCharacterAnimInstance>(Body->GetAnimInstance());
+	if (Anim == nullptr || !UMadCharacterAnimInstance::LoadSequences(*Anim))
+	{
+		Body->DestroyComponent();
+		return false;
+	}
+
+	// The mannequin's material is a painted shell with a "Paint Tint": the first
+	// slot (head, arms and legs) takes the skin colour, the second (torso) the
+	// clothes, and a matte finish keeps a zombie from looking lacquered.
+	for (int32 Slot = 0; Slot < Body->GetNumMaterials(); ++Slot)
+	{
+		UMaterialInterface* Base = Body->GetMaterial(Slot);
+		if (Base == nullptr)
+		{
+			continue;
+		}
+		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Base, this);
+		Material->SetScalarParameterValue(TEXT("MetalPaintRoughness"), 0.8f);
+		Material->SetScalarParameterValue(TEXT("MetalPaintMetallic"), 0.0f);
+		Material->SetScalarParameterValue(TEXT("LogoScale"), 0.0f);
+		Body->SetMaterial(Slot, Material);
+		PartMaterials.Add(Material);
+		PartKinds.Add(Slot == 0 ? EPart::Skin : EPart::Shirt);
+	}
+	Skeletal = Body;
+	ApplyTint(0.0f);
+	return true;
 }
 
 void UMadHumanoidRigComponent::SetColours(const FLinearColor& Skin, const FLinearColor& Clothes, const FLinearColor& Trousers, const FLinearColor& Hair)
@@ -160,6 +247,11 @@ void UMadHumanoidRigComponent::ApplyTint(float Flash)
 		}
 		const EPart Kind = PartKinds[Index];
 		const FLinearColor Colour = Kind == EPart::Shirt ? ClothesColour : (Kind == EPart::Trousers ? TrousersColour : SkinColour);
+		if (Skeletal != nullptr)
+		{
+			Material->SetVectorParameterValue(TEXT("Paint Tint"), FMath::Lerp(Colour, Hit, Kind == EPart::Skin ? Flash : Flash * 0.6f));
+			continue;
+		}
 		if (!bPatterned)
 		{
 			Material->SetVectorParameterValue(TEXT("Color"), FMath::Lerp(Colour, Hit, Kind == EPart::Skin || Kind == EPart::Head ? Flash : Flash * 0.6f));
@@ -182,6 +274,7 @@ void UMadHumanoidRigComponent::PlayAttack()
 void UMadHumanoidRigComponent::PlayHit()
 {
 	HitFlash = HumanHitSeconds;
+	SinceHit = 0.0f;
 	ApplyTint(1.0f);
 }
 
@@ -210,7 +303,7 @@ void UMadHumanoidRigComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		++BuiltThisFrame;
 		Build();
 	}
-	if (Root == nullptr)
+	if (Root == nullptr && Skeletal == nullptr)
 	{
 		return;
 	}
@@ -223,7 +316,22 @@ void UMadHumanoidRigComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / HumanAttackPoseSeconds);
 	if (bDying)
 	{
-		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / HumanDeathSeconds);
+		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / (Skeletal != nullptr ? MadFall::CharacterAnim::DeathSeconds : HumanDeathSeconds));
+	}
+
+	if (Skeletal != nullptr)
+	{
+		SinceHit += DeltaTime;
+		SinceDeath = bDying ? FMath::Max(SinceDeath, 0.0f) + DeltaTime : -1.0f;
+		if (UMadCharacterAnimInstance* Anim = Cast<UMadCharacterAnimInstance>(Skeletal->GetAnimInstance()))
+		{
+			Anim->Inputs.Speed = GetOwner() != nullptr ? static_cast<float>(GetOwner()->GetVelocity().Size2D()) : 0.0f;
+			Anim->Inputs.Attack = AttackProgress;
+			Anim->Inputs.SinceHit = SinceHit;
+			Anim->Inputs.SinceDeath = SinceDeath;
+			Anim->Inputs.bZombie = !bLiving;
+		}
+		return;
 	}
 
 	// Posing is cheap but not free across a horde, and nobody sees a zombie

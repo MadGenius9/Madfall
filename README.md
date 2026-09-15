@@ -44,6 +44,18 @@ The storage barrel and loot crate are photo-scanned models from
 torch, door, bedroll and ladder are built from primitives by
 `Scripts/build_prop_meshes.py` (no downloads).
 
+## Characters
+
+Zombies and traders are drawn as Epic's UE5 mannequins when they are installed.
+They come with the engine but may not be published in this repository, so copy
+them from your engine install once (nothing is downloaded):
+
+```powershell
+.\Scripts\copy_mannequin.ps1
+```
+
+Without them the game draws its box figures instead.
+
 ## Package
 
 ```powershell

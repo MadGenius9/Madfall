@@ -1878,6 +1878,44 @@ Console (used by the survival gate): `mad.player.store <item>`,
    instance per part (six for a zombie), all set again on a hit flash. Without
    the asset the rigs fall back to the tinted engine material.
 
+   **Humanoids are animated mannequins where they can be.** The box figures
+   read as a voxel toy next to photo-textured ground. The engine install ships
+   Epic's UE5 Manny and Quinn with idle, walk, jog, hit-react and death
+   animations in its Third Person template; `Scripts/copy_mannequin.ps1` copies
+   them (101 MB, no download) into `Content/Characters/Mannequins`, which is
+   gitignored because the EULA does not allow publishing uncooked Epic content
+   in a source repository. When they are installed and the game renders,
+   `UMadHumanoidRigComponent` draws a skeletal mesh (a third of zombies and
+   half the living are Quinn) instead of the boxes; a fresh clone, a server and
+   every `-nullrhi` CI run keep the boxes, and `mad.characters.Skeletal 0`
+   forces them.
+   - `UMadCharacterAnimInstance` has no animation blueprint: its proxy samples
+     idle, walk and jog, blends them by ground speed with walk and jog sharing
+     one stride phase (`MadFall::CharacterAnim::ComputeBlend`; a 1.2 m/s
+     zombie plays the 3 m/s walk at 0.4, which reads as a shamble, clamped at
+     0.35 against slow motion), and blends in the hit reaction and the death
+     fall. Root motion is extracted and dropped so the capsule moves the body.
+   - The zombie look is procedural on top: upper arm then forearm aimed along
+     `ArmReachDirection` (forward, a little down, lifted through an attack
+     like the box rig's swing) and the chest pitched 12 degrees. Aiming only
+     the upper arm left the walk's bent elbow, and the hands met at the chest.
+     The template's ABP had no input for this, and editing a copy would put an
+     unpublishable binary at the centre of the characters.
+   - The mannequin material's Paint Tint takes the skin colour (head, arms,
+     legs) and the clothes colour (torso), matte, with the logo hidden; a hit
+     flashes it red.
+   - Cost: posed only when rendered (`OnlyTickPoseWhenRendered`), with update
+     rate optimisations for distant ones, fixed bounds and no bone updates to
+     physics; evaluation runs on animation workers. Measured with a CSV
+     profile, 30 zombies in view and AI off: game-thread animation 0.46 ms a
+     frame (0.03 ms for box figures; 0.54 before the last two settings), whole
+     game thread 5.0 against 4.8 ms, 1.5 ms of worker evaluation. This cost is
+     the engine's and outside `MAD_FRAME_SCOPE`, so the frame-budget gate does
+     not see it; a much larger visible horde would want the animation budget
+     allocator.
+   Tested: `MadFall.AI.CharacterAnim` (blend weights and rates, the reach
+   direction through a swing, and the installed sequences when present).
+
    The survivor's own hand was invisible, so a swing had no visible feedback.
    `UMadViewModelComponent` (on the camera) draws the held item from basic shapes
    chosen by kind and tags (`MadFall::ViewModel::ChooseShape`): a handle with a
