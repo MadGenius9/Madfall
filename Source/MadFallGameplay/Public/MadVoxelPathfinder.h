@@ -160,4 +160,26 @@ namespace MadFall::Pathfinding
 	 */
 	MADFALLGAMEPLAY_API bool FindUndermineTarget(const FIntVector& WalkerFeet, const FIntVector& GoalFeet,
 		FGetVoxel GetVoxel, FBreakSeconds BreakSeconds, FIntVector& OutBlock);
+
+	/**
+	 * The block to break next to get THROUGH to a goal that no path reaches: a
+	 * survivor inside a sealed base.
+	 *
+	 * WHY IT IS NEEDED: FindPath allows digging, but at DigCostPerSecond a
+	 * concrete wall costs as much as a long walk, and on open ground the node
+	 * budget runs out exploring the detours before the path through the wall is
+	 * ever the cheapest. The search then returns its best partial path - ending
+	 * at the wall - and the walker stood there re-planning. Measured: nineteen
+	 * zombies around a 13 x 13 concrete shell, 2,574 paths and 8 block hits in
+	 * two minutes, nobody inside.
+	 *
+	 * Candidates are the eight columns around the walker that lie toward the
+	 * goal (within 60 degrees), each passable once its feet and head voxels are
+	 * gone. The best is the quickest to clear among the most direct; within it,
+	 * the feet voxel before the head. Unbreakable columns are skipped; a column
+	 * already open is not a breach. False when the goal is within reach, nothing
+	 * toward it is breakable, or the walker is not against anything.
+	 */
+	MADFALLGAMEPLAY_API bool FindBreachTarget(const FIntVector& WalkerFeet, const FIntVector& GoalFeet,
+		FGetVoxel GetVoxel, FBreakSeconds BreakSeconds, FIntVector& OutBlock);
 }

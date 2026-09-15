@@ -41,6 +41,7 @@ int32 AMadZombie::TotalPlayerHits = 0;
 int32 AMadZombie::TotalPaths = 0;
 int32 AMadZombie::TotalKills = 0;
 int32 AMadZombie::TotalUndermines = 0;
+int32 AMadZombie::TotalBreaches = 0;
 int32 AMadZombie::TotalSpits = 0;
 int32 AMadZombie::TotalScreams = 0;
 int32 AMadZombie::TotalClimbs = 0;
@@ -92,15 +93,8 @@ namespace
 		ECVF_Default);
 
 	constexpr float AttackReachCm = 150.0f;
-	constexpr float StepArrivalCm = 30.0f;
+	constexpr float ZombieStepArrivalCm = 30.0f;
 
-	FIntVector ToVoxel(const FVector& WorldCm)
-	{
-		return FIntVector(
-			FMath::FloorToInt32(WorldCm.X / MadFall::VoxelSizeUU),
-			FMath::FloorToInt32(WorldCm.Y / MadFall::VoxelSizeUU),
-			FMath::FloorToInt32(WorldCm.Z / MadFall::VoxelSizeUU));
-	}
 
 }
 
@@ -206,7 +200,7 @@ float AMadZombie::GetHealth() const
 FIntVector AMadZombie::GetFeetVoxel() const
 {
 	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	return ToVoxel(GetActorLocation() - FVector(0.0, 0.0, HalfHeight - 5.0));
+	return MadFall::WorldCmToVoxel(GetActorLocation() - FVector(0.0, 0.0, HalfHeight - 5.0));
 }
 
 // ===========================================================================
@@ -361,9 +355,11 @@ void AMadZombie::Think()
 			// No path gets within reach and the target is above: if their support
 			// is within reach from here, go for it instead of walking a partial
 			// path that ends in the same place.
-			if (!Path.bReachesGoal)
+			if (!Path.bReachesGoal && !TryUndermine(Goal) && Path.Steps.Num() <= 1)
 			{
-				TryUndermine(Goal);
+				// Already standing where the best partial path ends - against the
+				// wall between it and the target: break through it.
+				TryBreach(Goal);
 			}
 		}
 		return;
@@ -472,6 +468,43 @@ bool AMadZombie::TryUndermine(const FIntVector& Goal)
 	return true;
 }
 
+bool AMadZombie::TryBreach(const FIntVector& Goal)
+{
+	const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>();
+	if (VoxelWorld == nullptr)
+	{
+		return false;
+	}
+
+	FIntVector Block;
+	const bool bFound = MadFall::Pathfinding::FindBreachTarget(GetFeetVoxel(), Goal,
+		[VoxelWorld](const FIntVector& V) { return GetVoxelForPathing(*VoxelWorld, V); },
+		[this](const FIntVector&, const FMadVoxel& Voxel) { return GetBreakSeconds(Definition, Voxel); },
+		Block);
+	if (!bFound)
+	{
+		return false;
+	}
+
+	// As undermining: one standing step that breaks the block. Once the column is
+	// open the next plan walks through it, or breaches the next layer.
+	FMadPathStep Step;
+	Step.Feet = GetFeetVoxel();
+	Step.BlocksToBreak.Add(Block);
+	Path = FMadVoxelPath();
+	Path.Steps.Add(Step);
+	StepIndex = 0;
+	PathGoal = Goal;
+
+	if (Block != LastBreachBlock)
+	{
+		LastBreachBlock = Block;
+		++TotalBreaches;
+		UE_LOG(LogMadFallGameplay, Verbose, TEXT("%s breaches %s toward a target at %s."), *GetName(), *Block.ToString(), *Goal.ToString());
+	}
+	return true;
+}
+
 void AMadZombie::FollowPath(float DeltaSeconds)
 {
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
@@ -568,7 +601,7 @@ void AMadZombie::FollowPath(float DeltaSeconds)
 	const FVector StepCentre((Step.Feet.X + 0.5) * MadFall::VoxelSizeUU, (Step.Feet.Y + 0.5) * MadFall::VoxelSizeUU, GetActorLocation().Z);
 	const FVector ToStep = StepCentre - GetActorLocation();
 
-	if (ToStep.Size2D() < StepArrivalCm && FMath::Abs(Feet.Z - Step.Feet.Z) <= 1)
+	if (ToStep.Size2D() < ZombieStepArrivalCm && FMath::Abs(Feet.Z - Step.Feet.Z) <= 1)
 	{
 		++StepIndex;
 		StuckTimer = 0.0f;

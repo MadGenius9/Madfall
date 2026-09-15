@@ -70,13 +70,6 @@ namespace
 		ECVF_Default);
 
 
-	FIntVector ToVoxel(const FVector& WorldCm)
-	{
-		return FIntVector(
-			FMath::FloorToInt32(WorldCm.X / MadFall::VoxelSizeUU),
-			FMath::FloorToInt32(WorldCm.Y / MadFall::VoxelSizeUU),
-			FMath::FloorToInt32(WorldCm.Z / MadFall::VoxelSizeUU));
-	}
 }
 
 AMadPlayerCharacter::AMadPlayerCharacter()
@@ -130,7 +123,7 @@ void AMadPlayerCharacter::BeginPlay()
 	// over the generator's estimate of the surface so the streaming ring is
 	// centred on the right chunk layers.
 	GetCharacterMovement()->DisableMovement();
-	SpawnColumn = FIntPoint(ToVoxel(GetActorLocation()).X, ToVoxel(GetActorLocation()).Y);
+	SpawnColumn = FIntPoint(MadFall::WorldCmToVoxel(GetActorLocation()).X, MadFall::WorldCmToVoxel(GetActorLocation()).Y);
 
 	if (const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>())
 	{
@@ -453,7 +446,7 @@ int32 AMadPlayerCharacter::FindStandableZ(int32 X, int32 Y) const
 		return INDEX_NONE;
 	}
 
-	const int32 StartZ = ToVoxel(GetActorLocation()).Z + 40;
+	const int32 StartZ = MadFall::WorldCmToVoxel(GetActorLocation()).Z + 40;
 	for (int32 Z = FMath::Min(StartZ, MadFall::WorldMaxZ - 2); Z > MadFall::WorldMinZ; --Z)
 	{
 		if (!VoxelWorld->IsVoxelLoaded(X, Y, Z))
@@ -565,7 +558,7 @@ void AMadPlayerCharacter::TickSpawn(float DeltaSeconds)
 	bool bReady = Streaming != nullptr && Streaming->IsAreaLoaded(GetActorLocation(), 1);
 	if (bReady && Meshes != nullptr)
 	{
-		const FIntVector Voxel = ToVoxel(GetActorLocation());
+		const FIntVector Voxel = MadFall::WorldCmToVoxel(GetActorLocation());
 		const FMadChunkCoord Centre = MadFall::WorldToChunk(Voxel.X, Voxel.Y, Voxel.Z);
 		for (int32 DZ = -1; DZ <= 1 && bReady; ++DZ)
 		{
@@ -683,7 +676,7 @@ AMadPlayerCharacter* MadFall::FindLocalPlayer(const UWorld* World)
 FIntVector AMadPlayerCharacter::GetFeetVoxel() const
 {
 	const FVector Feet = GetActorLocation() - FVector(0.0, 0.0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - 5.0);
-	return ToVoxel(Feet);
+	return MadFall::WorldCmToVoxel(Feet);
 }
 
 void AMadPlayerCharacter::TeleportToVoxel(const FIntVector& Voxel)

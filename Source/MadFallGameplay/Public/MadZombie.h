@@ -89,6 +89,7 @@ public:
 	static int32 TotalPaths;
 	static int32 TotalKills;
 	static int32 TotalUndermines;
+	static int32 TotalBreaches;
 	static int32 TotalSpits;
 	static int32 TotalScreams;
 
@@ -115,6 +116,9 @@ private:
 
 	/** Target out of reach above: replaces the path with one step that breaks what they stand on. */
 	bool TryUndermine(const FIntVector& Goal);
+
+	/** Breaks toward a goal no path reaches, from the end of the best partial path (MadFall::Pathfinding::FindBreachTarget). */
+	bool TryBreach(const FIntVector& Goal);
 	void FollowPath(float DeltaSeconds);
 	void TryAttackPlayer();
 
@@ -138,6 +142,7 @@ private:
 
 	/** The support block last chosen, so the undermine counter counts blocks, not re-plans. */
 	FIntVector LastUndermineBlock = FIntVector(MAX_int32);
+	FIntVector LastBreachBlock = FIntVector(MAX_int32);
 	bool bHasLastKnown = false;
 
 	FMadVoxelPath Path;

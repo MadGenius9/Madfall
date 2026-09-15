@@ -75,6 +75,37 @@ bool FMadDebrisTest::RunTest(const FString& Parameters)
 	// Ground: everything below z = 0 is solid.
 	auto FlatGround = [](const FIntVector& P) { return P.Z >= 0; };
 
+	// --- a beam that clips a post shears instead of hanging off it --------------
+	{
+		// A 7-block beam at z = 10 over x = 0..6; a post under x = 0 up to z = 5.
+		auto WithPost = [](const FIntVector& P) { return P.Z >= 0 && !(P.X == 0 && P.Y == 0 && P.Z <= 5); };
+		TArray<FMadDebrisCluster> Clusters = MadFall::Debris::BuildClusters(
+			{ Failure(0, 0, 10), Failure(1, 0, 10), Failure(2, 0, 10), Failure(3, 0, 10), Failure(4, 0, 10), Failure(5, 0, 10), Failure(6, 0, 10) }, Materials);
+		FMadDebrisCluster& Beam = Clusters[0];
+		MadFall::Debris::AdvanceToLanding(Beam, WithPost);
+		TestEqual(TEXT("the beam first touches the post top"), Beam.Dropped, 4);
+
+		FMadDebrisCluster Rest = MadFall::Debris::SplitUnsupported(Beam, WithPost);
+		TestEqual(TEXT("only the block over the post lands"), Beam.Blocks.Num(), 1);
+		TestEqual(TEXT("its mass is its own"), Beam.MassKg, 1000.0f, 0.01f);
+		TestEqual(TEXT("six blocks shear off"), Rest.Blocks.Num(), 6);
+		TestFalse(TEXT("and are still falling"), Rest.bLanded);
+		TestEqual(TEXT("from where the beam stopped"), Rest.Dropped, 4);
+		TestEqual(TEXT("every sheared block is a bottom block"), Rest.BottomBlocks.Num(), 6);
+
+		MadFall::Debris::AdvanceToLanding(Rest, WithPost);
+		TestEqual(TEXT("the rest falls on to the ground"), Rest.Dropped, 10);
+		TestEqual(TEXT("and nothing more splits off"), MadFall::Debris::SplitUnsupported(Rest, WithPost).Blocks.Num(), 0);
+	}
+
+	// A cluster resting flat everywhere does not split.
+	{
+		TArray<FMadDebrisCluster> Clusters = MadFall::Debris::BuildClusters({ Failure(0, 0, 3), Failure(1, 0, 3) }, Materials);
+		MadFall::Debris::AdvanceToLanding(Clusters[0], FlatGround);
+		TestEqual(TEXT("a flat landing leaves nothing falling"), MadFall::Debris::SplitUnsupported(Clusters[0], FlatGround).Blocks.Num(), 0);
+		TestEqual(TEXT("and keeps both blocks"), Clusters[0].Blocks.Num(), 2);
+	}
+
 	// --- a free fall lands on the ground at the right speed -----------------
 	{
 		TArray<FMadDebrisCluster> Clusters = MadFall::Debris::BuildClusters({ Failure(0, 0, 10) }, Materials);

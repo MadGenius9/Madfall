@@ -128,6 +128,15 @@ private:
 	/** Snapshot + launch. Game thread. */
 	void LaunchMeshJob(const FMadChunkCoord& Coord);
 
+	/** The chunk column the first player's camera is in; false with no player (tests, a server). */
+	bool GetViewerChunk(FIntPoint& OutChunk) const;
+
+	/** The detail level a chunk should be meshed at now (see MadFall::ChunkMesher::ChooseLod). 0 without a viewer. */
+	int32 GetWantedLod(const FMadChunkCoord& Coord) const;
+
+	/** When the viewer enters a new chunk column, marks every meshed chunk now at the wrong level dirty. */
+	void UpdateLodCentre();
+
 	/** Apply finished meshes, up to the per-frame budget. Game thread. */
 	void PublishCompletedMeshes();
 
@@ -162,6 +171,14 @@ private:
 
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UMaterialInterface>> ClassMaterials;
+
+	/** The detail level each chunk's current (or in-flight) mesh was launched at. */
+	TMap<FMadChunkCoord, uint8> MeshLods;
+	FIntPoint LodCentre = FIntPoint::ZeroValue;
+	bool bHasLodCentre = false;
+	/** The distance settings LodCentre was last applied with, so changing a cvar re-levels the world. */
+	FIntVector LodSettings = FIntVector::ZeroValue;
+	int32 LodRebuilds = 0;
 
 	/** A set, not a queue: forty edits to one chunk in one frame produce one rebuild. */
 	TSet<FMadChunkCoord> DirtyChunks;

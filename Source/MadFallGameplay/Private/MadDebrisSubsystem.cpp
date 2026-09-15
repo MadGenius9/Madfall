@@ -161,6 +161,23 @@ void UMadDebrisSubsystem::HandleStrain(const FMadStressSample& Member, const FMa
 	Audio->PlayForMaterial(EMadSound::Creak, Block->MaterialClass, (FVector(Member.Position) + FVector(0.5)) * MadFall::VoxelSizeUU, Volume);
 }
 
+void UMadDebrisSubsystem::KeepFalling(FMadDebrisCluster&& Cluster, TArray<TWeakObjectPtr<AActor>> HitPawns)
+{
+	FFalling& Item = Falling.AddDefaulted_GetRef();
+	Item.Cluster = MoveTemp(Cluster);
+	// A pawn the whole piece already hit is not hit again by the part that breaks off.
+	Item.HitPawns = MoveTemp(HitPawns);
+	++Stats.ClustersSheared;
+	if (Falling.Num() <= CVarMaxVisualClusters.GetValueOnGameThread())
+	{
+		Item.Visual = SpawnVisual(Item.Cluster);
+		if (AActor* Actor = Item.Visual.Get())
+		{
+			Actor->SetActorLocation(FVector(0.0, 0.0, -Item.Cluster.FallDistance * MadFall::VoxelSizeUU));
+		}
+	}
+}
+
 bool UMadDebrisSubsystem::IsFree(const FIntVector& Position) const
 {
 	if (VoxelWorld == nullptr || Position.Z < MadFall::WorldMinZ)
@@ -277,8 +294,15 @@ void UMadDebrisSubsystem::Tick(float DeltaTime)
 
 		if (bLanded)
 		{
+			// Columns over open air shear off and fall on; the rest lands.
+			FMadDebrisCluster Rest = MadFall::Debris::SplitUnsupported(Item.Cluster, Free);
 			Land(Item);
+			TArray<TWeakObjectPtr<AActor>> HitPawns = MoveTemp(Item.HitPawns);
 			Falling.RemoveAtSwap(Index, EAllowShrinking::No);
+			if (Rest.Blocks.Num() > 0)
+			{
+				KeepFalling(MoveTemp(Rest), MoveTemp(HitPawns));
+			}
 			continue;
 		}
 		++Index;
@@ -304,7 +328,12 @@ void UMadDebrisSubsystem::FlushNow()
 		for (FFalling& Item : Batch)
 		{
 			MadFall::Debris::AdvanceToLanding(Item.Cluster, Free);
+			FMadDebrisCluster Rest = MadFall::Debris::SplitUnsupported(Item.Cluster, Free);
 			Land(Item);
+			if (Rest.Blocks.Num() > 0)
+			{
+				KeepFalling(MoveTemp(Rest), Item.HitPawns);   // picked up by the next round
+			}
 		}
 	}
 }
@@ -552,9 +581,9 @@ void UMadDebrisSubsystem::DropCollapseLoot(const FMadDebrisCluster& Cluster, con
 FString UMadDebrisSubsystem::DescribeStatus() const
 {
 	return FString::Printf(
-		TEXT("Debris: %d falling; %lld clusters spawned, %lld landed, %lld blocks fallen\n")
+		TEXT("Debris: %d falling; %lld clusters spawned, %lld sheared off, %lld landed, %lld blocks fallen\n")
 		TEXT("  %lld impacts, %.1f kJ total, largest %.1f kJ; %lld rubble placed, %lld kept out of a pawn's space; %lld pawn hit(s), %lld item(s) dropped"),
-		Falling.Num(), Stats.ClustersSpawned, Stats.ClustersLanded, Stats.BlocksFallen,
+		Falling.Num(), Stats.ClustersSpawned, Stats.ClustersSheared, Stats.ClustersLanded, Stats.BlocksFallen,
 		Stats.Impacts, Stats.TotalEnergyKJ, Stats.LargestImpactKJ, Stats.RubblePlaced, Stats.RubbleSparedPawns, Stats.PawnHits, Stats.ItemsDropped);
 }
 

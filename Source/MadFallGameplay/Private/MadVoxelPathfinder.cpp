@@ -320,6 +320,80 @@ namespace MadFall::Pathfinding
 
 namespace MadFall::Pathfinding
 {
+	bool FindBreachTarget(const FIntVector& WalkerFeet, const FIntVector& GoalFeet,
+		FGetVoxel GetVoxel, FBreakSeconds BreakSeconds, FIntVector& OutBlock)
+	{
+		const FVector2D Toward(static_cast<double>(GoalFeet.X - WalkerFeet.X), static_cast<double>(GoalFeet.Y - WalkerFeet.Y));
+		if (FMath::Max(FMath::Abs(Toward.X), FMath::Abs(Toward.Y)) <= 1.0)
+		{
+			return false;   // in reach: the attack handles it
+		}
+		const FVector2D Direction = Toward.GetSafeNormal();
+
+		bool bFound = false;
+		double BestAlignment = 0.0;
+		float BestSeconds = 0.0f;
+		for (int32 DY = -1; DY <= 1; ++DY)
+		{
+			for (int32 DX = -1; DX <= 1; ++DX)
+			{
+				if (DX == 0 && DY == 0)
+				{
+					continue;
+				}
+				const double Alignment = FVector2D::DotProduct(FVector2D(DX, DY).GetSafeNormal(), Direction);
+				if (Alignment < 0.5)
+				{
+					continue;   // more than 60 degrees off the way to the goal
+				}
+
+				float ColumnSeconds = 0.0f;
+				bool bBlocked = false;
+				bool bUnbreakable = false;
+				FIntVector First = FIntVector(MAX_int32);
+				for (int32 DZ = 0; DZ <= 1; ++DZ)
+				{
+					const FIntVector P = WalkerFeet + FIntVector(DX, DY, DZ);
+					const FMadVoxel Voxel = GetVoxel(P);
+					if (!IsSolidVoxel(Voxel))
+					{
+						continue;
+					}
+					const float Seconds = BreakSeconds(P, Voxel);
+					if (Seconds < 0.0f)
+					{
+						bUnbreakable = true;
+						break;
+					}
+					bBlocked = true;
+					ColumnSeconds += Seconds;
+					if (First.X == MAX_int32)
+					{
+						First = P;
+					}
+				}
+				if (!bBlocked || bUnbreakable)
+				{
+					continue;
+				}
+
+				// The most direct column wins unless a less direct one (still toward
+				// the goal) is far quicker to clear; ties go to the quicker.
+				const bool bMoreDirect = Alignment > BestAlignment + 0.2;
+				const bool bSimilar = FMath::Abs(Alignment - BestAlignment) <= 0.2;
+				const bool bBetter = !bFound || bMoreDirect || (bSimilar && ColumnSeconds < BestSeconds);
+				if (bBetter)
+				{
+					bFound = true;
+					BestAlignment = Alignment;
+					BestSeconds = ColumnSeconds;
+					OutBlock = First;
+				}
+			}
+		}
+		return bFound;
+	}
+
 	bool FindUndermineTarget(const FIntVector& WalkerFeet, const FIntVector& GoalFeet,
 		FGetVoxel GetVoxel, FBreakSeconds BreakSeconds, FIntVector& OutBlock)
 	{

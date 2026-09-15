@@ -761,6 +761,39 @@ else {
             $script:Failures += 'zombie-acceptance'
         }
     }
+
+    # A sealed base: a 13 x 13 hollow concrete shell around the survivor, horde
+    # zombies outside. No path reaches the survivor, so they must break through
+    # (MadFall::Pathfinding::FindBreachTarget) - before that, they stood at the
+    # walls re-planning and never got in.
+    $breachSpawns = ('10 0', '-10 0', '0 10', '0 -10', '10 6', '-10 -6', '6 10', '-6 -10', '9 9', '-9 9', '9 -9', '-9 -9' |
+        ForEach-Object { "mad.ai.spawn madfall:zombie_civilian $_ 1" }) -join '; '
+    $breachScript = "mad.ai.Sleepers 0; wait 3; mad.voxel.box madfall:concrete_frame -6 -6 21 6 6 26 hollow; wait 2; $breachSpawns; wait 100; mad.ai.status; quit"
+    $breachLog = Join-Path $LogDir 'horde-breach.log'
+    $breachProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $breachLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes', '-MadWorld=CIBreach',
+                        "-ExecCmds=`"mad.onspawn $breachScript`"")
+    if (-not $breachProcess.WaitForExit(240000)) {
+        $breachProcess | Stop-Process -Force
+        Write-Host 'FAILED: the sealed-base session did not finish within 240 s.' -ForegroundColor Red
+        $script:Failures += 'horde-breach'
+    }
+    else {
+        $breach = Select-String -Path $breachLog -Pattern 'lifetime: \d+ paths, (\d+) block hits, (\d+) player hits, \d+ kills, \d+ undermines, (\d+) breaches' | Select-Object -Last 1
+        $breachOk = $false
+        if ($null -ne $breach) {
+            $groups = $breach.Matches[0].Groups
+            $breachOk = [int]$groups[3].Value -gt 0 -and [int]$groups[2].Value -gt 0
+            Write-Host "$(if ($breachOk) { 'OK' } else { 'FAILED' }): horde zombies broke into a sealed concrete base ($($groups[3].Value) breaches, $($groups[1].Value) block hits) and reached the survivor ($($groups[2].Value) hits)" `
+                -ForegroundColor $(if ($breachOk) { 'Green' } else { 'Red' })
+        }
+        else {
+            Write-Host 'FAILED: no mad.ai.status report from the sealed-base session' -ForegroundColor Red
+        }
+        if (-not $breachOk) {
+            $script:Failures += 'horde-breach'
+        }
+    }
 }
 
 # ---------------------------------------------------------------------------

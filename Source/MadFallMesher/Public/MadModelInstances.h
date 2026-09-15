@@ -34,6 +34,18 @@ class UStaticMesh;
 namespace MadFall::Models
 {
 	/**
+	 * The surface a model mesh's material slot draws, or NAME_None: a slot named
+	 * after a known surface class ("madfall:stone") wears that surface's texture.
+	 *
+	 * WHY SLOT NAMES: a prop made of several materials (a campfire's stones and
+	 * logs) cannot take one render.material, and baking textures into each mesh
+	 * would copy them per prop and miss every change to the surface - a modded
+	 * stone texture would not reach the campfire's stones. Naming the slot is all
+	 * a modeller (or Scripts/build_prop_meshes.py) has to do.
+	 */
+	MADFALLMESHER_API FName GetSlotSurface(FName SlotName);
+
+	/**
 	 * World transform (Unreal units) of a model voxel's mesh: voxel centre, the
 	 * voxel's orientation (bits 0-4 of Rotation), then the block's render offset
 	 * (voxels, rotated with the block) and scale.
@@ -92,6 +104,10 @@ private:
 
 	UStaticMesh* GetMesh(uint16 BlockId);
 	UMaterialInterface* GetMaterial(uint16 BlockId);
+	/** A surface's texture in the mesh's own space, or its colour and pattern when it has none. Cached per surface. */
+	UMaterialInterface* GetSurfaceMaterial(FName MaterialClass);
+	/** Slot 0 gets the block's material, unless the block names none and the mesh's slots name surfaces. */
+	void ApplyMaterials(UInstancedStaticMeshComponent* Component, uint16 BlockId);
 	AActor* GetOrCreateActor();
 
 	UPROPERTY(Transient)
@@ -123,6 +139,9 @@ private:
 
 	UPROPERTY(Transient)
 	TMap<uint16, TObjectPtr<UMaterialInterface>> Materials;
+
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UMaterialInterface>> SurfaceMaterials;
 
 	TSet<FMadChunkCoord> Dirty;
 

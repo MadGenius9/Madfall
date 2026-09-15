@@ -86,6 +86,22 @@ namespace MadFall::Debris
 	MADFALLGAMEPLAY_API bool Advance(FMadDebrisCluster& Cluster, float DeltaSeconds,
 		TFunctionRef<bool(const FIntVector&)> IsFree, int32 MaxDrop = 512);
 
+	/**
+	 * Splits a cluster that has just landed into what actually landed and what
+	 * keeps falling: an (x, y) column lands when its lowest block rests on
+	 * something; every other column breaks away and is returned as a new
+	 * cluster, still falling at the landed one's drop and speed. Returns an
+	 * empty cluster when everything landed (or the fall hit MaxDrop).
+	 *
+	 * WHY COLUMNS: a cluster used to land whole on its first contact, so a long
+	 * beam that clipped a post hung off it in mid-air. Voxels cannot pivot, and a
+	 * rigid-body solve is what the kinematic model avoids (see
+	 * FMadDebrisCluster), so the part over the obstacle stops and the part over
+	 * open air shears off and falls on - which is how rubble behaves anyway. A
+	 * slab landing on uneven ground settles column by column onto it.
+	 */
+	MADFALLGAMEPLAY_API FMadDebrisCluster SplitUnsupported(FMadDebrisCluster& Landed, TFunctionRef<bool(const FIntVector&)> IsFree);
+
 	/** Advances in fixed steps until landed. For flushing and tests. */
 	MADFALLGAMEPLAY_API void AdvanceToLanding(FMadDebrisCluster& Cluster,
 		TFunctionRef<bool(const FIntVector&)> IsFree, int32 MaxDrop = 512);

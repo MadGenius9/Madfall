@@ -27,7 +27,7 @@ int32 AMadAnimal::TotalPlayerHits = 0;
 
 namespace
 {
-	constexpr float StepArrivalCm = 30.0f;
+	constexpr float AnimalStepArrivalCm = 30.0f;
 	constexpr int32 FleeDistanceVoxels = 12;
 	constexpr int32 GrazeRadiusVoxels = 6;
 
@@ -39,13 +39,6 @@ namespace
 	constexpr int32 PathNodes = 600;
 
 
-	FIntVector ToVoxel(const FVector& WorldCm)
-	{
-		return FIntVector(
-			FMath::FloorToInt32(WorldCm.X / MadFall::VoxelSizeUU),
-			FMath::FloorToInt32(WorldCm.Y / MadFall::VoxelSizeUU),
-			FMath::FloorToInt32(WorldCm.Z / MadFall::VoxelSizeUU));
-	}
 
 	/** Capsule that fits the rig: as wide as the body is thick, as tall as the animal stands. */
 	void ComputeCapsule(const FMadAnimalDefinition& Definition, float& OutRadius, float& OutHalfHeight)
@@ -158,7 +151,7 @@ void AMadAnimal::InitialiseFromDefinition(const FMadAnimalDefinition& InDefiniti
 FIntVector AMadAnimal::GetFeetVoxel() const
 {
 	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	return ToVoxel(GetActorLocation() - FVector(0.0, 0.0, HalfHeight - 5.0));
+	return MadFall::WorldCmToVoxel(GetActorLocation() - FVector(0.0, 0.0, HalfHeight - 5.0));
 }
 
 void AMadAnimal::Tick(float DeltaSeconds)
@@ -355,7 +348,7 @@ void AMadAnimal::FollowPath(float DeltaSeconds)
 	const FVector ToStep = StepCentre - GetActorLocation();
 	const FIntVector Feet = GetFeetVoxel();
 
-	if (ToStep.Size2D() < StepArrivalCm && FMath::Abs(Feet.Z - Step.Feet.Z) <= 1)
+	if (ToStep.Size2D() < AnimalStepArrivalCm && FMath::Abs(Feet.Z - Step.Feet.Z) <= 1)
 	{
 		++StepIndex;
 		StuckTimer = 0.0f;

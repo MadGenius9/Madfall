@@ -40,7 +40,9 @@ uncommitted `SourceArt/`), then `Scripts/make_pbr_material.py`,
 (the texture-array materials) through `UnrealEditor-Cmd -ExecutePythonScript`.
 The storage barrel and loot crate are photo-scanned models from
 [Poly Haven](https://polyhaven.com) (CC0): `Scripts/fetch_models.ps1`, then
-`Scripts/make_model_material.py` and `Scripts/import_models.py`.
+`Scripts/make_model_material.py` and `Scripts/import_models.py`. The campfire,
+torch, door, bedroll and ladder are built from primitives by
+`Scripts/build_prop_meshes.py` (no downloads).
 
 ## Package
 

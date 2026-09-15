@@ -310,6 +310,9 @@ public:
 	 */
 	static void SnapshotFromSources(const FSnapshotSources& Sources, struct FMadChunkSampleGrid& OutGrid);
 
+	/** The same for a distant chunk's coarse lattice (FMadLodSampleGrid): one point every Stride voxels. */
+	static void SnapshotLodFromSources(const FSnapshotSources& Sources, int32 Stride, struct FMadLodSampleGrid& OutGrid);
+
 private:
 	/** Opens (creating if needed) the region holding Coord. Caller holds RegionLock. */
 	FMadRegionFile* GetOrOpenRegion(const FMadRegionCoord& Coord, FString& OutError);

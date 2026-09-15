@@ -307,6 +307,68 @@ static FAutoConsoleCommandWithWorldAndArgs GMadVoxelGetCommand(
 			Voxel.IsSolid() ? TEXT("yes") : TEXT("no"));
 	}));
 
+static FAutoConsoleCommandWithWorldAndArgs GMadVoxelBoxCommand(
+	TEXT("mad.voxel.box"),
+	TEXT("mad.voxel.box <blockId> <x0> <y0> <z0> <x1> <y1> <z1> [hollow] - fills a box of placed blocks in one frame (hollow: walls, floor and roof only)."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+	{
+		// For tests and probes that need a building: a few hundred mad.voxel.set
+		// commands overflow a process command line, and arrive over many frames.
+		UMadVoxelWorldSubsystem* Subsystem = GetSubsystem(World);
+		if (Subsystem == nullptr || Args.Num() < 7)
+		{
+			UE_LOG(LogMadFallVoxel, Error, TEXT("Usage: mad.voxel.box <blockId> <x0> <y0> <z0> <x1> <y1> <z1> [hollow]"));
+			return;
+		}
+		const FName BlockId(*Args[0]);
+		FMadBlockRegistry& Registry = UMadVoxelWorldSubsystem::GetBlockRegistry();
+		if (!Registry.IsRegistered(BlockId))
+		{
+			UE_LOG(LogMadFallVoxel, Error, TEXT("'%s' is not a registered block. Run mad.blocks to list them."), *BlockId.ToString());
+			return;
+		}
+		int32 Coords[6];
+		if (!ParseInts(Args, 1, 6, Coords, TEXT("mad.voxel.box <blockId> <x0> <y0> <z0> <x1> <y1> <z1> [hollow]"))) { return; }
+		const FIntVector Min(FMath::Min(Coords[0], Coords[3]), FMath::Min(Coords[1], Coords[4]), FMath::Min(Coords[2], Coords[5]));
+		const FIntVector Max(FMath::Max(Coords[0], Coords[3]), FMath::Max(Coords[1], Coords[4]), FMath::Max(Coords[2], Coords[5]));
+		if ((Max - Min + FIntVector(1)).X * (Max - Min + FIntVector(1)).Y * (Max - Min + FIntVector(1)).Z > 200000)
+		{
+			UE_LOG(LogMadFallVoxel, Error, TEXT("mad.voxel.box: more than 200,000 voxels."));
+			return;
+		}
+		const bool bHollow = Args.Num() > 7 && Args[7].Equals(TEXT("hollow"), ESearchCase::IgnoreCase);
+
+		const bool bAir = BlockId == FName(TEXT("madfall:air"));
+		const FMadBlockDefinitionData* Def = Registry.FindDefinition(Registry.ResolveRuntimeId(BlockId));
+		const bool bLiquid = Def != nullptr && Def->bLiquid;
+		FMadVoxel Voxel;
+		Voxel.BlockTypeID = Registry.ResolveRuntimeId(BlockId);
+		Voxel.Density = bAir ? 0 : 255;
+		Voxel.Damage = 0;
+		Voxel.Rotation = 0;
+		Voxel.Flags = 0;
+		Voxel.SetFlag(EMadVoxelFlags::Liquid, bLiquid);
+		Voxel.SetFlag(EMadVoxelFlags::Cubic, !bAir && !bLiquid);
+
+		int32 Written = 0;
+		for (int32 Z = Min.Z; Z <= Max.Z; ++Z)
+		{
+			for (int32 Y = Min.Y; Y <= Max.Y; ++Y)
+			{
+				for (int32 X = Min.X; X <= Max.X; ++X)
+				{
+					const bool bShell = X == Min.X || X == Max.X || Y == Min.Y || Y == Max.Y || Z == Min.Z || Z == Max.Z;
+					if (bHollow && !bShell)
+					{
+						continue;
+					}
+					Written += Subsystem->SetVoxel(X, Y, Z, Voxel) ? 1 : 0;
+				}
+			}
+		}
+		UE_LOG(LogMadFallVoxel, Display, TEXT("Box of %s from %s to %s: %d voxel(s) written."), *BlockId.ToString(), *Min.ToString(), *Max.ToString(), Written);
+	}));
+
 static FAutoConsoleCommandWithWorldAndArgs GMadVoxelSetCommand(
 	TEXT("mad.voxel.set"),
 	TEXT("mad.voxel.set <x> <y> <z> <blockId> [density] [orientation] [variant] - writes one voxel."),

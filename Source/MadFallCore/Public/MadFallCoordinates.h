@@ -131,6 +131,15 @@ namespace MadFall
 	}
 
 	/** World voxel coordinate -> the chunk containing it. */
+	/** The voxel containing a world position in centimetres (uu). */
+	FORCEINLINE FIntVector WorldCmToVoxel(const FVector& WorldCm)
+	{
+		return FIntVector(
+			FMath::FloorToInt32(WorldCm.X / VoxelSizeUU),
+			FMath::FloorToInt32(WorldCm.Y / VoxelSizeUU),
+			FMath::FloorToInt32(WorldCm.Z / VoxelSizeUU));
+	}
+
 	FORCEINLINE FMadChunkCoord WorldToChunk(int32 WorldX, int32 WorldY, int32 WorldZ)
 	{
 		return FMadChunkCoord(

@@ -55,6 +55,11 @@
 		{
 			"Name": "ProceduralMeshComponent",
 			"Enabled": true
+		},
+		{
+			"Name": "GeometryScripting",
+			"Enabled": true,
+			"TargetAllowList": [ "Editor" ]
 		}
 	],
 	"TargetPlatforms": [

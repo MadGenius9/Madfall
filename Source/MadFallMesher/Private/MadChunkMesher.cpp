@@ -3,6 +3,7 @@
 #include "MadChunkMesher.h"
 
 #include "IMadBlockRegistry.h"
+#include "MadChunkSampleGrid.h"
 #include "MadFallMesher.h"
 #include "MadFallStats.h"
 #include "MadSurfaceRegistry.h"
@@ -19,21 +20,6 @@ namespace MadFall::ChunkMesher
 
 		/** The density value the surface passes through. */
 		constexpr float IsoLevel = 128.0f;
-
-		/**
-		 * Cells run from -1 to 31 so that a chunk can build the quads touching
-		 * its own minimum face using its neighbour's margin samples. Without the
-		 * -1 row every chunk would have a one-voxel gap along three of its faces.
-		 */
-		constexpr int32 CellMin = -1;
-		constexpr int32 CellMax = ChunkSize - 1;
-		constexpr int32 CellSpan = CellMax - CellMin + 1;          // 33
-		constexpr int32 CellCount = CellSpan * CellSpan * CellSpan; // 35937
-
-		FORCEINLINE int32 CellIndex(int32 X, int32 Y, int32 Z)
-		{
-			return (X - CellMin) + CellSpan * ((Y - CellMin) + CellSpan * (Z - CellMin));
-		}
 
 		/**
 		 * Unreal renders a triangle as front-facing when its vertices appear
@@ -162,18 +148,43 @@ namespace MadFall::ChunkMesher
 		// Surface Nets
 		// ===================================================================
 
+		/**
+		 * Surface Nets over a lattice Points steps across horizontally, each step
+		 * Stride voxels, and one voxel per step vertically: the full sample grid
+		 * (32 steps of 1) or a distant chunk's coarse one (FMadLodSampleGrid).
+		 *
+		 * Cells run from -1 to Points - 1 so that a chunk can build the quads
+		 * touching its own minimum face using its neighbour's margin samples.
+		 * Without the -1 row every chunk would have a one-step gap along three of
+		 * its faces.
+		 */
+		template <typename GridType>
 		void BuildIsosurface(
-			const FMadChunkSampleGrid& Grid,
+			const GridType& Grid,
+			int32 Points,
+			int32 Stride,
 			FMaterialResolver& Materials,
 			FMadChunkMesh& OutMesh)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_MadMeshIsosurface);
 
+			const int32 CellMin = -1;
+			const int32 CellMax = Points - 1;
+			const int32 CellSpan = CellMax - CellMin + 1;
+			const int32 CellMaxZ = ChunkSize - 1;
+			const int32 CellSpanZ = CellMaxZ - CellMin + 1;
+			auto CellIndex = [CellMin, CellSpan](int32 X, int32 Y, int32 Z)
+			{
+				return (X - CellMin) + CellSpan * ((Y - CellMin) + CellSpan * (Z - CellMin));
+			};
+			// A cell is Stride x Stride x 1 voxels.
+			const FVector3f CellScale(static_cast<float>(Stride), static_cast<float>(Stride), 1.0f);
+
 			TArray<FCellVertex> Cells;
-			Cells.SetNum(CellCount);
+			Cells.SetNum(CellSpan * CellSpan * CellSpanZ);
 
 			// --- pass 1: one vertex per cell the surface passes through ---
-			for (int32 CellZ = CellMin; CellZ <= CellMax; ++CellZ)
+			for (int32 CellZ = CellMin; CellZ <= CellMaxZ; ++CellZ)
 			{
 				for (int32 CellY = CellMin; CellY <= CellMax; ++CellY)
 				{
@@ -268,7 +279,10 @@ namespace MadFall::ChunkMesher
 							(Densities[4] + Densities[5] + Densities[6] + Densities[7])
 							- (Densities[0] + Densities[1] + Densities[2] + Densities[3]);
 
-						FVector3f Normal(-GradX, -GradY, -GradZ);
+						// Per voxel, not per lattice step: a coarse cell is wider than
+						// it is tall, and an unscaled gradient would tilt every slope's
+						// normal towards the horizontal.
+						FVector3f Normal(-GradX / CellScale.X, -GradY / CellScale.Y, -GradZ);
 						if (!Normal.Normalize())
 						{
 							Normal = FVector3f::UpVector;
@@ -293,10 +307,40 @@ namespace MadFall::ChunkMesher
 						// of its cube, while the cubic mesher treats the same
 						// voxel as spanning [p, p+1]. Without this the smooth and
 						// cubic geometry would be half a voxel out of register.
-						Cell.Position = (FVector3f(
+						// The half voxel is added after scaling by the stride:
+						// a coarse lattice point is still one voxel's sample.
+						Cell.Position = ((FVector3f(
 							static_cast<float>(CellX),
 							static_cast<float>(CellY),
-							static_cast<float>(CellZ)) + Offset + FVector3f(0.5f)) * VoxelSize;
+							static_cast<float>(CellZ)) + Offset) * CellScale + FVector3f(0.5f)) * VoxelSize;
+
+						// WHY THE EDGE ROWS ARE PULLED OUT: a chunk's surface ends at
+						// its boundary cells' vertices, which sit anywhere inside
+						// those cells. Two chunks at one level share those cells
+						// and meet exactly; a full-detail chunk next to a coarse one
+						// does not, and the ground showed pinholes along the seam.
+						// Clamping a coarse chunk's outer rows half a voxel past its
+						// boundary makes it overlap whatever finer surface it meets
+						// (a full chunk's own surface ends within half a voxel of
+						// the boundary). Only X and Y: a column of chunks is always
+						// one level, so vertical neighbours match. The cost is up to
+						// a coarse step of sideways shift at a distant seam, where
+						// two surfaces overlapping read better than a hole.
+						if (Stride > 1)
+						{
+							const int32 CellXY[2] = { CellX, CellY };
+							for (int32 Axis = 0; Axis < 2; ++Axis)
+							{
+								if (CellXY[Axis] == CellMin)
+								{
+									Cell.Position[Axis] = FMath::Min(Cell.Position[Axis], -0.5f * VoxelSize);
+								}
+								else if (CellXY[Axis] == CellMax)
+								{
+									Cell.Position[Axis] = FMath::Max(Cell.Position[Axis], (ChunkSize + 0.5f) * VoxelSize);
+								}
+							}
+						}
 						Cell.Normal = Normal;
 						Cell.MaterialClass = Materials.GetMaterialClass(DominantBlock);
 						Cell.bValid = true;
@@ -342,9 +386,9 @@ namespace MadFall::ChunkMesher
 
 			for (int32 Z = 0; Z < ChunkSize; ++Z)
 			{
-				for (int32 Y = 0; Y < ChunkSize; ++Y)
+				for (int32 Y = 0; Y < Points; ++Y)
 				{
-					for (int32 X = 0; X < ChunkSize; ++X)
+					for (int32 X = 0; X < Points; ++X)
 					{
 						const int32 Position[3] = { X, Y, Z };
 
@@ -671,8 +715,29 @@ namespace MadFall::ChunkMesher
 		}
 	}
 
+	int32 ChooseLod(int32 Distance, int32 CurrentLod, int32 Lod1Distance, int32 Lod2Distance)
+	{
+		auto LevelAt = [Lod1Distance, Lod2Distance](int32 D) { return D > Lod2Distance ? 2 : (D > Lod1Distance ? 1 : 0); };
+		const int32 Wanted = LevelAt(Distance);
+		if (CurrentLod < 0 || Wanted <= CurrentLod)
+		{
+			return Wanted;
+		}
+		return FMath::Max(CurrentLod, LevelAt(Distance - 1));
+	}
+
 	void BuildChunkMesh(
 		const FMadChunkSampleGrid& Grid,
+		const IMadBlockRegistry& Registry,
+		const FMeshSettings& Settings,
+		FMadChunkMesh& OutMesh)
+	{
+		BuildChunkMesh(Grid, nullptr, Registry, Settings, OutMesh);
+	}
+
+	void BuildChunkMesh(
+		const FMadChunkSampleGrid& Grid,
+		const FMadLodSampleGrid* LodGrid,
 		const IMadBlockRegistry& Registry,
 		const FMeshSettings& Settings,
 		FMadChunkMesh& OutMesh)
@@ -682,7 +747,10 @@ namespace MadFall::ChunkMesher
 		const double Start = FPlatformTime::Seconds();
 
 		OutMesh.Coord = Grid.Coord;
-		OutMesh.LodLevel = Settings.LodLevel;
+		// The coarse lattice is used only when it matches the level asked for;
+		// anything else meshes at full resolution rather than guessing.
+		const bool bCoarse = LodGrid != nullptr && Settings.LodLevel > 0 && LodGrid->Stride == (1 << Settings.LodLevel);
+		OutMesh.LodLevel = bCoarse ? Settings.LodLevel : 0;
 		OutMesh.Sections.Reset();
 
 		// A chunk that is entirely air or entirely solid interior has no surface
@@ -699,7 +767,14 @@ namespace MadFall::ChunkMesher
 		if (Settings.bIsosurface)
 		{
 			const double IsoStart = FPlatformTime::Seconds();
-			BuildIsosurface(Grid, Materials, OutMesh);
+			if (bCoarse)
+			{
+				BuildIsosurface(*LodGrid, LodGrid->Points, LodGrid->Stride, Materials, OutMesh);
+			}
+			else
+			{
+				BuildIsosurface(Grid, MadFall::ChunkSize, 1, Materials, OutMesh);
+			}
 			OutMesh.IsosurfaceMilliseconds = (FPlatformTime::Seconds() - IsoStart) * 1000.0;
 		}
 

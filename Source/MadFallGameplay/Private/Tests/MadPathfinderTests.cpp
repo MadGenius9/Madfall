@@ -275,6 +275,58 @@ bool FMadUndermineTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadBreachTest,
+	"MadFall.AI.Breach",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadBreachTest::RunTest(const FString& Parameters)
+{
+	using namespace MadPathTests;
+	auto Get = [](const FWorld& World) { return [&World](const FIntVector& P) { return World.Get(P); }; };
+
+	// A survivor at (5,0) behind a concrete wall at x = 2, three high, walker at (1,0) against it.
+	FWorld World;
+	World.Wall(2, -8, 8, 3, Concrete);
+	const FIntVector Goal(5, 0, 0);
+	FIntVector Block;
+
+	TestTrue(TEXT("against the wall: break through it"),
+		MadFall::Pathfinding::FindBreachTarget(FIntVector(1, 0, 0), Goal, Get(World), &BreakSeconds, Block));
+	TestEqual(TEXT("straight toward the survivor, feet first"), Block, FIntVector(2, 0, 0));
+
+	// Once the feet voxel is gone, the head voxel of the same column.
+	World.Blocks.Remove(FIntVector(2, 0, 0));
+	TestTrue(TEXT("head next"), MadFall::Pathfinding::FindBreachTarget(FIntVector(1, 0, 0), Goal, Get(World), &BreakSeconds, Block));
+	TestEqual(TEXT("the same column's head voxel"), Block, FIntVector(2, 0, 1));
+	World.Blocks.Remove(FIntVector(2, 0, 1));
+	TestTrue(TEXT("with the column open, no breach needed straight ahead - a diagonal one may still be offered, but not the open column"),
+		!MadFall::Pathfinding::FindBreachTarget(FIntVector(1, 0, 0), Goal, Get(World), &BreakSeconds, Block) || Block.Y != 0);
+
+	// A much weaker panel beside the direct line is taken when it is still toward the goal.
+	{
+		FWorld Patched;
+		Patched.Wall(2, -8, 8, 3, Concrete);
+		Patched.Blocks.Add(FIntVector(2, 1, 0), Wood);
+		Patched.Blocks.Add(FIntVector(2, 1, 1), Wood);
+		TestTrue(TEXT("patched wall"), MadFall::Pathfinding::FindBreachTarget(FIntVector(1, 0, 0), FIntVector(6, 0, 0), Get(Patched), &BreakSeconds, Block));
+		TestEqual(TEXT("the direct column wins over a diagonal at similar cost - but here the diagonal is 45 degrees off, so direct concrete it is"), Block, FIntVector(2, 0, 0));
+	}
+
+	// Not toward the goal, in reach, or nothing breakable: no breach.
+	TestFalse(TEXT("a wall behind the walker is not a breach"),
+		MadFall::Pathfinding::FindBreachTarget(FIntVector(3, 0, 0), FIntVector(8, 0, 0), Get(World), &BreakSeconds, Block));
+	TestFalse(TEXT("in reach: the attack handles it"),
+		MadFall::Pathfinding::FindBreachTarget(FIntVector(1, 0, 0), FIntVector(2, 0, 0), Get(World), &BreakSeconds, Block));
+	{
+		FWorld Vault;
+		Vault.Wall(2, -8, 8, 3, Bedrock);
+		TestFalse(TEXT("bedrock cannot be breached"),
+			MadFall::Pathfinding::FindBreachTarget(FIntVector(1, 0, 0), Goal, Get(Vault), &BreakSeconds, Block));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMadPathClimbTest,
 	"MadFall.AI.Climbing",
 	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)

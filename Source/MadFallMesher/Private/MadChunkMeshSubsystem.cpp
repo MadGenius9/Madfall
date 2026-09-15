@@ -3,7 +3,9 @@
 #include "MadChunkMeshSubsystem.h"
 
 #include "MadFrameBudget.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/Actor.h"
 #include "HAL/IConsoleManager.h"
 #include "MadBlockRegistry.h"
@@ -79,6 +81,28 @@ namespace
 		TEXT("Released chunk mesh components kept registered for reuse."),
 		ECVF_Default);
 
+	/**
+	 * Chunks beyond this many (horizontally) mesh their terrain on every second
+	 * voxel, a quarter of the vertices. Measured at view distance 16: 3.45 M
+	 * resident triangles and meshing the largest share of the frame.
+	 *
+	 * 5 chunks is 160 m. Nearer, a coarse surface would show under a survivor's
+	 * feet and its collision would sit up to a voxel off the pathfinder's; a
+	 * zombie or animal farther than that is not something the survivor stands
+	 * next to.
+	 */
+	TAutoConsoleVariable<int32> CVarLodDistance(
+		TEXT("mad.mesh.LodDistance"),
+		5,
+		TEXT("Chunks farther than this (horizontally) mesh their terrain at half resolution. 0 or less turns detail levels off."),
+		ECVF_Default);
+
+	TAutoConsoleVariable<int32> CVarLod2Distance(
+		TEXT("mad.mesh.Lod2Distance"),
+		11,
+		TEXT("Chunks farther than this mesh their terrain at a quarter resolution."),
+		ECVF_Default);
+
 	const TCHAR* MeshActorName = TEXT("MadFallChunkMeshes");
 }
 
@@ -128,6 +152,7 @@ void UMadChunkMeshSubsystem::Deinitialize()
 	ComponentPool.Reset();
 	DirtyChunks.Reset();
 	InFlight.Reset();
+	MeshLods.Reset();
 
 	{
 		FScopeLock Lock(&CompletedLock);
@@ -195,6 +220,7 @@ void UMadChunkMeshSubsystem::MarkChunkDirty(const FMadChunkCoord& Coord)
 void UMadChunkMeshSubsystem::ReleaseChunk(const FMadChunkCoord& Coord)
 {
 	DirtyChunks.Remove(Coord);
+	MeshLods.Remove(Coord);
 
 	if (TObjectPtr<UMadChunkMeshComponent>* Found = Components.Find(Coord))
 	{
@@ -310,6 +336,8 @@ void UMadChunkMeshSubsystem::Tick(float DeltaTime)
 		}
 	};
 
+	UpdateLodCentre();
+
 	const int32 MaxLaunches = FMath::Max(CVarMaxJobLaunchesPerFrame.GetValueOnGameThread(), 1);
 	const int32 MaxInFlight = FMath::Max(CVarMaxJobsInFlight.GetValueOnGameThread(), 1);
 
@@ -343,6 +371,60 @@ void UMadChunkMeshSubsystem::Tick(float DeltaTime)
 	}
 }
 
+bool UMadChunkMeshSubsystem::GetViewerChunk(FIntPoint& OutChunk) const
+{
+	const UWorld* World = GetWorld();
+	const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+	if (Controller == nullptr || Controller->PlayerCameraManager == nullptr)
+	{
+		return false;
+	}
+	const FVector At = Controller->PlayerCameraManager->GetCameraLocation();
+	const double ChunkUU = MadFall::ChunkSize * MadFall::VoxelSizeUU;
+	OutChunk = FIntPoint(FMath::FloorToInt32(At.X / ChunkUU), FMath::FloorToInt32(At.Y / ChunkUU));
+	return true;
+}
+
+int32 UMadChunkMeshSubsystem::GetWantedLod(const FMadChunkCoord& Coord) const
+{
+	const int32 Lod1 = CVarLodDistance.GetValueOnGameThread();
+	if (Lod1 <= 0 || !bHasLodCentre)
+	{
+		return 0;
+	}
+	const int32 Distance = FMath::Max(FMath::Abs(Coord.X - LodCentre.X), FMath::Abs(Coord.Y - LodCentre.Y));
+	const uint8* Current = MeshLods.Find(Coord);
+	return MadFall::ChunkMesher::ChooseLod(Distance, Current ? *Current : -1, Lod1, FMath::Max(CVarLod2Distance.GetValueOnGameThread(), Lod1));
+}
+
+void UMadChunkMeshSubsystem::UpdateLodCentre()
+{
+	FIntPoint Viewer;
+	const bool bViewer = GetViewerChunk(Viewer);
+	const FIntVector Settings(CVarLodDistance.GetValueOnGameThread(), CVarLod2Distance.GetValueOnGameThread(), bViewer ? 1 : 0);
+	if (bViewer == bHasLodCentre && (!bViewer || Viewer == LodCentre) && Settings == LodSettings)
+	{
+		return;
+	}
+	bHasLodCentre = bViewer;
+	LodCentre = Viewer;
+	LodSettings = Settings;
+
+	// Only chunks with geometry can be at the wrong level: an empty chunk's
+	// level is decided when something is next built in it. One pass over the
+	// components when the viewer crosses into a new chunk column, measured
+	// in microseconds even at view distance 16.
+	for (const TPair<FMadChunkCoord, TObjectPtr<UMadChunkMeshComponent>>& Pair : Components)
+	{
+		const uint8* Current = MeshLods.Find(Pair.Key);
+		if (GetWantedLod(Pair.Key) != (Current ? *Current : 0))
+		{
+			MarkChunkDirty(Pair.Key);
+			++LodRebuilds;
+		}
+	}
+}
+
 void UMadChunkMeshSubsystem::LaunchMeshJob(const FMadChunkCoord& Coord)
 {
 	UMadVoxelWorldSubsystem* VoxelWorld = GetVoxelWorld();
@@ -371,18 +453,30 @@ void UMadChunkMeshSubsystem::LaunchMeshJob(const FMadChunkCoord& Coord)
 
 	InFlight.Add(Coord);
 
-	UE::Tasks::Launch(UE_SOURCE_LOCATION, [this, Sources]
+	// Decided at launch and remembered as the chunk's level, so the viewer moving
+	// while the job runs is caught by the next UpdateLodCentre pass.
+	const int32 Lod = GetWantedLod(Coord);
+	MeshLods.Add(Coord, static_cast<uint8>(Lod));
+
+	UE::Tasks::Launch(UE_SOURCE_LOCATION, [this, Sources, Lod]
 	{
 		TSharedPtr<FMadChunkSampleGrid, ESPMode::ThreadSafe> Grid = MakeShared<FMadChunkSampleGrid, ESPMode::ThreadSafe>();
 		UMadVoxelWorldSubsystem::SnapshotFromSources(*Sources, *Grid);
+		TUniquePtr<FMadLodSampleGrid> LodGrid;
+		if (Lod > 0)
+		{
+			LodGrid = MakeUnique<FMadLodSampleGrid>();
+			UMadVoxelWorldSubsystem::SnapshotLodFromSources(*Sources, 1 << Lod, *LodGrid);
+		}
 
 		FMadChunkMeshPtr Mesh = MakeShared<FMadChunkMesh, ESPMode::ThreadSafe>();
 
 		// The registry is immutable after load, so reading it from a worker
 		// needs no lock. The sample grid is this job's private copy.
 		MadFall::ChunkMesher::FMeshSettings Settings;
+		Settings.LodLevel = Lod;
 		MadFall::ChunkMesher::BuildChunkMesh(
-			*Grid, UMadVoxelWorldSubsystem::GetBlockRegistry(), Settings, *Mesh);
+			*Grid, LodGrid.Get(), UMadVoxelWorldSubsystem::GetBlockRegistry(), Settings, *Mesh);
 		// The component's vertex format, here rather than in the game-thread apply.
 		UMadChunkMeshComponent::Prepare(*Mesh);
 
@@ -710,6 +804,7 @@ bool UMadChunkMeshSubsystem::RebuildChunkNow(const FMadChunkCoord& Coord, FStrin
 		ReleaseChunk(Coord);
 		return true;
 	}
+	MeshLods.Add(Coord, 0);
 
 	UMadChunkMeshComponent* Component = GetOrCreateComponent(Coord);
 	if (Component == nullptr)
@@ -864,6 +959,15 @@ FString UMadChunkMeshSubsystem::DescribeStats() const
 	(void)GeometryBytes;
 
 	Builder.Appendf(TEXT("  resident geometry: %d verts, %d tris\n"), Vertices, Triangles);
+
+	int32 AtLevel[3] = { 0, 0, 0 };
+	for (const TPair<FMadChunkCoord, TObjectPtr<UMadChunkMeshComponent>>& Pair : Components)
+	{
+		const uint8* Level = MeshLods.Find(Pair.Key);
+		++AtLevel[FMath::Clamp(Level ? static_cast<int32>(*Level) : 0, 0, 2)];
+	}
+	Builder.Appendf(TEXT("  detail levels:     %d full, %d half, %d quarter; %d rebuilt for a level change\n"),
+		AtLevel[0], AtLevel[1], AtLevel[2], LodRebuilds);
 
 	return Builder.ToString();
 }

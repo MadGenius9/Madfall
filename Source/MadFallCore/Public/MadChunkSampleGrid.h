@@ -89,3 +89,93 @@ struct MADFALLCORE_API FMadChunkSampleGrid
 		return true;
 	}
 };
+
+/**
+ * Every Stride-th column of a chunk's voxels, plus one lattice step of margin
+ * on each side, for meshing a distant chunk's terrain at a lower level of
+ * detail.
+ *
+ * WHY ONLY HORIZONTALLY: terrain is mostly a heightfield, so its triangles grow
+ * with ground area and a horizontal stride of 2 already quarters them. A
+ * vertical stride too would move every flat surface by up to half a stride -
+ * water lying a voxel higher or lower in the distance showed a dark step along
+ * every detail-level boundary on the sea. Keeping all 34 layers keeps heights
+ * exact, cliffs sharp, and the seams between levels to the horizontal alone.
+ *
+ * WHY POINT SAMPLES AND NOT BLOCK AVERAGES: two neighbouring chunks at the same
+ * level must agree on every lattice point they share, or their surfaces part at
+ * the seam. Every chunk origin is a multiple of 32, so of any stride, and a
+ * point sample at a world-aligned voxel is the same number whichever chunk reads
+ * it. An average would agree too, but it smears the density ramp the vertex
+ * placement interpolates and costs Stride^3 reads per point.
+ *
+ * Index space runs -1..Points in X and Y, where lattice point i is voxel
+ * i * Stride (so the margin reaches Stride voxels into each neighbour), and
+ * -1..ChunkSize in Z, one per voxel as in the full grid.
+ */
+struct MADFALLCORE_API FMadLodSampleGrid
+{
+	FMadChunkCoord Coord;
+
+	/** 2, 4 or 8: voxels per horizontal lattice step. */
+	int32 Stride = 1;
+
+	/** Horizontal lattice steps across a chunk (ChunkSize / Stride). */
+	int32 Points = MadFall::ChunkSize;
+
+	/** Vertical layers, margin included. */
+	static constexpr int32 SizeZ = MadFall::ChunkSize + 2;
+
+	TArray<uint8> Density;
+	TArray<uint16> BlockId;
+	TArray<uint8> Flags;
+
+	void Init(int32 InStride)
+	{
+		check(InStride >= 1 && InStride <= MadFall::ChunkSize && MadFall::ChunkSize % InStride == 0);
+		Stride = InStride;
+		Points = MadFall::ChunkSize / Stride;
+		const int32 Count = GetSize() * GetSize() * SizeZ;
+		Density.SetNumZeroed(Count);
+		BlockId.SetNumZeroed(Count);
+		Flags.SetNumZeroed(Count);
+	}
+
+	FORCEINLINE int32 GetSize() const { return Points + 2; }
+
+	/** Grid index for a lattice point: X and Y in [-1, Points], Z in [-1, ChunkSize]. */
+	FORCEINLINE int32 Index(int32 X, int32 Y, int32 Z) const
+	{
+		checkSlow(X >= -1 && X <= Points && Y >= -1 && Y <= Points && Z >= -1 && Z <= MadFall::ChunkSize);
+		return (X + 1) + GetSize() * ((Y + 1) + GetSize() * (Z + 1));
+	}
+
+	FORCEINLINE uint8 GetDensity(int32 X, int32 Y, int32 Z) const { return Density[Index(X, Y, Z)]; }
+	FORCEINLINE uint16 GetBlockId(int32 X, int32 Y, int32 Z) const { return BlockId[Index(X, Y, Z)]; }
+	FORCEINLINE bool IsSolid(int32 X, int32 Y, int32 Z) const { return GetDensity(X, Y, Z) >= 128; }
+	FORCEINLINE bool IsCubic(int32 X, int32 Y, int32 Z) const
+	{
+		return (Flags[Index(X, Y, Z)] & static_cast<uint8>(EMadVoxelFlags::Cubic)) != 0;
+	}
+
+	/**
+	 * Fills every lattice point from a sampler over chunk-local voxel coordinates
+	 * (X and Y run from -Stride to ChunkSize + Stride, Z from -1 to ChunkSize). Tests use it directly; the
+	 * world's snapshot passes a sampler that reads the 27 neighbouring chunks.
+	 */
+	template <typename SamplerType>
+	void Fill(SamplerType&& Sample)
+	{
+		for (int32 Z = -1; Z <= MadFall::ChunkSize; ++Z)
+		{
+			for (int32 Y = -1; Y <= Points; ++Y)
+			{
+				for (int32 X = -1; X <= Points; ++X)
+				{
+					const int32 GridIndex = Index(X, Y, Z);
+					Sample(X * Stride, Y * Stride, Z, BlockId[GridIndex], Density[GridIndex], Flags[GridIndex]);
+				}
+			}
+		}
+	}
+};

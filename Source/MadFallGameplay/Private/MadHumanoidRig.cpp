@@ -2,6 +2,7 @@
 
 #include "MadHumanoidRig.h"
 
+#include "MadBasicShapes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
@@ -10,15 +11,15 @@
 
 namespace
 {
-	const TCHAR* CubeMesh = TEXT("/Engine/BasicShapes/Cube.Cube");
-	const TCHAR* TintMaterial = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
-	const TCHAR* CharacterMaterial = TEXT("/Game/Materials/M_MadCharacter.M_MadCharacter");
+	using MadFall::BasicShapes::CubeMesh;
+	using MadFall::BasicShapes::TintMaterial;
+	using MadFall::BasicShapes::CharacterMaterial;
 
 	/** Centimetres of stride per walk cycle. */
 	constexpr float StrideCm = 90.0f;
-	constexpr float AttackPoseSeconds = 0.45f;
-	constexpr float HitSeconds = 0.15f;
-	constexpr float DeathSeconds = 0.6f;
+	constexpr float HumanAttackPoseSeconds = 0.45f;
+	constexpr float HumanHitSeconds = 0.15f;
+	constexpr float HumanDeathSeconds = 0.6f;
 }
 
 FMadHumanoidPose MadFall::Humanoid::ComputePose(float Phase, float SpeedFactor, float Attack, float Death)
@@ -180,7 +181,7 @@ void UMadHumanoidRigComponent::PlayAttack()
 
 void UMadHumanoidRigComponent::PlayHit()
 {
-	HitFlash = HitSeconds;
+	HitFlash = HumanHitSeconds;
 	ApplyTint(1.0f);
 }
 
@@ -217,12 +218,12 @@ void UMadHumanoidRigComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	if (HitFlash > 0.0f)
 	{
 		HitFlash -= DeltaTime;
-		ApplyTint(HitFlash > 0.0f ? HitFlash / HitSeconds : 0.0f);
+		ApplyTint(HitFlash > 0.0f ? HitFlash / HumanHitSeconds : 0.0f);
 	}
-	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / AttackPoseSeconds);
+	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / HumanAttackPoseSeconds);
 	if (bDying)
 	{
-		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / DeathSeconds);
+		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / HumanDeathSeconds);
 	}
 
 	// Posing is cheap but not free across a horde, and nobody sees a zombie

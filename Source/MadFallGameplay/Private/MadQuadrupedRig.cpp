@@ -2,6 +2,7 @@
 
 #include "MadQuadrupedRig.h"
 
+#include "MadBasicShapes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
@@ -10,14 +11,14 @@
 
 namespace
 {
-	const TCHAR* CubeMesh = TEXT("/Engine/BasicShapes/Cube.Cube");
-	const TCHAR* TintMaterial = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
+	using MadFall::BasicShapes::CubeMesh;
+	using MadFall::BasicShapes::TintMaterial;
 	// Fur and eyes drawn like the humanoids' skin and faces (Scripts/make_character_material.py).
-	const TCHAR* CharacterMaterial = TEXT("/Game/Materials/M_MadCharacter.M_MadCharacter");
+	using MadFall::BasicShapes::CharacterMaterial;
 
-	constexpr float AttackPoseSeconds = 0.4f;
-	constexpr float HitSeconds = 0.15f;
-	constexpr float DeathSeconds = 0.5f;
+	constexpr float QuadAttackPoseSeconds = 0.4f;
+	constexpr float QuadHitSeconds = 0.15f;
+	constexpr float QuadDeathSeconds = 0.5f;
 }
 
 FMadQuadrupedPose MadFall::Quadruped::ComputePose(float Phase, float SpeedFactor, float Graze, float Attack, float Death)
@@ -190,7 +191,7 @@ void UMadQuadrupedRigComponent::PlayAttack()
 
 void UMadQuadrupedRigComponent::PlayHit()
 {
-	HitFlash = HitSeconds;
+	HitFlash = QuadHitSeconds;
 	ApplyTint(1.0f);
 }
 
@@ -226,13 +227,13 @@ void UMadQuadrupedRigComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	if (HitFlash > 0.0f)
 	{
 		HitFlash -= DeltaTime;
-		ApplyTint(HitFlash > 0.0f ? HitFlash / HitSeconds : 0.0f);
+		ApplyTint(HitFlash > 0.0f ? HitFlash / QuadHitSeconds : 0.0f);
 	}
-	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / AttackPoseSeconds);
+	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / QuadAttackPoseSeconds);
 	GrazeAmount = FMath::FInterpConstantTo(GrazeAmount, bGrazing ? 1.0f : 0.0f, DeltaTime, 1.5f);
 	if (bDying)
 	{
-		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / DeathSeconds);
+		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / QuadDeathSeconds);
 	}
 
 	if (!bDying && GetOwner() != nullptr && !GetOwner()->WasRecentlyRendered(0.25f))

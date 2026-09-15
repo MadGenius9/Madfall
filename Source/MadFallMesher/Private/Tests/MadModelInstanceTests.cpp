@@ -283,6 +283,7 @@ bool FMadShippedModelsTest::RunTest(const FString& Parameters)
 	// cube with a warning - easy to ship unnoticed, so the shipped (and
 	// installed mods') model blocks must all name a mesh that loads.
 	int32 Models = 0;
+	int32 SurfaceSlots = 0;
 	for (const FMadBlockEntry& Entry : UMadVoxelWorldSubsystem::GetBlockRegistry().GetEntries())
 	{
 		const FMadBlockDefinitionData& Def = Entry.Definition;
@@ -294,8 +295,19 @@ bool FMadShippedModelsTest::RunTest(const FString& Parameters)
 		TestFalse(FString::Printf(TEXT("%s names a render.mesh"), *Def.Id.ToString()), Def.Mesh.IsNull());
 		if (!Def.Mesh.IsNull())
 		{
-			TestNotNull(FString::Printf(TEXT("%s mesh '%s' loads as a static mesh"), *Def.Id.ToString(), *Def.Mesh.ToString()),
-				Cast<UStaticMesh>(Def.Mesh.TryLoad()));
+			const UStaticMesh* Mesh = Cast<UStaticMesh>(Def.Mesh.TryLoad());
+			TestNotNull(FString::Printf(TEXT("%s mesh '%s' loads as a static mesh"), *Def.Id.ToString(), *Def.Mesh.ToString()), Mesh);
+			// A slot that looks like a surface class but is not one (a typo, a
+			// renamed surface) silently keeps the mesh's preview material.
+			for (const FStaticMaterial& Slot : Mesh ? Mesh->GetStaticMaterials() : TArray<FStaticMaterial>())
+			{
+				if (Slot.MaterialSlotName.ToString().Contains(TEXT(":")))
+				{
+					TestFalse(FString::Printf(TEXT("%s slot '%s' names a known surface"), *Def.Id.ToString(), *Slot.MaterialSlotName.ToString()),
+						MadFall::Models::GetSlotSurface(Slot.MaterialSlotName).IsNone());
+					++SurfaceSlots;
+				}
+			}
 		}
 		if (!Def.Material.IsNull())
 		{
@@ -305,7 +317,10 @@ bool FMadShippedModelsTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("the shipped storage barrel is a model block"),
 		UMadVoxelWorldSubsystem::GetBlockRegistry().GetBlockViewById(FName(TEXT("madfall:storage_barrel"))).ShapeKind == EMadBlockShapeKind::Model);
-	AddInfo(FString::Printf(TEXT("%d model blocks checked"), Models));
+	TestTrue(TEXT("the hand-built props draw their parts' surfaces"), SurfaceSlots >= 12);
+	TestEqual(TEXT("a slot named after a surface resolves"), MadFall::Models::GetSlotSurface(FName(TEXT("madfall:stone"))), FName(TEXT("madfall:stone")));
+	TestTrue(TEXT("any other slot name does not"), MadFall::Models::GetSlotSurface(FName(TEXT("Material_0"))).IsNone());
+	AddInfo(FString::Printf(TEXT("%d model blocks checked, %d surface slots"), Models, SurfaceSlots));
 	return true;
 }
 

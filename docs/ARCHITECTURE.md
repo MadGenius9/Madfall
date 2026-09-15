@@ -377,8 +377,8 @@ blocks take no damage — removing a mod must not make a base destructible.
 
 #### Falling debris
 
-Collapsed voxels are grouped into 6-connected clusters that fall as rigid pieces
-straight down on the grid (semi-implicit Euler, 1 voxel = 1 m, landing speed
+Collapsed voxels are grouped into 6-connected clusters that fall straight down on
+the grid (columns over open air shear off a landing cluster and fall on; gap 9) (semi-implicit Euler, 1 voxel = 1 m, landing speed
 rewound to the exact contact). On landing, `½mv²` is split over every bottom face
 resting on something and dealt as `madfall:crush` damage at
 `mad.debris.DamagePerKJ` (10 HP/kJ: one 1800 kg block dropped a storey is ~700 HP,
@@ -871,7 +871,8 @@ around them.
 
 Tests: `MadFall.Mesher.ModelBlocks` (faces around a model voxel),
 `MadFall.Mesher.ModelInstances` (transforms, collection, removal),
-`MadFall.Mesher.ShippedModels` (every installed model block's mesh loads). CI
+`MadFall.Mesher.ShippedModels` (every installed model block's mesh loads, and
+its surface-named slots resolve). CI
 gate 9 places a barrel and requires `mad.models.stats` to count its instance.
 
 ### World scatter
@@ -1107,6 +1108,26 @@ Step 3 of making the game look more three-dimensional without new art.
   Tried and dropped: a ladder (free-standing, not wall-mounted), a fern and a
   sorrel shrub (at block scale a flat cluster and a few blades; the box shapes
   read better as a berry bush and a potato plant).
+- **Hand-built props.** The campfire (a stone ring, an ash bed and a teepee of
+  logs), torch (a tapered stick in a cairn, its head bound in cloth), plank
+  door (horizontal planks, battens, a brace and iron hinges; the open door is
+  the same mesh swung onto its side), bedroll (mat, folded blanket, strapped
+  pillow roll) and wall ladder were scaled engine cubes and cylinders. No free
+  scan fit at one voxel, so `Scripts/build_prop_meshes.py` builds them from
+  Geometry Script primitives (`/Game/Models/Props`, 150-800 triangles each;
+  the plugin is enabled for the editor target only). Each part's material slot
+  is named after a surface class, and `UMadModelInstanceSubsystem::ApplyMaterials`
+  gives every such slot that surface's held-space material
+  (`MadFall::Models::GetSlotSurface`), so a prop needs no UVs or textures of
+  its own and follows the surfaces - a modded stone texture reaches the
+  campfire's stones. A block's `render.material` still wins, which is how the
+  scanned models keep theirs; surface materials are cached per surface, so the
+  campfire and a stone block's barrel share instances. The torch's light moved
+  up to 0.3 voxel: its cloth head sat between the light and the floor and threw
+  a shadow disc a metre across. Door planks run horizontally because the wood
+  texture's boards do; vertical planks under horizontal boards read as a grid.
+  `MadFall.Mesher.ShippedModels` requires every slot that looks like a surface
+  class (contains `:`) to name a known one.
 
 **Menus and HUD are styled.** The menus use rounded dark panels with a faint
 outline, buttons that light up in the accent colour (`FMadMenuStyle`, no
@@ -1905,6 +1926,24 @@ Console (used by the survival gate): `mad.player.store <item>`,
    broke 2 blocks, the pillar's top collapsed, and the survivor dropped 3 voxels
    into reach. Tests: `MadFall.AI.Undermine`; the zombie gate stands the survivor
    on a pillar (`mad.player.pillar`) and checks they come down.
+
+   **FIXED: a sealed base kept the horde out.** Measured with a 13 x 13 hollow
+   concrete shell around the survivor (`mad.voxel.box ... hollow`) and nineteen
+   horde zombies outside: 2,574 paths and 8 block hits in two minutes, nobody
+   inside. `FindPath` allows digging, but at `DigCostPerSecond` a concrete wall
+   costs as much as a long walk, and on open ground the 1,500-node budget ran
+   out exploring detours before the path through the wall was ever cheapest;
+   the best partial path ended at the wall and the zombies stood there
+   re-planning. *Breaching:* when no path reaches the target, undermining does
+   not apply, and the zombie is already where its partial path ends,
+   `MadFall::Pathfinding::FindBreachTarget` picks the block to break among the
+   eight columns within 60 degrees of the target - the most direct column
+   unless a similarly direct one is quicker, feet voxel before head - and it
+   breaks it as a standing step. The same shell with breaching: 41 breaches and
+   274 block hits, survivor reached inside 80 s. Structural jobs under that
+   load: 23 completed, 0 restarted - the "edited every frame" starvation below
+   did not appear, since damage stages change only every few hits. Tests:
+   `MadFall.AI.Breach`; a CI gate ("horde breach") runs the shell.
 6. **Stress is a readout, not shading.** The HUD shows the targeted block's load
    ("load 72%", green to red, "FAILING") from
    `UMadStructuralSubsystem::QueryStress`: a separate probe job on its own
@@ -1951,14 +1990,26 @@ Console (used by the survival gate): `mad.player.store <item>`,
    to the member's report).
 7. **A structure edited every frame can starve its own job** (restarted each
    time it is touched). A warning logs after 8 consecutive restarts. Incremental
-   repair of a finished solve is the fix if horde nights show it.
+   repair of a finished solve is the fix if horde nights show it. Measured once
+   a horde could breach a base (a 531-block shell, 274 block hits in 80 s): 23
+   jobs, none restarted, 6.7 ms total - not a problem at that scale.
 8. **A structure is re-checked once per chunk it spans.** Load seeding (below)
    seeds every member of each arriving chunk, so a POI across four chunks is
    solved up to four times as they stream in. Each solve is time-sliced and a
    tier-1 POI is ~0.1 ms, but a very large player base loading in pieces pays
    the gather repeatedly.
-9. **Debris falls rigidly.** A cluster lands as a unit on its first contact, so a
-   long beam that clips a post hangs off it rather than pivoting.
+9. **FIXED: debris fell rigidly.** A cluster landed as a unit on its first
+   contact, so a long beam that clipped a post hung off it in mid-air.
+   `MadFall::Debris::SplitUnsupported` now splits a landing cluster by (x, y)
+   column: columns whose lowest block rests on something land, the rest shear
+   off as a new cluster that keeps the drop and speed and falls on (with its own
+   visual, and without re-hitting pawns the whole piece already hit). A slab on
+   uneven ground settles column by column. Tradeoff: nothing pivots or cantilevers
+   - an overhang attached to the part that landed still breaks off - because a
+   rigid-body solve is exactly what the kinematic model avoids, and rubble does
+   not hold overhangs anyway. `Debris: ... N sheared off` in `mad.debris.status`.
+   Tested: `MadFall.Structural.Debris` (a 7-block beam over a post lands one
+   block; six fall on to the ground; a flat landing does not split).
 11. **FIXED: falling through ground that has not loaded.** Spawning and travel
    wait for the chunks around the survivor, but a raw teleport or a fall out
    ahead of streaming dropped them through chunks with no collision yet -
@@ -2108,9 +2159,48 @@ there are textures and meshes to work with. What is there instead:
    capture from a real editor viewport rather than `-game`, and test a cooked
    build. Geometry is unaffected; the mesher is verified by its automation
    tests, not by these screenshots.
-2. **No LOD.** The `LodLevel` field exists and is plumbed through; only level 0
-   is generated. Four levels with seam stitching are still to do, and stitching
-   between differing levels is the hard part.
+2. **FIXED: no LOD.** Measured first: at view distance 16 the loaded chunks held
+   3.45 M triangles (0.89 M at the default 8), with meshing the largest share of
+   the frame. Chunks now mesh their terrain at three levels by horizontal chunk
+   distance from the camera: full detail within `mad.mesh.LodDistance` (5
+   chunks, 160 m), every second voxel column within `mad.mesh.Lod2Distance`
+   (11), every fourth beyond. `FMadLodSampleGrid` (Core) holds the coarse
+   lattice, copied on the worker by `SnapshotLodFromSources`, and the Surface
+   Nets pass is one template over either grid.
+   - **Horizontal stride only.** Every one of the 34 layers is kept. A vertical
+     stride too moved every flat surface by up to half a stride: the sea showed
+     a dark square step along each level boundary from a hilltop. Terrain is a
+     heightfield, so its triangles scale with ground area and the horizontal
+     stride alone gives most of the saving. Normals divide the gradient by the
+     cell's width, or every slope would light as if flatter.
+   - **Point samples on world-aligned columns**, so two chunks at one level
+     agree on every shared point and meet exactly, like two full chunks.
+   - **Seams between levels without stitching.** A full chunk's surface ends
+     within half a voxel of its boundary; a coarse chunk's ends anywhere in its
+     2-4 voxel boundary cells, and the ground showed pinholes along the seam. A
+     coarse chunk's outer rows of vertices are pulled half a voxel past its X/Y
+     boundaries, so it always overlaps the finer surface it meets (a column of
+     chunks is one level, so Z needs nothing). Cost: up to a coarse step of
+     sideways shift at a distant seam, where overlap reads better than a hole.
+   - **Hysteresis.** Finer detail is taken at once; coarser only one chunk past
+     the boundary (`MadFall::ChunkMesher::ChooseLod`), so pacing across a
+     boundary does not remesh its ring every time. The viewer's chunk column is
+     checked each tick; on a change one pass over the components marks those at
+     the wrong level dirty. Empty chunks take their level when next built.
+   - **Placed blocks stay full detail** in every chunk: a distant building is a
+     few hundred merged faces, and a coarse one would lose one-voxel walls.
+   - **Collision** follows the mesh, so beyond 160 m the ground a zombie or
+     animal walks on can sit up to a voxel off the pathfinder's; nothing the
+     survivor stands beside is that far.
+
+   Result (same spawn, 60 s): view distance 8, 892 k → 588 k triangles, mean
+   apply 0.44 → 0.34 ms; view distance 16, 3.45 M → 1.21 M triangles, mean
+   worker build 0.89 → 0.43 ms, mean apply 0.52 → 0.32 ms, meshing frames over
+   2 ms 23 → 1. `mad.mesh.stats` reports the level mix and level-change
+   rebuilds. Tested: `MadFall.Mesher.Lod` (level choice and its band; a flat
+   surface at the same height at every level; heights within 1 and 2 voxels;
+   ground coverage with no holes across full|half|half|quarter and
+   quarter|half|full|full rows of chunks).
 3. **FIXED (Phase 5): meshing broke the 2 ms rule while streaming.** Measured
    honestly for the first time (whole-frame publish + launch, not just the
    apply call), a rendered session teleporting across the world had **193 of

@@ -435,10 +435,10 @@ int32 UMadHordeSubsystem::KillAll()
 FString UMadHordeSubsystem::DescribeStatus() const
 {
 	FString Out = FString::Printf(TEXT("Zombies: %d alive (cap %d), %lld spawned total; horde %s (%d/%d)\n")
-		TEXT("  lifetime: %d paths, %d block hits, %d player hits, %d kills, %d undermines, %d spits, %d screams, %d trap hits, %d climbed, %d dug down"),
+		TEXT("  lifetime: %d paths, %d block hits, %d player hits, %d kills, %d undermines, %d breaches, %d spits, %d screams, %d trap hits, %d climbed, %d dug down"),
 		NumAlive(), CVarMaxZombies.GetValueOnGameThread(), TotalSpawned,
 		bHordeActive ? TEXT("ACTIVE") : TEXT("inactive"), HordeSpawned, HordeTarget,
-		AMadZombie::TotalPaths, AMadZombie::TotalBlocksHit, AMadZombie::TotalPlayerHits, AMadZombie::TotalKills, AMadZombie::TotalUndermines, AMadZombie::TotalSpits, AMadZombie::TotalScreams, MadFall::Traps::TotalHits(), AMadZombie::TotalClimbs, AMadZombie::TotalDigDowns);
+		AMadZombie::TotalPaths, AMadZombie::TotalBlocksHit, AMadZombie::TotalPlayerHits, AMadZombie::TotalKills, AMadZombie::TotalUndermines, AMadZombie::TotalBreaches, AMadZombie::TotalSpits, AMadZombie::TotalScreams, MadFall::Traps::TotalHits(), AMadZombie::TotalClimbs, AMadZombie::TotalDigDowns);
 
 	int32 Listed = 0;
 	for (const TWeakObjectPtr<AMadZombie>& Zombie : Alive)

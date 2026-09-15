@@ -5,7 +5,7 @@
 		"display_name": "@blocks.wood_door",
 		"tags": ["block.building", "block.door", "block.wood"],
 		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "box", "occludes_neighbors": false },
-		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "scale": [0.12, 1.0, 1.0] },
+		"render": { "mesh": "/Game/Models/Props/SM_Door.SM_Door", "offset": [0.0, 0.0, -0.5] },
 		"material": {
 			"class": "madfall:wood",
 			"mass_kg": 40.0,
@@ -25,7 +25,7 @@
 		"display_name": "@blocks.wood_door_open",
 		"tags": ["block.door", "block.wood"],
 		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "none", "occludes_neighbors": false },
-		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, -0.44, 0.0], "scale": [1.0, 0.12, 1.0] },
+		"render": { "mesh": "/Game/Models/Props/SM_DoorOpen.SM_DoorOpen", "offset": [0.0, 0.0, -0.5] },
 		"interact": { "toggle_to": "madfall:wood_door" }
 	},
 	{
@@ -34,7 +34,7 @@
 		"display_name": "@blocks.ladder",
 		"tags": ["block.building", "block.wood"],
 		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "none", "occludes_neighbors": false },
-		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.45, 0.0, 0.0], "scale": [0.06, 0.8, 1.0] },
+		"render": { "mesh": "/Game/Models/Props/SM_Ladder.SM_Ladder", "offset": [0.0, 0.0, -0.5] },
 		"material": {
 			"class": "madfall:wood",
 			"mass_kg": 10.0,
@@ -51,7 +51,7 @@
 		"display_name": "@blocks.bedroll",
 		"tags": ["block.building", "block.bed"],
 		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "collision": "box", "occludes_neighbors": false },
-		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, 0.0, -0.44], "scale": [1.0, 0.7, 0.12] },
+		"render": { "mesh": "/Game/Models/Props/SM_Bedroll.SM_Bedroll", "offset": [0.0, 0.0, -0.5] },
 		"material": {
 			"class": "madfall:cloth",
 			"mass_kg": 5.0,
@@ -70,9 +70,8 @@
 		"tags": ["block.building", "block.station", "station.campfire", "block.light"],
 		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "collision": "box", "occludes_neighbors": false },
 		"render": {
-			"mesh": "/Engine/BasicShapes/Cylinder.Cylinder",
-			"offset": [0.0, 0.0, -0.4],
-			"scale": [0.8, 0.8, 0.2],
+			"mesh": "/Game/Models/Props/SM_Campfire.SM_Campfire",
+			"offset": [0.0, 0.0, -0.5],
 			"light": { "color": [1.0, 0.72, 0.46], "lumens": 140, "radius": 10, "offset": [0.0, 0.0, -0.1], "flame": 2.2 }
 		},
 		"material": {

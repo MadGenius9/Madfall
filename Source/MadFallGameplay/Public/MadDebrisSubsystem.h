@@ -21,6 +21,8 @@ struct MADFALLGAMEPLAY_API FMadDebrisStats
 	int64 BlocksFallen = 0;
 	int64 Impacts = 0;
 	int64 RubblePlaced = 0;
+	/** Clusters that broke off a landing one over open air and fell on. */
+	int64 ClustersSheared = 0;
 	/** Rubble not written because a pawn stood in its voxel; the block drops as salvage instead. */
 	int64 RubbleSparedPawns = 0;
 	int64 PawnHits = 0;
@@ -80,6 +82,9 @@ private:
 	};
 
 	void HandleCollapse(const TArray<FMadStructuralFailureRecord>& Failures);
+
+	/** Adds a cluster that sheared off a landing one, still falling, with its own visual. */
+	void KeepFalling(FMadDebrisCluster&& Cluster, TArray<TWeakObjectPtr<AActor>> HitPawns);
 
 	/** Voices a strained member: a creak in its surface's impact kind, louder the nearer it is to failing. */
 	void HandleStrain(const FMadStressSample& Member, const FMadVoxel& Voxel);

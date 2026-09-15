@@ -1180,6 +1180,56 @@ void UMadVoxelWorldSubsystem::SnapshotFromSources(const FSnapshotSources& Source
 	}
 }
 
+void UMadVoxelWorldSubsystem::SnapshotLodFromSources(const FSnapshotSources& Sources, int32 Stride, FMadLodSampleGrid& OutGrid)
+{
+	OutGrid.Coord = Sources.Coord;
+	OutGrid.Init(Stride);
+	const auto& Neighbours = Sources.Chunks;
+
+	TArray<FMadChunkPtr, TInlineAllocator<27>> Locked;
+	for (int32 dz = 0; dz < 3; ++dz)
+	{
+		for (int32 dy = 0; dy < 3; ++dy)
+		{
+			for (int32 dx = 0; dx < 3; ++dx)
+			{
+				if (Neighbours[dx][dy][dz].IsValid())
+				{
+					Neighbours[dx][dy][dz]->Lock.ReadLock();
+					Locked.Add(Neighbours[dx][dy][dz]);
+				}
+			}
+		}
+	}
+	ON_SCOPE_EXIT
+	{
+		for (const FMadChunkPtr& Chunk : Locked)
+		{
+			Chunk->Lock.ReadUnlock();
+		}
+	};
+
+	using MadFall::ChunkSize;
+	OutGrid.Fill([&Neighbours](int32 X, int32 Y, int32 Z, uint16& OutBlock, uint8& OutDensity, uint8& OutFlags)
+	{
+		const int32 nx = (X < 0) ? 0 : (X >= ChunkSize ? 2 : 1);
+		const int32 ny = (Y < 0) ? 0 : (Y >= ChunkSize ? 2 : 1);
+		const int32 nz = (Z < 0) ? 0 : (Z >= ChunkSize ? 2 : 1);
+		const FMadChunkPtr& Source = Neighbours[nx][ny][nz];
+		if (!Source.IsValid())
+		{
+			// Unloaded reads as air, as in the full snapshot.
+			OutBlock = MadFall::BlockTypeAir;
+			OutDensity = 0;
+			OutFlags = 0;
+			return;
+		}
+		Source->Storage.GetMeshSample(
+			MadFall::VoxelIndex(MadFall::FloorMod(X, ChunkSize), MadFall::FloorMod(Y, ChunkSize), MadFall::FloorMod(Z, ChunkSize)),
+			OutBlock, OutDensity, OutFlags);
+	});
+}
+
 FString UMadVoxelWorldSubsystem::DescribeWorld() const
 {
 	TStringBuilder<1024> Builder;

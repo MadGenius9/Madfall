@@ -256,7 +256,13 @@ kg, speeds in m/s, time in seconds, temperatures in °C.
   100 uu mesh with a centred pivot on the floor) and `render.scale` resizes it
   (1 fits a 100 uu mesh to the voxel). Without `render.material` the mesh is
   drawn with its surface's colour and `pattern`, projected from the mesh's own
-  space as if it were one voxel (so a 100 uu mesh gets 16 texels a side). The mesh is also the collision; the voxel
+  space as if it were one voxel (so a 100 uu mesh gets 16 texels a side).
+  A mesh made of several materials can instead name each material slot after a
+  surface class (`madfall:stone`, `mymod:brass`): every slot so named is drawn
+  with that surface's texture in the mesh's own space, no UVs needed, and slots
+  with other names keep the mesh's own material (`render.material`, if set,
+  still replaces slot 0 and turns this off). The shipped campfire, torch, door,
+  bedroll and ladder work this way (`Scripts/build_prop_meshes.py`). The mesh is also the collision; the voxel
   still carries weight, damage, drops and tags, so a model block can be a
   container, a station or part of a structure. Neighbouring blocks never hide
   faces behind a model block. Example: `madfall:storage_barrel`.

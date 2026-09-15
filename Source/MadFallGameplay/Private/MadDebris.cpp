@@ -136,6 +136,68 @@ namespace MadFall::Debris
 		return false;
 	}
 
+	namespace
+	{
+		/** Recomputes a cluster's mass and bottom blocks after its block list changed. */
+		void RebuildClusterDerived(FMadDebrisCluster& Cluster)
+		{
+			TSet<FIntVector> Members;
+			Cluster.MassKg = 0.0f;
+			for (const FMadDebrisBlock& Block : Cluster.Blocks)
+			{
+				Members.Add(Block.Position);
+				Cluster.MassKg += Block.MassKg;
+			}
+			Cluster.BottomBlocks.Reset();
+			for (int32 Index = 0; Index < Cluster.Blocks.Num(); ++Index)
+			{
+				if (!Members.Contains(Cluster.Blocks[Index].Position - FIntVector(0, 0, 1)))
+				{
+					Cluster.BottomBlocks.Add(Index);
+				}
+			}
+		}
+	}
+
+	FMadDebrisCluster SplitUnsupported(FMadDebrisCluster& Landed, TFunctionRef<bool(const FIntVector&)> IsFree)
+	{
+		FMadDebrisCluster Rest;
+		TSet<FIntPoint> Resting;
+		for (int32 Bottom : Landed.BottomBlocks)
+		{
+			const FIntVector Below = Landed.GetLandedPosition(Bottom) - FIntVector(0, 0, 1);
+			if (!IsFree(Below))
+			{
+				Resting.Add(FIntPoint(Below.X, Below.Y));
+			}
+		}
+		// Nothing rests (the MaxDrop cap) or everything does: no split.
+		if (Resting.Num() == 0)
+		{
+			return Rest;
+		}
+
+		TArray<FMadDebrisBlock> Kept;
+		for (const FMadDebrisBlock& Block : Landed.Blocks)
+		{
+			(Resting.Contains(FIntPoint(Block.Position.X, Block.Position.Y)) ? Kept : Rest.Blocks).Add(Block);
+		}
+		if (Rest.Blocks.Num() == 0)
+		{
+			return Rest;
+		}
+
+		Landed.Blocks = MoveTemp(Kept);
+		RebuildClusterDerived(Landed);
+
+		Rest.Dropped = Landed.Dropped;
+		Rest.FallDistance = Landed.FallDistance;
+		Rest.Velocity = Landed.Velocity;
+		Rest.bLanded = false;
+		RebuildClusterDerived(Rest);
+		return Rest;
+	}
+
 	void AdvanceToLanding(FMadDebrisCluster& Cluster, TFunctionRef<bool(const FIntVector&)> IsFree, int32 MaxDrop)
 	{
 		constexpr float Step = 1.0f / 60.0f;

@@ -55,6 +55,11 @@ namespace
 // Pure helpers
 // ===========================================================================
 
+FName MadFall::Models::GetSlotSurface(FName SlotName)
+{
+	return !SlotName.IsNone() && MadFall::GetSurfaces().Find(SlotName) != nullptr ? SlotName : NAME_None;
+}
+
 FTransform MadFall::Models::MakeTransform(const FIntVector& WorldVoxel, uint8 Rotation, const FVector& OffsetVoxels, const FVector& Scale)
 {
 	const uint8 Orientation = static_cast<uint8>(Rotation & 0x1F) < MadFall::Orientation::Count ? static_cast<uint8>(Rotation & 0x1F) : 0;
@@ -335,7 +340,7 @@ void UMadModelInstanceSubsystem::RebuildChunk(const FMadChunkCoord& Coord)
 			const FMadBlockDefinitionData* Def = UMadVoxelWorldSubsystem::GetBlockRegistry().FindDefinition(Pair.Key);
 			Component = NewObject<UInstancedStaticMeshComponent>(Actor, NAME_None, RF_Transient);
 			Component->SetStaticMesh(GetMesh(Pair.Key));
-			Component->SetMaterial(0, GetMaterial(Pair.Key));
+			ApplyMaterials(Component, Pair.Key);
 			Component->SetMobility(EComponentMobility::Static);
 			Component->SetCastShadow(Def == nullptr || Def->bCastShadow);
 			// The instance is the model's collision: the chunk mesh has no faces
@@ -505,11 +510,50 @@ UMaterialInterface* UMadModelInstanceSubsystem::GetMaterial(uint16 BlockId)
 
 	if (Material == nullptr)
 	{
-		// No material of its own: the surface's photo texture when it has one, in
-		// the mesh's own space so it does not slide over the model, taking the
-		// weather like the ground around it.
-		Material = MadFall::SurfaceMaterials::MakeHeld(this, Def ? Def->MaterialClass : NAME_None, 1.0f);
+		Material = GetSurfaceMaterial(Def ? Def->MaterialClass : NAME_None);
 	}
+
+	Materials.Add(BlockId, Material);
+	return Material;
+}
+
+void UMadModelInstanceSubsystem::ApplyMaterials(UInstancedStaticMeshComponent* Component, uint16 BlockId)
+{
+	const FMadBlockDefinitionData* Def = UMadVoxelWorldSubsystem::GetBlockRegistry().FindDefinition(BlockId);
+	const UStaticMesh* Mesh = Component->GetStaticMesh();
+	if (Def != nullptr && Def->Material.IsNull() && Mesh != nullptr)
+	{
+		// Slots not named after a surface keep the mesh's own material. A block's
+		// render.material still wins: it is how a scanned model keeps its textures.
+		bool bAnySurface = false;
+		const TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
+		for (int32 Slot = 0; Slot < Slots.Num(); ++Slot)
+		{
+			const FName Surface = MadFall::Models::GetSlotSurface(Slots[Slot].MaterialSlotName);
+			if (!Surface.IsNone())
+			{
+				Component->SetMaterial(Slot, GetSurfaceMaterial(Surface));
+				bAnySurface = true;
+			}
+		}
+		if (bAnySurface)
+		{
+			return;
+		}
+	}
+	Component->SetMaterial(0, GetMaterial(BlockId));
+}
+
+UMaterialInterface* UMadModelInstanceSubsystem::GetSurfaceMaterial(FName MaterialClass)
+{
+	if (const TObjectPtr<UMaterialInterface>* Cached = SurfaceMaterials.Find(MaterialClass))
+	{
+		return *Cached;
+	}
+
+	// The surface's photo texture when it has one, in the mesh's own space so it
+	// does not slide over the model, taking the weather like the ground around it.
+	UMaterialInterface* Material = MadFall::SurfaceMaterials::MakeHeld(this, MaterialClass, 1.0f);
 
 	if (Material == nullptr)
 	{
@@ -518,7 +562,7 @@ UMaterialInterface* UMadModelInstanceSubsystem::GetMaterial(uint16 BlockId)
 		// so a wooden barrel has planks and a bush has leaves. A flat tint read as
 		// a placeholder next to patterned blocks. The engine's tinted material
 		// remains the fallback without the asset.
-		const FColor Color = MadFall::GetSurfaces().GetVertexColor(Def ? Def->MaterialClass : NAME_None);
+		const FColor Color = MadFall::GetSurfaces().GetVertexColor(MaterialClass);
 		// GetVertexColor stores linear values in bytes; read them back as linear.
 		const FLinearColor Linear(Color.R / 255.0f, Color.G / 255.0f, Color.B / 255.0f, 1.0f);
 		if (UMaterialInterface* Pattern = LoadObject<UMaterialInterface>(nullptr, PatternMaterialPath))
@@ -536,7 +580,7 @@ UMaterialInterface* UMadModelInstanceSubsystem::GetMaterial(uint16 BlockId)
 		}
 	}
 
-	Materials.Add(BlockId, Material);
+	SurfaceMaterials.Add(MaterialClass, Material);
 	return Material;
 }
 

@@ -2,6 +2,7 @@
 
 #include "MadViewModel.h"
 
+#include "MadBasicShapes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
@@ -15,9 +16,9 @@
 
 namespace
 {
-	const TCHAR* CubeMesh = TEXT("/Engine/BasicShapes/Cube.Cube");
-	const TCHAR* CylinderMesh = TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
-	const TCHAR* TintMaterial = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
+	using MadFall::BasicShapes::CubeMesh;
+	using MadFall::BasicShapes::CylinderMesh;
+	using MadFall::BasicShapes::TintMaterial;
 	const TCHAR* HeldBlockMaterial = TEXT("/Game/Materials/M_MadVoxelHeld.M_MadVoxelHeld");
 
 	constexpr float SwingSeconds = 0.28f;
@@ -27,10 +28,10 @@ namespace
 	const FVector RestLocation(46.0, 24.0, -27.0);
 	const FRotator RestRotation(8.0, -18.0, -6.0);
 
-	const FLinearColor Wood(0.09f, 0.05f, 0.025f);
-	const FLinearColor Iron(0.12f, 0.12f, 0.13f);
-	const FLinearColor Stone(0.18f, 0.18f, 0.17f);
-	const FLinearColor Skin(0.45f, 0.28f, 0.2f);
+	const FLinearColor HeldWood(0.09f, 0.05f, 0.025f);
+	const FLinearColor HeldIron(0.12f, 0.12f, 0.13f);
+	const FLinearColor HeldStone(0.18f, 0.18f, 0.17f);
+	const FLinearColor HeldSkin(0.45f, 0.28f, 0.2f);
 
 	FLinearColor ColourFromId(FName Id)
 	{
@@ -174,7 +175,7 @@ void UMadViewModelComponent::Rebuild()
 
 	// Stone tools have stone heads; anything else metal.
 	const bool bStoneTool = HeldItem.ToString().Contains(TEXT("stone"));
-	const FLinearColor Head = bStoneTool ? Stone : Iron;
+	const FLinearColor Head = bStoneTool ? HeldStone : HeldIron;
 
 	switch (Shape)
 	{
@@ -204,31 +205,31 @@ void UMadViewModelComponent::Rebuild()
 		break;
 	}
 	case EMadHeldShape::Pickaxe:
-		AddPart(CylinderMesh, FVector(0.0, 0.0, 16.0), FVector(3.5, 3.5, 46.0), Wood);
+		AddPart(CylinderMesh, FVector(0.0, 0.0, 16.0), FVector(3.5, 3.5, 46.0), HeldWood);
 		AddPart(CubeMesh, FVector(3.0, 0.0, 38.0), FVector(30.0, 4.0, 4.5), Head, FRotator(-8.0, 0.0, 0.0));
 		break;
 	case EMadHeldShape::Axe:
-		AddPart(CylinderMesh, FVector(0.0, 0.0, 16.0), FVector(3.5, 3.5, 46.0), Wood);
+		AddPart(CylinderMesh, FVector(0.0, 0.0, 16.0), FVector(3.5, 3.5, 46.0), HeldWood);
 		AddPart(CubeMesh, FVector(7.0, 0.0, 34.0), FVector(13.0, 3.0, 15.0), Head);
 		break;
 	case EMadHeldShape::Shovel:
-		AddPart(CylinderMesh, FVector(0.0, 0.0, 18.0), FVector(3.0, 3.0, 52.0), Wood);
+		AddPart(CylinderMesh, FVector(0.0, 0.0, 18.0), FVector(3.0, 3.0, 52.0), HeldWood);
 		AddPart(CubeMesh, FVector(0.0, 0.0, 49.0), FVector(2.0, 14.0, 17.0), Head);
 		break;
 	case EMadHeldShape::Hoe:
-		AddPart(CylinderMesh, FVector(0.0, 0.0, 18.0), FVector(3.0, 3.0, 52.0), Wood);
+		AddPart(CylinderMesh, FVector(0.0, 0.0, 18.0), FVector(3.0, 3.0, 52.0), HeldWood);
 		AddPart(CubeMesh, FVector(6.0, 0.0, 43.0), FVector(14.0, 10.0, 2.5), Head, FRotator(-15.0, 0.0, 0.0));
 		break;
 	case EMadHeldShape::Bow:
 		// Two limbs angled back from the grip, and the string between their tips.
-		AddPart(CubeMesh, FVector(0.0, 0.0, 20.0), FVector(3.0, 3.0, 12.0), Wood * 1.4f);
-		AddPart(CubeMesh, FVector(-3.0, 0.0, 34.0), FVector(2.5, 2.5, 20.0), Wood * 1.4f, FRotator(-15.0, 0.0, 0.0));
-		AddPart(CubeMesh, FVector(-3.0, 0.0, 6.0), FVector(2.5, 2.5, 20.0), Wood * 1.4f, FRotator(15.0, 0.0, 0.0));
+		AddPart(CubeMesh, FVector(0.0, 0.0, 20.0), FVector(3.0, 3.0, 12.0), HeldWood * 1.4f);
+		AddPart(CubeMesh, FVector(-3.0, 0.0, 34.0), FVector(2.5, 2.5, 20.0), HeldWood * 1.4f, FRotator(-15.0, 0.0, 0.0));
+		AddPart(CubeMesh, FVector(-3.0, 0.0, 6.0), FVector(2.5, 2.5, 20.0), HeldWood * 1.4f, FRotator(15.0, 0.0, 0.0));
 		AddPart(CylinderMesh, FVector(-7.0, 0.0, 20.0), FVector(0.5, 0.5, 46.0), FLinearColor(0.7f, 0.68f, 0.6f));
 		break;
 	case EMadHeldShape::Club:
-		AddPart(CylinderMesh, FVector(0.0, 0.0, 14.0), FVector(4.5, 4.5, 40.0), Wood);
-		AddPart(CylinderMesh, FVector(0.0, 0.0, 34.0), FVector(8.0, 8.0, 16.0), Wood * 1.3f);
+		AddPart(CylinderMesh, FVector(0.0, 0.0, 14.0), FVector(4.5, 4.5, 40.0), HeldWood);
+		AddPart(CylinderMesh, FVector(0.0, 0.0, 34.0), FVector(8.0, 8.0, 16.0), HeldWood * 1.3f);
 		break;
 	case EMadHeldShape::Food:
 		AddPart(CylinderMesh, FVector(0.0, 0.0, 20.0), FVector(7.5, 7.5, 10.0), FLinearColor(0.35f, 0.04f, 0.03f));
@@ -242,16 +243,16 @@ void UMadViewModelComponent::Rebuild()
 		// What it is made of, from its tags; a hashed tint only when the tags say nothing.
 		FLinearColor Colour = ColourFromId(HeldItem);
 		const TCHAR* PatternName = TEXT("plain");
-		if (Item->HasTag(FName(TEXT("item.wood"))))       { Colour = Wood * 2.5f; PatternName = TEXT("planks"); }
-		else if (Item->HasTag(FName(TEXT("item.stone")))) { Colour = Stone * 1.6f; PatternName = TEXT("stone"); }
-		else if (Item->HasTag(FName(TEXT("item.metal")))) { Colour = Iron * 1.5f; PatternName = TEXT("metal"); }
+		if (Item->HasTag(FName(TEXT("item.wood"))))       { Colour = HeldWood * 2.5f; PatternName = TEXT("planks"); }
+		else if (Item->HasTag(FName(TEXT("item.stone")))) { Colour = HeldStone * 1.6f; PatternName = TEXT("stone"); }
+		else if (Item->HasTag(FName(TEXT("item.metal")))) { Colour = HeldIron * 1.5f; PatternName = TEXT("metal"); }
 		ApplyPattern(AddPart(CubeMesh, FVector(0.0, 0.0, 20.0), FVector(9.0), Colour, FRotator(15.0, 30.0, 0.0)), Colour,
 			FMath::Max(0, MadFall::Surfaces::FindPattern(PatternName)));
 		break;
 	}
 	case EMadHeldShape::Empty:
 	default:
-		AddPart(CubeMesh, FVector(0.0, 0.0, 16.0), FVector(9.0, 8.0, 9.0), Skin);
+		AddPart(CubeMesh, FVector(0.0, 0.0, 16.0), FVector(9.0, 8.0, 9.0), HeldSkin);
 		break;
 	}
 }
