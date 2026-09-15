@@ -2,6 +2,8 @@
 
 #include "MadModelInstances.h"
 
+#include "MadSurfaceMaterials.h"
+
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Engine/CollisionProfile.h"
@@ -503,7 +505,15 @@ UMaterialInterface* UMadModelInstanceSubsystem::GetMaterial(uint16 BlockId)
 
 	if (Material == nullptr)
 	{
-		// No material of its own: the block's surface colour and pattern, drawn
+		// No material of its own: the surface's photo texture when it has one, in
+		// the mesh's own space so it does not slide over the model, taking the
+		// weather like the ground around it.
+		Material = MadFall::SurfaceMaterials::MakeHeld(this, Def ? Def->MaterialClass : NAME_None, 1.0f);
+	}
+
+	if (Material == nullptr)
+	{
+		// Not textured: the block's surface colour and pattern, drawn
 		// from the mesh's local position like the block in the survivor's hand,
 		// so a wooden barrel has planks and a bush has leaves. A flat tint read as
 		// a placeholder next to patterned blocks. The engine's tinted material

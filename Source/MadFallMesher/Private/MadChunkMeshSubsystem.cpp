@@ -383,6 +383,8 @@ void UMadChunkMeshSubsystem::LaunchMeshJob(const FMadChunkCoord& Coord)
 		MadFall::ChunkMesher::FMeshSettings Settings;
 		MadFall::ChunkMesher::BuildChunkMesh(
 			*Grid, UMadVoxelWorldSubsystem::GetBlockRegistry(), Settings, *Mesh);
+		// The component's vertex format, here rather than in the game-thread apply.
+		UMadChunkMeshComponent::Prepare(*Mesh);
 
 		FScopeLock Lock(&CompletedLock);
 		Completed.Add(Mesh);
@@ -493,6 +495,9 @@ void UMadChunkMeshSubsystem::PublishCompletedMeshes()
 		Component->ApplyChunkMesh(*Mesh, [this](FName MaterialClass) { return GetMaterialForClass(MaterialClass); });
 		const double ApplyMs = (FPlatformTime::Seconds() - ApplyStart) * 1000.0;
 		WorstApplyMilliseconds = FMath::Max(WorstApplyMilliseconds, ApplyMs);
+		TotalApplyMilliseconds += ApplyMs;
+		++TotalApplies;
+		TotalAppliedSections += Component->LastSectionCount;
 		if (Vertices > 0)
 		{
 			ApplyMsPerVertex = FMath::Lerp(ApplyMsPerVertex, FMath::Max(0.0, ApplyMs - 0.1) / Vertices, 0.1);
@@ -831,6 +836,12 @@ FString UMadChunkMeshSubsystem::DescribeStats() const
 	Builder.Appendf(TEXT("  worst build:       %.3f ms (worker thread)\n"), WorstBuildMilliseconds);
 	Builder.Appendf(TEXT("  worst snapshot:    %.3f ms (GAME THREAD, budget 2.0)\n"), WorstSnapshotMilliseconds);
 	Builder.Appendf(TEXT("  worst apply:       %.3f ms (GAME THREAD, budget 2.0)\n"), WorstApplyMilliseconds);
+	if (TotalApplies > 0)
+	{
+		// Mean apply and sections per apply: what a material or section-count change costs, without a whole session's noise.
+		Builder.Appendf(TEXT("  mean apply:        %.3f ms over %d applies, %.2f sections each\n"),
+			TotalApplyMilliseconds / TotalApplies, TotalApplies, static_cast<double>(TotalAppliedSections) / TotalApplies);
+	}
 	Builder.Appendf(TEXT("  worst register:    %.3f ms (GAME THREAD, new component)\n"), WorstRegisterMilliseconds);
 	Builder.Appendf(TEXT("  component pool:    %d idle, %d reuses, %d applies deferred a frame\n"), ComponentPool.Num(), PoolReuses, DeferredApplies);
 	Builder.Appendf(TEXT("  worst publish:     %.3f ms, worst launch %.3f ms\n"), WorstPublishMilliseconds, WorstLaunchMilliseconds);
@@ -861,6 +872,9 @@ void UMadChunkMeshSubsystem::ResetStats()
 {
 	WorstBuildMilliseconds = 0.0;
 	WorstApplyMilliseconds = 0.0;
+	TotalApplyMilliseconds = 0.0;
+	TotalApplies = 0;
+	TotalAppliedSections = 0;
 	WorstSnapshotMilliseconds = 0.0;
 	WorstFrameMilliseconds = 0.0;
 	WorstPublishMilliseconds = 0.0;

@@ -830,13 +830,20 @@ at once (classes that share a material share one mesh section).
   `stone` (default), `wood`, `dirt`, `metal` or `foliage`.
 - `material` is optional: a content path to a material, usually from your
   content mod's plugin. If it does not load (pak not installed) the log warns
-  once and the default material is used. The shipped surfaces name the
-  photo-textured instances in `/Game/Surfaces` (`MI_Rock030`, `MI_Planks021`,
-  ...), so a data-only mod can re-skin a surface with one of those; a content
-  mod can make its own instance of `/Game/Materials/M_MadVoxelPBR` with
+  once and the default material is used. Most shipped surfaces name
+  `/Game/Materials/M_MadVoxelPBRArray` with a `texture_layer` (0 Rock030, 1
+  Ground048, 2 Grass004 over Ground048 sides, 3 Ground080 sand, 4 Planks021,
+  5 Bark012, 6 Metal041B, 7 Gravel022, 8 Fabric066), so a data-only mod can
+  re-skin a surface by pointing it at another layer; every layered surface
+  draws in one mesh section, which is cheaper than a material of its own.
+  `/Game/Surfaces/MI_<Set>` instances also exist for each set. A content mod
+  can make its own instance of `/Game/Materials/M_MadVoxelPBR` with
   `BaseColor`, `Normal` (DirectX), `Roughness`, `TileVoxels`, `Tint`,
   `Metallic`, and optional `SideBaseColor`/`SideNormal`/`SideRoughness` with
   `UseSides` 1 for a different texture on sides and undersides.
+- `texture_layer` (0-15) selects a layer of the surface texture arrays for
+  `M_MadVoxelPBRArray`; it travels in vertex alpha in place of `pattern`, which
+  still sets the item icon and the procedural fallback.
 - `pattern` picks the procedural pattern the default voxel material draws over
   `color` at 16 texels a voxel: `plain` (default), `stone`, `dirt`, `grass`,
   `sand`, `planks`, `bark`, `leaves`, `concrete`, `brick`, `metal`, `ore`,

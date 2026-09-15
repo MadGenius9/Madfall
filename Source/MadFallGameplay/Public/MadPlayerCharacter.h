@@ -46,6 +46,16 @@ enum class EMadInventorySide : uint8
 	Worn
 };
 
+namespace MadFall
+{
+	/**
+	 * The survivor the first local player controls, or null. One definition: six
+	 * files kept identical copies in anonymous namespaces, which collided the
+	 * moment a unity build put two of them in one translation unit.
+	 */
+	MADFALLGAMEPLAY_API class AMadPlayerCharacter* FindLocalPlayer(const UWorld* World);
+}
+
 /**
  * The survivor.
  *

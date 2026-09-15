@@ -175,6 +175,9 @@ private:
 	double TotalBuildMilliseconds = 0.0;
 	double WorstBuildMilliseconds = 0.0;
 	double WorstApplyMilliseconds = 0.0;
+	double TotalApplyMilliseconds = 0.0;
+	int32 TotalApplies = 0;
+	int32 TotalAppliedSections = 0;
 	double WorstSnapshotMilliseconds = 0.0;
 
 	/** Whole-frame game-thread cost of meshing (publish + launch), which is what the 2 ms rule is about. */

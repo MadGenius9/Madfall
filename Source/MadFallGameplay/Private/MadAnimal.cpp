@@ -38,11 +38,6 @@ namespace
 		ECVF_Default);
 	constexpr int32 PathNodes = 600;
 
-	AMadPlayerCharacter* FindPlayer(const UWorld* World)
-	{
-		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
-		return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
-	}
 
 	FIntVector ToVoxel(const FVector& WorldCm)
 	{
@@ -202,7 +197,7 @@ FMadAnimalSenses AMadAnimal::Sense() const
 {
 	FMadAnimalSenses Senses;
 	const UWorld* World = GetWorld();
-	const AMadPlayerCharacter* Player = FindPlayer(World);
+	const AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
 	if (Player == nullptr || Player->IsDown())
 	{
 		return Senses;
@@ -237,7 +232,7 @@ void AMadAnimal::Think()
 	const EMadAnimalState Previous = State;
 	State = Next;
 
-	AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	const bool bRunning = Next == EMadAnimalState::Flee || Next == EMadAnimalState::Chase || Next == EMadAnimalState::Attack;
 	float TrapSlow = 1.0f;
 	if (const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>())
@@ -472,7 +467,7 @@ void AMadAnimal::Die(AActor* Killer)
 FString AMadAnimal::DescribeStatus() const
 {
 	static const TCHAR* StateNames[] = { TEXT("idle"), TEXT("graze"), TEXT("flee"), TEXT("chase"), TEXT("attack"), TEXT("dead") };
-	const AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	const AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	const float Distance = Player ? static_cast<float>(FVector::Dist(Player->GetActorLocation(), GetActorLocation()) / MadFall::VoxelSizeUU) : -1.0f;
 	return FString::Printf(TEXT("%s at %s: %s, %.0f hp, %.1f voxels from the survivor"),
 		*Definition.Id.ToString(), *GetFeetVoxel().ToString(), StateNames[static_cast<int32>(State)], Health, Distance);

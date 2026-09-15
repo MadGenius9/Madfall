@@ -73,6 +73,11 @@
 	},
 	{
 		"schema": "madfall.loot/1",
+		"id": "madfall:loot/storage_barrel",
+		"entries": [{ "item": "madfall:scrap_iron", "count": [2, 3] }]
+	},
+	{
+		"schema": "madfall.loot/1",
 		"id": "madfall:loot/rubble",
 		"entries": [
 			{ "item": "madfall:rock", "count": [1, 2], "weight": 4 },

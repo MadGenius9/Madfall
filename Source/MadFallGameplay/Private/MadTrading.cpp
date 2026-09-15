@@ -212,11 +212,6 @@ namespace
 {
 	const FName TraderMarker(TEXT("trader"));
 
-	AMadPlayerCharacter* FindPlayer(const UWorld* World)
-	{
-		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
-		return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
-	}
 }
 
 bool UMadTraderSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -308,7 +303,7 @@ void UMadTraderSubsystem::Tick(float DeltaTime)
 	}
 	Timer = 1.0f;
 
-	AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>();
 	if (Player == nullptr || Player->IsWaitingForWorld() || VoxelWorld == nullptr)
 	{
@@ -533,7 +528,7 @@ namespace
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
 		{
 			UMadTraderSubsystem* Traders = World ? World->GetSubsystem<UMadTraderSubsystem>() : nullptr;
-			AMadPlayerCharacter* Player = FindPlayer(World);
+			AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
 			if (Traders == nullptr || Player == nullptr || Args.Num() < 1)
 			{
 				UE_LOG(LogMadFallGameplay, Warning, TEXT("usage: mad.trader.spawn <trader id> (needs a survivor)"));
@@ -550,7 +545,7 @@ namespace
 		FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
 		{
 			const UMadTraderSubsystem* Traders = World ? World->GetSubsystem<UMadTraderSubsystem>() : nullptr;
-			AMadPlayerCharacter* Player = FindPlayer(World);
+			AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
 			FIntVector Approach;
 			FIntVector TraderVoxel;
 			if (Traders == nullptr || Player == nullptr || !Traders->GetOutpostApproach(Approach) || !Traders->GetOutpostTrader(TraderVoxel))
@@ -567,7 +562,7 @@ namespace
 		TEXT("mad.trader.aim"), TEXT("Turns the survivor to face the nearest standing trader."),
 		FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
 		{
-			AMadPlayerCharacter* Player = FindPlayer(World);
+			AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
 			AMadTrader* Nearest = nullptr;
 			for (TActorIterator<AMadTrader> It(World); It && Player; ++It)
 			{

@@ -15,7 +15,7 @@ namespace
 	// Fur and eyes drawn like the humanoids' skin and faces (Scripts/make_character_material.py).
 	const TCHAR* CharacterMaterial = TEXT("/Game/Materials/M_MadCharacter.M_MadCharacter");
 
-	constexpr float AttackSeconds = 0.4f;
+	constexpr float AttackPoseSeconds = 0.4f;
 	constexpr float HitSeconds = 0.15f;
 	constexpr float DeathSeconds = 0.5f;
 }
@@ -228,7 +228,7 @@ void UMadQuadrupedRigComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		HitFlash -= DeltaTime;
 		ApplyTint(HitFlash > 0.0f ? HitFlash / HitSeconds : 0.0f);
 	}
-	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / AttackSeconds);
+	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / AttackPoseSeconds);
 	GrazeAmount = FMath::FInterpConstantTo(GrazeAmount, bGrazing ? 1.0f : 0.0f, DeltaTime, 1.5f);
 	if (bDying)
 	{

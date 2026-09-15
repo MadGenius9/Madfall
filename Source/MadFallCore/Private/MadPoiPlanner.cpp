@@ -21,7 +21,7 @@ DECLARE_CYCLE_STAT(TEXT("WorldGen Road Stamp"), STAT_MadRoadStamp, STATGROUP_Mad
 namespace
 {
 	constexpr uint16 VoidRuntimeId = MAX_uint16;
-	constexpr int32 ChunkSize = MadFall::ChunkSize;
+	using MadFall::ChunkSize;
 
 	/** Headroom cleared above a road, so a road through a hillside is a cutting rather than a tunnel mouth. */
 	constexpr int32 RoadClearance = 4;

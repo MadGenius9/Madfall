@@ -96,6 +96,14 @@ struct MADFALLMESHER_API FMadChunkMesh
 
 	TArray<FMadMeshSection> Sections;
 
+	/**
+	 * The sections already in the render component's own vertex format, built on
+	 * the meshing worker (UMadChunkMeshComponent::Prepare) so the game thread only
+	 * copies them. Opaque here to keep this file free of component types; null
+	 * when a mesh was not prepared, and the apply then converts it itself.
+	 */
+	TSharedPtr<struct FMadPreparedChunkMesh, ESPMode::ThreadSafe> Prepared;
+
 	// --- diagnostics, surfaced by `mad.mesh.stats` ---
 	double BuildMilliseconds = 0.0;
 	double IsosurfaceMilliseconds = 0.0;

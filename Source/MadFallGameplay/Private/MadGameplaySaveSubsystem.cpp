@@ -29,11 +29,6 @@ namespace
 		TEXT("Real-time minutes between autosaves of voxels and gameplay. 0 disables."),
 		ECVF_Default);
 
-	AMadPlayerCharacter* FindPlayer(const UWorld* World)
-	{
-		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
-		return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
-	}
 }
 
 bool UMadGameplaySaveSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -203,7 +198,7 @@ bool UMadGameplaySaveSubsystem::SaveNow(AMadPlayerCharacter* Player)
 
 	if (Player == nullptr)
 	{
-		Player = FindPlayer(World);
+		Player = MadFall::FindLocalPlayer(World);
 	}
 
 	FMadGameplaySave Save;

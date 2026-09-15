@@ -1142,7 +1142,7 @@ void UMadVoxelWorldSubsystem::SnapshotFromSources(const FSnapshotSources& Source
 		}
 	};
 
-	const int32 ChunkSize = MadFall::ChunkSize;
+	using MadFall::ChunkSize;
 
 	for (int32 Z = -1; Z <= ChunkSize; ++Z)
 	{

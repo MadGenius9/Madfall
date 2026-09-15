@@ -48,11 +48,6 @@ namespace
 
 	constexpr int32 SleeperWakeRadius = 40;
 
-	AMadPlayerCharacter* FindPlayer(const UWorld* World)
-	{
-		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
-		return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
-	}
 }
 
 bool UMadHordeSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -94,7 +89,7 @@ void UMadHordeSubsystem::Tick(float DeltaTime)
 
 	Alive.RemoveAll([](const TWeakObjectPtr<AMadZombie>& Zombie) { return !Zombie.IsValid(); });
 
-	AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	if (Player == nullptr || Player->IsWaitingForWorld())
 	{
 		return;
@@ -158,7 +153,7 @@ void UMadHordeSubsystem::TickHorde(float DeltaTime, AMadPlayerCharacter& Player)
 
 int32 UMadHordeSubsystem::ForceWave()
 {
-	AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	if (Player == nullptr)
 	{
 		return 0;

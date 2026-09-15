@@ -1044,6 +1044,48 @@ Step 3 of making the game look more three-dimensional without new art.
   Tradeoffs: three samples a pixel (six on grass sides), and single-axis
   projection steps at slope changes on smooth terrain. Ray tracing hit shaders
   read mip 0 (no derivatives there).
+  **Held blocks and model blocks wear the textures too.** A world instance
+  projects from world position, which on a block in the hand or a barrel slides
+  the texture through the object as it moves, so those had kept the procedural
+  look beside photo-textured ground. `M_MadVoxelPBRHeld` is the same shader in
+  the mesh's own space (local position +50 on the engine cube's voxel grid,
+  normal brought back to world), and `MadFall::SurfaceMaterials::MakeHeld`
+  builds a dynamic instance of it from any `M_MadVoxelPBR` instance a surface
+  names - copying its textures, tile size, tint, sides and metallic - so mod
+  surfaces get a held look with no second asset. The view model uses it with
+  Weather 0 (dry in the hand); model blocks with no material of their own use
+  it with Weather 1. Untextured surfaces keep the procedural held material.
+  Adding the new source file regrouped the unity build and exposed old name
+  collisions (six identical `FindPlayer` copies, two `ChunkSize` aliases, two
+  rigs' `AttackSeconds`); they are now one `MadFall::FindLocalPlayer`, using-
+  declarations of `MadFall::ChunkSize`, and `AttackPoseSeconds`.
+  **One material for the layered sets, and meshes prepared on the worker.**
+  The frame-budget gate failed after the textures went in (35 of 6,357 frames
+  over 2 ms, meshing 34 of them). A chunk's mesh becomes one component section
+  per material, and each section is a mesh creation, a collision update and a
+  draw call; a material instance per set took a forest chunk from one or two
+  sections to four or more. Measured with `mad.mesh.stats`' new mean apply
+  (spawn area, every chunk rebuilt twice): no photo textures 0.647 ms and 1.39
+  sections an apply; one layered material 0.790 ms and 1.98 sections (the
+  procedural surfaces - ore, bedrock, water - still split off).
+  - `M_MadVoxelPBRArray` samples three texture arrays (`TA_SurfaceBaseColor`,
+    `TA_SurfaceNormal`, `TA_SurfaceRoughness`, nine 2K layers built by
+    `import_surface_textures.py` from `Scripts/surface_sets.py`); a surface
+    names it with `"texture_layer"`, which replaces the pattern in vertex
+    alpha (same encoding, so the section-alpha rule above keeps it constant
+    per triangle). Per-layer tile, tint, side layer and metallic are compiled
+    into the shader from the same Python list. Concrete keeps its own instance:
+    its set is 2048x1024 and array slices must match. `M_MadVoxelPBRArrayHeld`
+    takes the layer as a parameter for held and model blocks.
+  - `UMadChunkMeshComponent::Prepare` builds each section's
+    `FProcMeshSection` (the component's own vertex struct) on the meshing
+    worker; the game thread hands it to `SetProcMeshSection`, appending with
+    an index offset where sections share a material. The apply had widened
+    every vertex and then `CreateMeshSection` copied each one again - two
+    per-vertex passes on the game thread. Mean apply 0.790 -> 0.565 ms, below
+    the untextured figure; the frame-budget scenario then measured 15 of
+    7,402 frames over 2 ms and meshing at 0.070 ms a frame, where it was
+    before textures.
   **FIXED before it shipped: black ground.** The normal maps import BC5, which
   stores only X and Y; the material node the engine uses rebuilds Z, a raw
   Sample in a Custom node does not, so Z stayed 0 and every normal pointed
@@ -1051,6 +1093,20 @@ Step 3 of making the game look more three-dimensional without new art.
   check with the engine's FlatNormal (uncompressed, Z stored) could not show
   it. The bevel was also narrowed (6% to 3%) and softened (0.35 to 0.15): photo
   textures carry their own relief, and trunks showed a dark band per block.
+
+- **Photo-scanned models** (step 2). Two model blocks draw Poly Haven (CC0)
+  scans: the storage barrel is `Barrel_01` (a red steel drum - its surface
+  class became steel, it crafts from 4 scrap iron and breaks into 2-3, so it
+  is never a profit) and the loot crate is `wooden_crate_01` (a cubic block
+  before; now a model block facing one of four ways). `Scripts/fetch_models.ps1`
+  downloads them into `SourceArt/polyhaven/`, `make_model_material.py` builds
+  `M_MadModel` (UV-mapped colour, normal, roughness, metallic, rain darkening)
+  and `M_MadModelFoliage` (masked, two-sided foliage), and `import_models.py`
+  imports mesh, textures (OpenGL normals flipped to DirectX) and an instance
+  into `/Game/Models`, logging bounds for the block's render scale and offset.
+  Tried and dropped: a ladder (free-standing, not wall-mounted), a fern and a
+  sorrel shrub (at block scale a flat cluster and a few blades; the box shapes
+  read better as a berry bush and a potato plant).
 
 **Menus and HUD are styled.** The menus use rounded dark panels with a faint
 outline, buttons that light up in the accent colour (`FMadMenuStyle`, no

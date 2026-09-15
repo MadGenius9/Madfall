@@ -29,6 +29,38 @@ UMadChunkMeshComponent::UMadChunkMeshComponent(const FObjectInitializer& ObjectI
 	SetMobility(EComponentMobility::Movable);
 }
 
+void UMadChunkMeshComponent::Prepare(FMadChunkMesh& Mesh)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(MadFall::PrepareChunkMesh);
+
+	TSharedPtr<FMadPreparedChunkMesh, ESPMode::ThreadSafe> Prepared = MakeShared<FMadPreparedChunkMesh, ESPMode::ThreadSafe>();
+	Prepared->Sections.SetNum(Mesh.Sections.Num());
+	for (int32 SectionIndex = 0; SectionIndex < Mesh.Sections.Num(); ++SectionIndex)
+	{
+		const FMadMeshSection& Source = Mesh.Sections[SectionIndex];
+		FProcMeshSection& Ready = Prepared->Sections[SectionIndex];
+		Ready.bEnableCollision = true;
+		Ready.bSectionVisible = true;
+		Ready.ProcVertexBuffer.SetNum(Source.NumVertices());
+		for (int32 Index = 0; Index < Source.NumVertices(); ++Index)
+		{
+			FProcMeshVertex& Vertex = Ready.ProcVertexBuffer[Index];
+			Vertex.Position = FVector(Source.Positions[Index]);
+			Vertex.Normal = FVector(Source.Normals[Index]);
+			Vertex.Tangent = FProcMeshTangent(FVector(Source.Tangents[Index]), false);
+			Vertex.Color = Source.Colors[Index];
+			Vertex.UV0 = FVector2D(Source.UVs[Index]);
+			const uint8 Occlusion = Source.Occlusion[Index];
+			Vertex.UV1 = FVector2D((Occlusion & 3) / 3.0, (Occlusion & FMadMeshSection::CubicFaceFlag) != 0 ? 1.0 : 0.0);
+			Vertex.UV2 = FVector2D::ZeroVector;
+			Vertex.UV3 = FVector2D::ZeroVector;
+			Ready.SectionLocalBox += Vertex.Position;
+		}
+		Ready.ProcIndexBuffer = Source.Indices;
+	}
+	Mesh.Prepared = Prepared;
+}
+
 void UMadChunkMeshComponent::ApplyChunkMesh(const FMadChunkMesh& Mesh, TFunctionRef<UMaterialInterface*(FName MaterialClass)> MaterialFor)
 {
 	SCOPE_CYCLE_COUNTER(STAT_MadMeshApply);
@@ -80,78 +112,81 @@ void UMadChunkMeshComponent::ApplyChunkMesh(const FMadChunkMesh& Mesh, TFunction
 		Group->Sections.Add(&Section);
 	}
 
+	// Normally prepared on the meshing worker; a mesh applied straight from a
+	// synchronous rebuild (tests, console) is converted here.
+	TSharedPtr<FMadPreparedChunkMesh, ESPMode::ThreadSafe> Prepared = Mesh.Prepared;
+	const double ConvertStart = FPlatformTime::Seconds();
+	if (!Prepared.IsValid() || Prepared->Sections.Num() != Mesh.Sections.Num())
+	{
+		FMadChunkMesh Copy = Mesh;
+		Prepare(Copy);
+		Prepared = Copy.Prepared;
+	}
+	ConvertSeconds += FPlatformTime::Seconds() - ConvertStart;
+
 	for (const FGroup& Group : Groups)
 	{
-		// ProceduralMeshComponent wants doubles and its own tangent type, so
-		// this is where the mesher's compact float types get widened. Keeping
-		// the mesher on FVector3f halves the memory a queued rebuild holds.
-		TArray<FVector> Positions;
-		TArray<FVector> Normals;
-		TArray<FVector2D> UVs;
-		TArray<FVector2D> OcclusionUVs;
-		TArray<FColor> Colors;
-		TArray<FProcMeshTangent> Tangents;
-		TArray<int32> Triangles;
-
-		const double ConvertStart = FPlatformTime::Seconds();
-		int32 VertexCount = 0;
-		int32 IndexCount = 0;
-		for (const FMadMeshSection* Section : Group.Sections)
+		const double MergeStart = FPlatformTime::Seconds();
+		FProcMeshSection Merged;
+		const FProcMeshSection* Section = nullptr;
+		if (Group.Sections.Num() == 1)
 		{
-			VertexCount += Section->NumVertices();
-			IndexCount += Section->Indices.Num();
+			Section = &Prepared->Sections[static_cast<int32>(Group.Sections[0] - Mesh.Sections.GetData())];
 		}
-		Positions.Reserve(VertexCount);
-		Normals.Reserve(VertexCount);
-		UVs.Reserve(VertexCount);
-		OcclusionUVs.Reserve(VertexCount);
-		Colors.Reserve(VertexCount);
-		Tangents.Reserve(VertexCount);
-		Triangles.Reserve(IndexCount);
-
-		for (const FMadMeshSection* Section : Group.Sections)
+		else
 		{
-			const int32 Base = Positions.Num();
-			for (int32 Index = 0; Index < Section->NumVertices(); ++Index)
+			// Sections sharing a material become one: vertices appended, indices offset.
+			int32 VertexCount = 0;
+			int32 IndexCount = 0;
+			for (const FMadMeshSection* Source : Group.Sections)
 			{
-				Positions.Add(FVector(Section->Positions[Index]));
-				Normals.Add(FVector(Section->Normals[Index]));
-				UVs.Add(FVector2D(Section->UVs[Index]));
-				const uint8 Occlusion = Section->Occlusion[Index];
-				OcclusionUVs.Add(FVector2D((Occlusion & 3) / 3.0, (Occlusion & FMadMeshSection::CubicFaceFlag) != 0 ? 1.0 : 0.0));
-				Tangents.Add(FProcMeshTangent(FVector(Section->Tangents[Index]), false));
+				const FProcMeshSection& Ready = Prepared->Sections[static_cast<int32>(Source - Mesh.Sections.GetData())];
+				VertexCount += Ready.ProcVertexBuffer.Num();
+				IndexCount += Ready.ProcIndexBuffer.Num();
 			}
-			Colors.Append(Section->Colors);
-			for (uint32 Index : Section->Indices)
+			Merged.ProcVertexBuffer.Reserve(VertexCount);
+			Merged.ProcIndexBuffer.Reserve(IndexCount);
+			for (const FMadMeshSection* Source : Group.Sections)
 			{
-				Triangles.Add(Base + static_cast<int32>(Index));
+				const FProcMeshSection& Ready = Prepared->Sections[static_cast<int32>(Source - Mesh.Sections.GetData())];
+				const uint32 Base = static_cast<uint32>(Merged.ProcVertexBuffer.Num());
+				Merged.ProcVertexBuffer.Append(Ready.ProcVertexBuffer);
+				for (uint32 Index : Ready.ProcIndexBuffer)
+				{
+					Merged.ProcIndexBuffer.Add(Base + Index);
+				}
+				Merged.SectionLocalBox += Ready.SectionLocalBox;
 			}
-			TotalTriangles += Section->NumTriangles();
+			Merged.bEnableCollision = true;
+			Merged.bSectionVisible = true;
+			Section = &Merged;
 		}
+		ConvertSeconds += FPlatformTime::Seconds() - MergeStart;
 
 		// Material BEFORE geometry.
 		//
-		// CreateMeshSection marks the render state dirty, and the scene proxy is
+		// Setting a section marks the render state dirty, and the scene proxy is
 		// rebuilt from whatever GetMaterial() returns at that moment. Setting the
 		// material afterwards left the proxy holding a null material, and Unreal
 		// substitutes its grey checker default for null - which looks exactly
 		// like a mesher bug and is not one. Assigning first means there is no
 		// window in which the section exists without its material.
-		ConvertSeconds += FPlatformTime::Seconds() - ConvertStart;
 		const double CreateStart = FPlatformTime::Seconds();
 		if (Group.Material != nullptr)
 		{
 			SetMaterial(SectionIndex, Group.Material);
 		}
-
 		// Corner occlusion rides in UV1 because vertex colour is full: RGB is the
-		// surface colour and A its pattern. A material without a UV1 read (a mod's
-		// own surface material) simply ignores it.
-		CreateMeshSection(SectionIndex, Positions, Triangles, Normals, UVs, OcclusionUVs, TArray<FVector2D>(), TArray<FVector2D>(),
-			Colors, Tangents, /*bCreateCollision*/ true);
+		// surface colour and A its pattern or texture layer. A material without a
+		// UV1 read (a mod's own surface material) simply ignores it.
+		SetProcMeshSection(SectionIndex, *Section);
 		CreateSeconds += FPlatformTime::Seconds() - CreateStart;
 
-		TotalVertices += VertexCount;
+		for (const FMadMeshSection* Source : Group.Sections)
+		{
+			TotalTriangles += Source->NumTriangles();
+		}
+		TotalVertices += Section->ProcVertexBuffer.Num();
 		++SectionIndex;
 	}
 

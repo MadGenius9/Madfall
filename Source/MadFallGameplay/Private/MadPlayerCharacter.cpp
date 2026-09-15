@@ -674,6 +674,12 @@ bool AMadPlayerCharacter::TickTerrainHold(float DeltaSeconds)
 	return false;
 }
 
+AMadPlayerCharacter* MadFall::FindLocalPlayer(const UWorld* World)
+{
+	const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+	return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
+}
+
 FIntVector AMadPlayerCharacter::GetFeetVoxel() const
 {
 	const FVector Feet = GetActorLocation() - FVector(0.0, 0.0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - 5.0);

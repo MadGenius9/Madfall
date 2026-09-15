@@ -16,7 +16,7 @@ DECLARE_CYCLE_STAT(TEXT("WorldGen Scatter"), STAT_MadWorldGenScatter, STATGROUP_
 
 namespace
 {
-	constexpr int32 ChunkSize = MadFall::ChunkSize;
+	using MadFall::ChunkSize;
 
 	/**
 	 * Maps noise output into [0, 1], expanding it by Contrast first.

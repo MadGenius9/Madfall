@@ -149,7 +149,8 @@
 		"extends": "madfall:base_construction",
 		"display_name": "@blocks.loot_crate",
 		"tags": ["block.container"],
-		"shape": { "kind": "cubic", "rotation_mode": "facing_4", "variants": [] },
+		"shape": { "kind": "model", "rotation_mode": "facing_4", "variants": [], "occludes_neighbors": false },
+		"render": { "mesh": "/Game/Models/wooden_crate_01/SM_wooden_crate_01.SM_wooden_crate_01", "material": "/Game/Models/wooden_crate_01/MI_wooden_crate_01.MI_wooden_crate_01", "offset": [0.0, -0.01, -0.5], "scale": [1.15, 1.15, 1.15] },
 		"material": { "class": "madfall:wood", "mass_kg": 60.0, "hardness": 120.0 },
 		"structure": { "support_strength": 2000.0, "max_horizontal_span": 0 },
 		"drops": { "table": "madfall:loot/wood_debris" },
@@ -162,11 +163,10 @@
 		"display_name": "@blocks.storage_barrel",
 		"tags": ["block.container"],
 		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "occludes_neighbors": false },
-		"render": { "mesh": "/Engine/BasicShapes/Cylinder.Cylinder", "scale": [0.8, 0.8, 0.95] },
-		"material": { "class": "madfall:wood", "mass_kg": 40.0, "hardness": 100.0 },
+		"render": { "mesh": "/Game/Models/Barrel_01/SM_Barrel_01.SM_Barrel_01", "material": "/Game/Models/Barrel_01/MI_Barrel_01.MI_Barrel_01", "offset": [0.0, 0.0, -0.5], "scale": [1.1, 1.1, 1.1] },
+		"material": { "class": "madfall:steel", "mass_kg": 40.0, "hardness": 250.0 },
 		"structure": { "support_strength": 1500.0, "max_horizontal_span": 0 },
-		"drops": { "table": "madfall:loot/wood_debris" },
-		"flags": { "flammable": true }
+		"drops": { "table": "madfall:loot/storage_barrel" }
 	},
 	{
 		"schema": "madfall.block/1",

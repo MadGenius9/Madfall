@@ -10,6 +10,12 @@
 
 class UMaterialInterface;
 
+/** A chunk mesh's sections in the procedural mesh component's format, one per FMadChunkMesh section. */
+struct MADFALLMESHER_API FMadPreparedChunkMesh
+{
+	TArray<FProcMeshSection> Sections;
+};
+
 /**
  * Renders one chunk's generated geometry.
  *
@@ -42,6 +48,18 @@ public:
 	 * performs per frame.
 	 */
 	void ApplyChunkMesh(const FMadChunkMesh& Mesh, TFunctionRef<UMaterialInterface*(FName MaterialClass)> MaterialFor);
+
+	/**
+	 * Converts a mesh's sections into the component's vertex format and stores
+	 * them in Mesh.Prepared. Any thread: the meshing worker calls it.
+	 *
+	 * WHY: an apply used to widen every vertex on the game thread (float to
+	 * double, colour, occlusion into UV1) and then CreateMeshSection copied each
+	 * one again into its own vertex struct - two per-vertex passes, a quarter of
+	 * a busy chunk's apply before the section work itself. Prepared, the apply
+	 * hands finished sections to SetProcMeshSection, a memory copy.
+	 */
+	static void Prepare(FMadChunkMesh& Mesh);
 
 	/** Chunk this component draws. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MadFall")

@@ -102,11 +102,6 @@ namespace
 			FMath::FloorToInt32(WorldCm.Z / MadFall::VoxelSizeUU));
 	}
 
-	AMadPlayerCharacter* FindPlayer(const UWorld* World)
-	{
-		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
-		return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
-	}
 }
 
 AMadZombie::AMadZombie()
@@ -271,7 +266,7 @@ void AMadZombie::Tick(float DeltaSeconds)
 
 void AMadZombie::Sense()
 {
-	AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	if (Player == nullptr || Player->IsDown())
 	{
 		Target.Reset();

@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "MadBlockRegistry.h"
 #include "MadGameplayDefinitions.h"
+#include "MadSurfaceMaterials.h"
 #include "MadSurfaceRegistry.h"
 #include "MadVoxelWorldSubsystem.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -187,8 +188,19 @@ void UMadViewModelComponent::Rebuild()
 			Colour = Surface->Color;
 			Pattern = Surface->Pattern;
 		}
-		// The block in hand wears the same pattern as the placed block.
-		ApplyPattern(AddPart(CubeMesh, FVector(0.0, 0.0, 22.0), FVector(15.0), Colour, FRotator(0.0, 20.0, 0.0)), Colour, Pattern);
+		// The block in hand wears the same look as the placed block: its photo
+		// texture when the surface has one (dry - no rain in the hand), otherwise
+		// its procedural pattern.
+		UStaticMeshComponent* Cube = AddPart(CubeMesh, FVector(0.0, 0.0, 22.0), FVector(15.0), Colour, FRotator(0.0, 20.0, 0.0));
+		if (UMaterialInstanceDynamic* Textured = MadFall::SurfaceMaterials::MakeHeld(this, View.MaterialClass, 0.0f))
+		{
+			Materials.Add(Textured);
+			Cube->SetMaterial(0, Textured);
+		}
+		else
+		{
+			ApplyPattern(Cube, Colour, Pattern);
+		}
 		break;
 	}
 	case EMadHeldShape::Pickaxe:

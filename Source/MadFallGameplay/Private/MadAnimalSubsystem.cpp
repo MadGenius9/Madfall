@@ -45,11 +45,6 @@ namespace
 	/** An animal out of its active hours goes once it is at least this far away. */
 	constexpr float OffHoursDespawnVoxels = 40.0f;
 
-	AMadPlayerCharacter* FindPlayer(const UWorld* World)
-	{
-		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
-		return Controller ? Cast<AMadPlayerCharacter>(Controller->GetPawn()) : nullptr;
-	}
 }
 
 bool UMadAnimalSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -259,7 +254,7 @@ void UMadAnimalSubsystem::Tick(float DeltaTime)
 
 	Alive.RemoveAll([](const TWeakObjectPtr<AMadAnimal>& Animal) { return !Animal.IsValid(); });
 
-	AMadPlayerCharacter* Player = FindPlayer(GetWorld());
+	AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(GetWorld());
 	if (Player == nullptr || Player->IsDown())
 	{
 		return;
@@ -332,7 +327,7 @@ static FAutoConsoleCommandWithWorldAndArgs GMadAnimalsSpawnCommand(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
 	{
 		UMadAnimalSubsystem* Animals = World ? World->GetSubsystem<UMadAnimalSubsystem>() : nullptr;
-		const AMadPlayerCharacter* Player = FindPlayer(World);
+		const AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
 		const FMadAnimalDefinition* Species = Args.Num() > 0 ? MadFall::GetGameplayDefinitions().FindAnimal(FName(*Args[0])) : nullptr;
 		if (Animals == nullptr || Player == nullptr || Species == nullptr)
 		{
@@ -368,7 +363,7 @@ static FAutoConsoleCommandWithWorld GMadPlayerAimAnimalCommand(
 	FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
 	{
 		const UMadAnimalSubsystem* Animals = World ? World->GetSubsystem<UMadAnimalSubsystem>() : nullptr;
-		AMadPlayerCharacter* Player = FindPlayer(World);
+		AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
 		if (Animals == nullptr || Player == nullptr)
 		{
 			return;

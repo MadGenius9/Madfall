@@ -85,6 +85,22 @@ bool FMadSurfaceRegistryTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("sixteen patterns fit the alpha encoding"), MadFall::Surfaces::NumPatterns, 16);
 	}
 
+	// A texture layer takes the pattern's place in vertex alpha, with the same encoding.
+	{
+		FMadSurfaceRegistry Layered;
+		TArray<FMadDefinitionError> LayerErrors;
+		Layered.BeginLoad();
+		Layered.AddJson(Json(TEXT(R"({"schema":"madfall.surface/1","id":"madfall:rock","color":[0.4,0.4,0.4],"pattern":"stone","texture_layer":3})")), TEXT("l.json"), FName(TEXT("madfall")), LayerErrors);
+		Layered.AddJson(Json(TEXT(R"({"schema":"madfall.surface/1","id":"madfall:far","color":[0.4,0.4,0.4],"texture_layer":16})")), TEXT("l.json"), FName(TEXT("madfall")), LayerErrors);
+		Layered.FinishLoad(nullptr, LayerErrors);
+		const FMadSurfaceDefinition* Rock = Layered.Find(FName(TEXT("madfall:rock")));
+		TestTrue(TEXT("layer parsed"), Rock != nullptr && Rock->TextureLayer == 3);
+		TestTrue(TEXT("the pattern is kept for icons and fallbacks"), Rock != nullptr && Rock->Pattern == 1);
+		TestEqual(TEXT("alpha carries the layer: 255 - 3 x 16"), Layered.GetVertexColor(FName(TEXT("madfall:rock"))).A, static_cast<uint8>(207));
+		TestEqual(TEXT("a layer past what alpha can carry is an error"), LayerErrors.Num(), 1);
+		TestTrue(TEXT("and is not applied"), Layered.Find(FName(TEXT("madfall:far")))->TextureLayer == INDEX_NONE);
+	}
+
 	// Validation.
 	{
 		FMadSurfaceRegistry Bad;

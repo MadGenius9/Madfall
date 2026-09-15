@@ -16,32 +16,23 @@
 # re-imports changed files and leaves the rest.
 #
 # The textures are CC0 (public domain): no attribution required, fine to ship.
+#
+# It also packs the sets in surface_sets.ARRAY_LAYERS into three texture arrays
+# (TA_SurfaceBaseColor, TA_SurfaceNormal, TA_SurfaceRoughness) for
+# M_MadVoxelPBRArray; run make_pbr_material.py again afterwards to build that.
 
 import os
 import sys
 
 import unreal
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from surface_sets import ARRAY_LAYERS, SETS  # noqa: E402
+
 PROJECT = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
 SOURCE = os.path.join(PROJECT, "SourceArt", "ambientCG")
 DEST = "/Game/Surfaces"
 PARENT = "/Game/Materials/M_MadVoxelPBR.M_MadVoxelPBR"
-
-# Set -> (tile size in voxels, tint toward the surface colour 0..1, side set or None, metallic)
-SETS = {
-    "Rock030": (3.0, 0.15, None, 0.0),
-    "Ground048": (2.0, 0.2, None, 0.0),
-    "Grass004": (2.0, 0.25, "Ground048", 0.0),
-    "Ground080": (3.0, 0.1, None, 0.0),
-    "Planks021": (1.0, 0.35, None, 0.0),
-    "Bark012": (1.0, 0.15, None, 0.0),
-    "Concrete034": (2.0, 0.1, None, 0.0),
-    "Bricks076C": (1.0, 0.1, None, 0.0),
-    "Metal041B": (1.0, 0.1, None, 0.85),
-    "Gravel022": (2.0, 0.1, None, 0.0),
-    "Snow006": (3.0, 0.0, None, 0.0),
-    "Fabric066": (1.0, 0.3, None, 0.0),
-}
 
 MAPS = {
     "Color": ("BaseColor", True, unreal.TextureCompressionSettings.TC_DEFAULT),
@@ -139,7 +130,34 @@ def main():
         unreal.log("[MadFall] Built {}".format(instance_path))
 
     unreal.log("[MadFall] Surface textures: {} sets built, {} missing".format(len(SETS) - failures, failures))
+    failures += build_arrays(imported)
     return 0 if failures == 0 else 1
+
+
+def build_arrays(imported):
+    library = unreal.EditorAssetLibrary
+    tools = unreal.AssetToolsHelpers.get_asset_tools()
+    failures = 0
+    for slot, srgb, compression in (("BaseColor", True, unreal.TextureCompressionSettings.TC_DEFAULT),
+                                    ("Normal", False, unreal.TextureCompressionSettings.TC_NORMALMAP),
+                                    ("Roughness", False, unreal.TextureCompressionSettings.TC_MASKS)):
+        missing = [name for name in ARRAY_LAYERS if name not in imported or imported[name].get(slot) is None]
+        if missing:
+            unreal.log_error("[MadFall] Cannot build the {} array: {} not imported".format(slot, ", ".join(missing)))
+            failures += 1
+            continue
+        name = "TA_Surface{}".format(slot)
+        path = "{}/{}".format(DEST, name)
+        array = library.load_asset(path) if library.does_asset_exist(path) else \
+            tools.create_asset(name, DEST, unreal.Texture2DArray, unreal.Texture2DArrayFactory())
+        array.set_editor_property("srgb", srgb)
+        array.set_editor_property("compression_settings", compression)
+        # Setting the source list rebuilds the array's source from the slices,
+        # which must all be the same size and format.
+        array.set_editor_property("source_textures", [imported[layer][slot] for layer in ARRAY_LAYERS])
+        library.save_asset(path, only_if_is_dirty=False)
+        unreal.log("[MadFall] Built {} with {} layers".format(path, len(ARRAY_LAYERS)))
+    return failures
 
 
 sys.exit(main())

@@ -143,6 +143,19 @@ void FMadSurfaceRegistry::FinishLoad(const FMadPatchSet* Patches, TArray<FMadDef
 			}
 		}
 
+		int32 TextureLayer = INDEX_NONE;
+		if (R.ReadInt(Object, TEXT("texture_layer"), TEXT("/texture_layer"), TextureLayer))
+		{
+			if (TextureLayer < 0 || TextureLayer >= MadFall::Surfaces::NumPatterns)
+			{
+				R.AddError(TEXT("/texture_layer"), FString::Printf(TEXT("a texture layer is 0..%d (it travels in vertex alpha like a pattern)"), MadFall::Surfaces::NumPatterns - 1));
+			}
+			else
+			{
+				Surface.TextureLayer = TextureLayer;
+			}
+		}
+
 		TSharedPtr<FJsonObject> Cover;
 		if (R.ReadObject(Object, TEXT("cover"), TEXT("/cover"), Cover))
 		{
@@ -177,7 +190,7 @@ void FMadSurfaceRegistry::FinishLoad(const FMadPatchSet* Patches, TArray<FMadDef
 			R.ReportUnknownFields(C, { TEXT("density"), TEXT("flowers"), TEXT("height"), TEXT("color") });
 		}
 
-		R.ReportUnknownFields(Object, { TEXT("schema"), TEXT("id"), TEXT("material"), TEXT("color"), TEXT("impact"), TEXT("pattern"), TEXT("cover") });
+		R.ReportUnknownFields(Object, { TEXT("schema"), TEXT("id"), TEXT("material"), TEXT("color"), TEXT("impact"), TEXT("pattern"), TEXT("texture_layer"), TEXT("cover") });
 
 		Index.Add(Id, Surfaces.Num());
 		Surfaces.Add(MoveTemp(Surface));
@@ -205,7 +218,7 @@ FColor FMadSurfaceRegistry::GetVertexColor(FName MaterialClass) const
 		// linear (byte / 255, no decode). Color is already linear (converted
 		// from the authored sRGB on load).
 		FColor Out = Surface->Color.ToFColor(/*bSRGB*/ false);
-		Out.A = MadFall::Surfaces::PatternToAlpha(Surface->Pattern);
+		Out.A = MadFall::Surfaces::PatternToAlpha(Surface->TextureLayer != INDEX_NONE ? Surface->TextureLayer : Surface->Pattern);
 		return Out;
 	}
 	if (MaterialClass.IsNone())

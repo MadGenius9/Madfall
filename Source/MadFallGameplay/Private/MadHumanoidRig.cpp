@@ -16,7 +16,7 @@ namespace
 
 	/** Centimetres of stride per walk cycle. */
 	constexpr float StrideCm = 90.0f;
-	constexpr float AttackSeconds = 0.45f;
+	constexpr float AttackPoseSeconds = 0.45f;
 	constexpr float HitSeconds = 0.15f;
 	constexpr float DeathSeconds = 0.6f;
 }
@@ -219,7 +219,7 @@ void UMadHumanoidRigComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		HitFlash -= DeltaTime;
 		ApplyTint(HitFlash > 0.0f ? HitFlash / HitSeconds : 0.0f);
 	}
-	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / AttackSeconds);
+	AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / AttackPoseSeconds);
 	if (bDying)
 	{
 		DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / DeathSeconds);

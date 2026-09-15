@@ -60,6 +60,16 @@ struct MADFALLCORE_API FMadSurfaceDefinition
 	int32 Pattern = 0;
 
 	/**
+	 * Layer of the surface texture arrays ("texture_layer", Scripts/surface_sets.py
+	 * ARRAY_LAYERS) that M_MadVoxelPBRArray draws for this class, or INDEX_NONE.
+	 * When set, it replaces the pattern in vertex colour alpha - that material
+	 * reads the layer there, the same 255 - index * 16 encoding - so every layered
+	 * surface shares one material and one mesh section per chunk. Pattern still
+	 * drives the item icon and the procedural fallback.
+	 */
+	int32 TextureLayer = INDEX_NONE;
+
+	/**
 	 * Ground cover ("cover"): grass tufts and wildflowers drawn on top of this
 	 * surface near the survivor. Decoration only - not voxels, no collision, not
 	 * saved. Density and Flowers are the chance per exposed column, 0..1.

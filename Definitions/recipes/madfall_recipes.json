@@ -270,8 +270,7 @@
 		"id": "madfall:storage_barrel",
 		"output": { "item": "madfall:storage_barrel", "count": 1 },
 		"ingredients": [
-			{ "item": "madfall:wood_plank", "count": 6 },
-			{ "item": "madfall:scrap_iron", "count": 1 }
+			{ "item": "madfall:scrap_iron", "count": 4 }
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 4.0,

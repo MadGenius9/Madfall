@@ -35,8 +35,12 @@ The ground and building surfaces use photo-scanned textures from
 [ambientCG](https://ambientcg.com) (CC0, public domain). The imported assets in
 `Content/Surfaces` are committed; to re-import from source, run
 `Scripts/fetch_surface_textures.ps1` (about 357 MB of downloads into the
-uncommitted `SourceArt/`), then `Scripts/make_pbr_material.py` and
-`Scripts/import_surface_textures.py` through `UnrealEditor-Cmd -ExecutePythonScript`.
+uncommitted `SourceArt/`), then `Scripts/make_pbr_material.py`,
+`Scripts/import_surface_textures.py` and `Scripts/make_pbr_material.py` again
+(the texture-array materials) through `UnrealEditor-Cmd -ExecutePythonScript`.
+The storage barrel and loot crate are photo-scanned models from
+[Poly Haven](https://polyhaven.com) (CC0): `Scripts/fetch_models.ps1`, then
+`Scripts/make_model_material.py` and `Scripts/import_models.py`.
 
 ## Package
 
