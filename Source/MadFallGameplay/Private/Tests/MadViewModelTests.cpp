@@ -1,6 +1,8 @@
 // Copyright MadFall. All Rights Reserved.
 
 #include "Misc/AutomationTest.h"
+#include "MadSurfaceRegistry.h"
+#include "Engine/StaticMesh.h"
 
 #include "MadGameplayDefinitions.h"
 #include "MadViewModel.h"
@@ -44,6 +46,25 @@ bool FMadViewModelTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestTrue(TEXT("items checked"), Items > 10);
+
+	// Every shape with a hand-built model has one that loads, and its slots are
+	// surfaces or the tool head - a typo would silently draw the preview material.
+	for (EMadHeldShape Shape : { EMadHeldShape::Pickaxe, EMadHeldShape::Axe, EMadHeldShape::Shovel, EMadHeldShape::Hoe,
+		EMadHeldShape::Bow, EMadHeldShape::Club, EMadHeldShape::Food, EMadHeldShape::Drink })
+	{
+		const TCHAR* Path = MadFall::ViewModel::GetHeldModelPath(Shape);
+		const UStaticMesh* Model = Path ? LoadObject<UStaticMesh>(nullptr, Path) : nullptr;
+		if (!TestNotNull(*FString::Printf(TEXT("shape %d has a held model"), static_cast<int32>(Shape)), Model))
+		{
+			continue;
+		}
+		for (const FStaticMaterial& Slot : Model->GetStaticMaterials())
+		{
+			TestTrue(*FString::Printf(TEXT("%s slot %s is a surface or the head"), Path, *Slot.MaterialSlotName.ToString()),
+				Slot.MaterialSlotName == FName(TEXT("head")) || MadFall::GetSurfaces().Find(Slot.MaterialSlotName) != nullptr);
+		}
+	}
+	TestTrue(TEXT("a held block keeps its textured cube"), MadFall::ViewModel::GetHeldModelPath(EMadHeldShape::Block) == nullptr);
 
 	// At rest there is no offset; mid-swing the tool is well forward and down.
 	const FTransform Rest = ComputeOffset(1.0f, 1.0f, 0.0f, 0.0f);

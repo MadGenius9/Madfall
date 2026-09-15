@@ -37,6 +37,13 @@ namespace MadFall::ViewModel
 	 * Moving 0..1 how much of a stride to show.
 	 */
 	MADFALLGAMEPLAY_API FTransform ComputeOffset(float Swing, float Use, float BobPhase, float Moving);
+
+	/**
+	 * The hand-built model drawn for a shape (Scripts/build_prop_meshes.py), or
+	 * null for the shapes still drawn from basic parts: a block (a textured cube
+	 * is already the block), a resource and the empty hand.
+	 */
+	MADFALLGAMEPLAY_API const TCHAR* GetHeldModelPath(EMadHeldShape Shape);
 }
 
 /**
@@ -70,6 +77,13 @@ public:
 private:
 	void Rebuild();
 	UStaticMeshComponent* AddPart(const TCHAR* MeshPath, const FVector& Location, const FVector& SizeCm, const FLinearColor& Colour, const FRotator& Rotation = FRotator::ZeroRotator);
+
+	/**
+	 * Draws a hand-built model: each slot named after a surface wears that
+	 * surface's texture (dry), and the slot named "head" is stone for a stone tool
+	 * and steel for any other. False if the model did not load.
+	 */
+	bool AddModel(const TCHAR* ModelPath, bool bStoneHead);
 
 	UPROPERTY(Transient)
 	TObjectPtr<USceneComponent> Hand;

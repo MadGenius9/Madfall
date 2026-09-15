@@ -1128,6 +1128,20 @@ Step 3 of making the game look more three-dimensional without new art.
   texture's boards do; vertical planks under horizontal boards read as a grid.
   `MadFall.Mesher.ShippedModels` requires every slot that looks like a surface
   class (contains `:`) to name a known one.
+- **Held items are hand-built too.** The pickaxe, axe, shovel, hoe, bow, club,
+  canned food and water bottle in the survivor's hand were tinted engine cubes
+  and cylinders; the same script builds them into `/Game/Models/Held` in the
+  hand's frame (grip at the origin, shaft up, working end forward) - a wooden
+  handle with a cloth grip, a curved pick, a flared axe bit, a spade blade, a
+  swept recurve bow with a string, a nail-studded club, a labelled tin, a
+  covered bottle. Blades are extruded outlines and the bow's limbs a swept
+  section. A tool's head is a slot named `head`, which
+  `UMadViewModelComponent::AddModel` makes stone for a stone tool and steel for
+  anything else, so one mesh serves both; other slots wear their surface's
+  texture, dry. A held block keeps its textured cube, and the basic parts remain
+  for resources, the empty hand and a build without the assets. Tested:
+  `MadFall.Items.ViewModel` (every shaped tool's model loads and its slots are
+  surfaces or the head).
 
 **Menus and HUD are styled.** The menus use rounded dark panels with a faint
 outline, buttons that light up in the accent colour (`FMadMenuStyle`, no
@@ -2110,11 +2124,14 @@ Console (used by the survival gate): `mad.player.store <item>`,
    repair of a finished solve is the fix if horde nights show it. Measured once
    a horde could breach a base (a 531-block shell, 274 block hits in 80 s): 23
    jobs, none restarted, 6.7 ms total - not a problem at that scale.
-8. **A structure is re-checked once per chunk it spans.** Load seeding (below)
-   seeds every member of each arriving chunk, so a POI across four chunks is
-   solved up to four times as they stream in. Each solve is time-sliced and a
-   tier-1 POI is ~0.1 ms, but a very large player base loading in pieces pays
-   the gather repeatedly.
+8. **MEASURED, NOT A PROBLEM: a structure is re-checked once per chunk it
+   spans.** Load seeding (below) seeds every member of each arriving chunk, so a
+   POI across four chunks is solved up to four times as they stream in. Walked
+   through 24 teleports of streaming (world "siwalk", seed default): 10 jobs,
+   1,066 seeds, 1.16 ms of solving in total, worst frame 0.27 ms. Coalescing
+   load seeds would save a millisecond a minute at the cost of structures
+   standing unchecked for longer; revisit only if a very large player base
+   shows up in the frame-budget gate.
 9. **FIXED: debris fell rigidly.** A cluster landed as a unit on its first
    contact, so a long beam that clipped a post hung off it in mid-air.
    `MadFall::Debris::SplitUnsupported` now splits a landing cluster by (x, y)

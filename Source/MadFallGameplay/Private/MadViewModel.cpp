@@ -87,6 +87,22 @@ UMadViewModelComponent::UMadViewModelComponent()
 	PrimaryComponentTick.TickGroup = TG_PostUpdateWork;
 }
 
+const TCHAR* MadFall::ViewModel::GetHeldModelPath(EMadHeldShape Shape)
+{
+	switch (Shape)
+	{
+	case EMadHeldShape::Pickaxe: return TEXT("/Game/Models/Held/SM_Held_Pickaxe.SM_Held_Pickaxe");
+	case EMadHeldShape::Axe:     return TEXT("/Game/Models/Held/SM_Held_Axe.SM_Held_Axe");
+	case EMadHeldShape::Shovel:  return TEXT("/Game/Models/Held/SM_Held_Shovel.SM_Held_Shovel");
+	case EMadHeldShape::Hoe:     return TEXT("/Game/Models/Held/SM_Held_Hoe.SM_Held_Hoe");
+	case EMadHeldShape::Bow:     return TEXT("/Game/Models/Held/SM_Held_Bow.SM_Held_Bow");
+	case EMadHeldShape::Club:    return TEXT("/Game/Models/Held/SM_Held_Club.SM_Held_Club");
+	case EMadHeldShape::Food:    return TEXT("/Game/Models/Held/SM_Held_Food.SM_Held_Food");
+	case EMadHeldShape::Drink:   return TEXT("/Game/Models/Held/SM_Held_Drink.SM_Held_Drink");
+	default:                     return nullptr;
+	}
+}
+
 void UMadViewModelComponent::SetHeldItem(FName ItemId)
 {
 	if (bBuiltOnce && ItemId == HeldItem)
@@ -125,6 +141,46 @@ UStaticMeshComponent* UMadViewModelComponent::AddPart(const TCHAR* MeshPath, con
 	Part->RegisterComponent();
 	Parts.Add(Part);
 	return Part;
+}
+
+bool UMadViewModelComponent::AddModel(const TCHAR* ModelPath, bool bStoneHead)
+{
+	UStaticMesh* Mesh = ModelPath ? LoadObject<UStaticMesh>(nullptr, ModelPath) : nullptr;
+	if (Mesh == nullptr)
+	{
+		return false;
+	}
+	UStaticMeshComponent* Part = NewObject<UStaticMeshComponent>(GetOwner(), NAME_None, RF_Transient);
+	Part->SetStaticMesh(Mesh);
+	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Part->SetCastShadow(false);
+	Part->SetupAttachment(Hand);
+	Part->RegisterComponent();
+
+	const TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
+	for (int32 Slot = 0; Slot < Slots.Num(); ++Slot)
+	{
+		const FName SlotName = Slots[Slot].MaterialSlotName;
+		const FName Surface = SlotName == FName(TEXT("head"))
+			? FName(bStoneHead ? TEXT("madfall:stone") : TEXT("madfall:steel"))
+			: SlotName;
+		// Dry: no rain on the tool in the survivor's hand.
+		if (UMaterialInstanceDynamic* Textured = MadFall::SurfaceMaterials::MakeHeld(this, Surface, 0.0f))
+		{
+			Materials.Add(Textured);
+			Part->SetMaterial(Slot, Textured);
+		}
+		else if (const FMadSurfaceDefinition* Definition = MadFall::GetSurfaces().Find(Surface))
+		{
+			// An untextured surface: its colour on the tinted material.
+			UMaterialInstanceDynamic* Tinted = UMaterialInstanceDynamic::Create(LoadObject<UMaterialInterface>(nullptr, TintMaterial), this);
+			Tinted->SetVectorParameterValue(TEXT("Color"), Definition->Color);
+			Materials.Add(Tinted);
+			Part->SetMaterial(Slot, Tinted);
+		}
+	}
+	Parts.Add(Part);
+	return true;
 }
 
 void UMadViewModelComponent::Rebuild()
@@ -176,6 +232,13 @@ void UMadViewModelComponent::Rebuild()
 	// Stone tools have stone heads; anything else metal.
 	const bool bStoneTool = HeldItem.ToString().Contains(TEXT("stone"));
 	const FLinearColor Head = bStoneTool ? HeldStone : HeldIron;
+
+	// Tools, weapons, food and drink have hand-built models; the parts below
+	// remain for the shapes without one, and for a build without the assets.
+	if (AddModel(MadFall::ViewModel::GetHeldModelPath(Shape), bStoneTool))
+	{
+		return;
+	}
 
 	switch (Shape)
 	{

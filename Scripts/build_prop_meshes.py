@@ -22,8 +22,15 @@
 # own space - so the stones of a campfire look like the stone blocks around it
 # and a modded surface texture change reaches the props too. No UVs are needed.
 #
-# Every mesh is in centimetres with its pivot at the bottom centre of a 100 cm
+# Every prop is in centimetres with its pivot at the bottom centre of a 100 cm
 # voxel, so the blocks draw them with render.offset [0, 0, -0.5] and scale 1.
+#
+# HELD ITEMS (/Game/Models/Held/SM_Held_<Shape>) are the tools, weapons, food
+# and drink in the survivor's hand (UMadViewModelComponent), built in the hand's
+# frame: centimetres, the grip at the origin, the shaft up +Z, a tool's working
+# end towards +X. They replaced engine cubes and cylinders in flat tints. A
+# tool's head is a slot named "head", not a surface: the view model makes it
+# stone for a stone tool and steel for anything else, so one mesh serves both.
 
 import math
 import sys
@@ -66,6 +73,43 @@ class Prop:
             prims.append_cylinder(self.mesh, self.options(surface), transform(start, rotation), radius, length, steps, 0, True, BASE)
         else:
             prims.append_cone(self.mesh, self.options(surface), transform(start, rotation), radius, end_radius, length, steps, 0, True, BASE)
+
+    def plate(self, surface, outline, thickness, normal="y", offset=0.0, rotation=None, at=None):
+        """A flat plate extruded from a 2D outline.
+
+        normal "y": outline points are (x, z), extruded along Y (a blade seen from the side).
+        normal "x": outline points are (y, z), extruded along X (a blade seen from the front).
+        normal "z": outline points are (x, y), extruded along Z (a horizontal plate).
+        rotation turns the finished plate about the origin, and at then moves it: a
+        tilted plate is authored about its own mounting point.
+        """
+        if normal == "y":
+            # Local X -> world X, local Z (extrusion) -> world Y, so local Y -> world -Z.
+            basis = unreal.MathLibrary.make_rot_from_xz(unreal.Vector(1, 0, 0), unreal.Vector(0, 1, 0))
+            points = [unreal.Vector2D(x, -z) for x, z in outline]
+            location = (0.0, offset - thickness / 2.0, 0.0)
+        elif normal == "x":
+            # Local X -> world Y, local Z -> world X, so local Y -> world Z.
+            basis = unreal.MathLibrary.make_rot_from_xz(unreal.Vector(0, 1, 0), unreal.Vector(1, 0, 0))
+            points = [unreal.Vector2D(y, z) for y, z in outline]
+            location = (offset - thickness / 2.0, 0.0, 0.0)
+        else:
+            basis = unreal.Rotator()
+            points = [unreal.Vector2D(x, y) for x, y in outline]
+            location = (0.0, 0.0, offset - thickness / 2.0)
+        xf = transform(location, basis)
+        if rotation is not None:
+            xf = unreal.MathLibrary.compose_transforms(xf, unreal.Transform(rotation=rotation))
+        if at is not None:
+            xf = unreal.MathLibrary.compose_transforms(xf, unreal.Transform(location=vec(at)))
+        prims.append_simple_extrude_polygon(self.mesh, self.options(surface), xf, points, thickness, 0, True, BASE)
+
+    def sweep(self, surface, path, width, depth):
+        """A rectangular section swept along a path of points."""
+        section = [unreal.Vector2D(-width / 2, -depth / 2), unreal.Vector2D(width / 2, -depth / 2),
+                   unreal.Vector2D(width / 2, depth / 2), unreal.Vector2D(-width / 2, depth / 2)]
+        prims.append_simple_swept_polygon(self.mesh, self.options(surface), transform((0, 0, 0)), section,
+                                          [vec(p) for p in path], False, True, 1.0, 1.0, 0.0, 1.0)
 
     def blob(self, surface, centre, size, yaw=0.0):
         """A squashed low-poly sphere: a stone, a lump of cloth."""
@@ -209,6 +253,113 @@ def ladder():
 
 PROPS = [campfire, torch, door_closed, door_open, bedroll, ladder]
 
+
+# ---------------------------------------------------------------------------
+# Held items, in the hand's frame (see the header)
+# ---------------------------------------------------------------------------
+
+def handle(prop, top=40.0, radius=1.9, grip=True):
+    prop.cylinder("madfall:wood", (0, 0, -8), (0, 0, top), radius, 10, end_radius=radius * 0.85)
+    if grip:
+        prop.cylinder("madfall:cloth", (0, 0, -1), (0, 0, 9), radius + 0.35, 10)
+
+
+def held_pickaxe():
+    prop = Prop("Held_Pickaxe")
+    handle(prop)
+    prop.box("head", (0.5, 0, 38.5), (6.0, 5.0, 6.5))
+    # A pick point forward and a chisel back, each curving down from the eye.
+    prop.cylinder("head", (2.5, 0, 39.5), (10.0, 0, 38.0), 2.2, 8, end_radius=1.5)
+    prop.cylinder("head", (9.5, 0, 38.2), (18.0, 0, 33.5), 1.6, 8, end_radius=0.3)
+    prop.cylinder("head", (-1.5, 0, 39.5), (-8.0, 0, 38.3), 2.1, 8, end_radius=1.6)
+    prop.cylinder("head", (-7.5, 0, 38.4), (-14.0, 0, 35.0), 1.6, 8, end_radius=0.5)
+    return prop
+
+
+def held_axe():
+    prop = Prop("Held_Axe")
+    handle(prop, top=42.0)
+    prop.box("head", (1.0, 0, 36.0), (5.5, 3.6, 8.0))
+    # The bit flares from the eye to a broad, slightly curved edge.
+    prop.plate("head", [(3.0, 32.5), (9.0, 29.5), (13.5, 27.5), (14.3, 33.0), (14.3, 39.0), (13.5, 44.0), (9.0, 42.0), (3.0, 39.5)], 1.8)
+    prop.box("head", (-3.0, 0, 36.0), (3.0, 3.0, 5.0))
+    return prop
+
+
+def held_shovel():
+    prop = Prop("Held_Shovel")
+    handle(prop, top=40.0, radius=1.7)
+    prop.cylinder("madfall:steel", (0, 0, 38.0), (0, 0, 44.0), 1.9, 10, end_radius=3.0)
+    # A rounded spade blade, thin across X.
+    prop.plate("head", [(-6.5, 43.0), (6.5, 43.0), (7.0, 52.0), (6.0, 57.0), (3.5, 60.5), (0.0, 62.0), (-3.5, 60.5), (-6.0, 57.0), (-7.0, 52.0)], 0.9, normal="x")
+    prop.cylinder("madfall:wood", (0, -5.5, -8.0), (0, 5.5, -8.0), 1.3, 8)
+    return prop
+
+
+def held_hoe():
+    prop = Prop("Held_Hoe")
+    handle(prop, top=48.0, radius=1.7)
+    prop.cylinder("madfall:steel", (0, 0, 45.0), (6.0, 0, 46.0), 1.2, 8)
+    prop.plate("head", [(5.0, -5.0), (15.0, -5.5), (15.5, 5.5), (5.0, 5.0)], 1.0, normal="z",
+               rotation=unreal.Rotator(roll=0.0, pitch=-18.0, yaw=0.0), at=(0.0, 0.0, 46.0))
+    return prop
+
+
+def held_bow():
+    prop = Prop("Held_Bow")
+    # Limbs curve back from the grip to the tips; the string joins the tips.
+    upper = [(-0.4 * ((z - 20.0) / 5.0) ** 2, 0.0, z) for z in (22.0, 26.0, 30.0, 34.0, 38.0, 42.0, 45.0)]
+    lower = [(-0.4 * ((z - 20.0) / 5.0) ** 2, 0.0, z) for z in (18.0, 14.0, 10.0, 6.0, 2.0, -2.0, -5.0)]
+    prop.sweep("madfall:wood", upper, 2.2, 1.4)
+    prop.sweep("madfall:wood", lower, 2.2, 1.4)
+    prop.cylinder("madfall:wood", (0, 0, 15.5), (0, 0, 24.5), 1.6, 8)
+    prop.cylinder("madfall:cloth", (0, 0, 16.5), (0, 0, 23.5), 1.9, 8)
+    tip_top = upper[-1]
+    tip_bottom = lower[-1]
+    prop.cylinder("madfall:cloth", tip_bottom, tip_top, 0.18, 4)
+    return prop
+
+
+def held_club():
+    prop = Prop("Held_Club")
+    prop.cylinder("madfall:bark", (0, 0, -8), (0, 0, 40), 1.9, 10, end_radius=4.2)
+    prop.cylinder("madfall:cloth", (0, 0, -3), (0, 0, 8), 2.2, 10)
+    # Nails driven through the business end.
+    rand = Jitter(5)
+    for index in range(7):
+        angle = 2.0 * math.pi * index / 7 + rand(-0.2, 0.2)
+        z = rand(26.0, 38.0)
+        radius = 1.9 + (4.2 - 1.9) * (z + 8.0) / 48.0
+        inner = (math.cos(angle) * (radius - 1.0), math.sin(angle) * (radius - 1.0), z)
+        outer = (math.cos(angle) * (radius + 2.2), math.sin(angle) * (radius + 2.2), z + rand(-1.0, 1.0))
+        prop.cylinder("madfall:steel", inner, outer, 0.3, 4)
+    return prop
+
+
+def held_food():
+    """A tin can, its label round the middle."""
+    prop = Prop("Held_Food")
+    prop.cylinder("madfall:steel", (0, 0, 15.0), (0, 0, 25.0), 3.75, 16)
+    prop.cylinder("madfall:cloth", (0, 0, 16.5), (0, 0, 23.5), 3.85, 16)
+    for z in (15.0, 25.0):
+        prop.cylinder("madfall:steel", (0, 0, z - 0.3), (0, 0, z + 0.3), 3.95, 16)
+    return prop
+
+
+def held_drink():
+    """A metal canteen with a cloth cover and a screw cap."""
+    prop = Prop("Held_Drink")
+    prop.cylinder("madfall:steel", (0, 0, 13.0), (0, 0, 27.0), 3.4, 16)
+    prop.cylinder("madfall:cloth", (0, 0, 13.5), (0, 0, 24.0), 3.6, 16)
+    prop.cylinder("madfall:steel", (0, 0, 27.0), (0, 0, 30.0), 3.4, 16, end_radius=1.4)
+    prop.cylinder("madfall:steel", (0, 0, 30.0), (0, 0, 33.0), 1.3, 12)
+    prop.cylinder("madfall:wood", (0, 0, 32.5), (0, 0, 34.5), 1.6, 12)
+    return prop
+
+
+HELD = [held_pickaxe, held_axe, held_shovel, held_hoe, held_bow, held_club, held_food, held_drink]
+HELD_DEST = "/Game/Models/Held"
+
 # Props a survivor collides with get a box around their bounds; the rest (the
 # open door, the ladder, the torch) are walked through, as their blocks say.
 COLLIDES = {"Campfire", "Door", "Bedroll"}
@@ -219,9 +370,9 @@ def main():
     meshes = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
     preview = library.load_asset(PREVIEW_MATERIAL)
     failures = 0
-    for build in PROPS:
+    for build in PROPS + HELD:
         prop = build()
-        path = "{}/SM_{}".format(DEST, prop.name)
+        path = "{}/SM_{}".format(HELD_DEST if build in HELD else DEST, prop.name)
         if library.does_asset_exist(path):
             library.delete_asset(path)
 
@@ -249,7 +400,7 @@ def main():
             path, prop.mesh.get_triangle_count(), prop.slots, size.x, size.y, size.z,
             bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z))
 
-    unreal.log("[MadFall] Props: {} built, {} failed".format(len(PROPS) - failures, failures))
+    unreal.log("[MadFall] Props: {} built, {} failed".format(len(PROPS) + len(HELD) - failures, failures))
     return 0 if failures == 0 else 1
 
 
