@@ -1706,6 +1706,44 @@ horde-night horn and menu clicks. Plays are counted even with no audio device,
 which is how the survival and zombie gates check events reach the audio system
 (`mad.audio.stats`). `mad.audio.play <name>` auditions one.
 
+**Recorded sounds replace most synthesised ones.** 27 of the 36 sounds now play
+recordings from CC0 packs: Kenney's Impact Sounds and RPG Audio (hits, breaks
+and footsteps per impact kind, placing, pickups, crafting, wood creaks), the
+Summoning Wars zombie pack (groans, attack grunts, screams), and OpenGameArt's
+100 CC0 SFX #2, 30 CC0 SFX loops and Wind Whoosh Loop (stone breaks, thunder,
+rain, wind, clicks). `Scripts/fetch_audio.ps1` downloads them (12.5 MB) into the
+uncommitted `SourceArt/audio/`, `Scripts/prepare_audio.py` maps files to sounds
+and uses ffmpeg to trim silence from one-shots, fold to mono and peak-normalise
+to -2 dBFS - the synthesised sounds' level, so every volume tuned against them
+still holds - and `Scripts/import_audio.py` imports them into
+`/Game/Audio/<sound name>/` (3.2 MB, committed). The zombie pack's 24 files are
+unnamed, so they were sorted by length and spectral centroid: long low ones are
+groans, short loud ones attacks, the brightest screams.
+
+`UMadAudioSubsystem` finds recordings by folder through the asset registry and
+loads them asynchronously at world start; a sound with recordings plays one at
+random (never the same twice running) through the same voice cap, gap and
+attenuation, and a sound without - the horde horn, the collapse rumble, the
+survivor's hurt voice, the bow, the spit, non-wood creaks - and every sound
+before the loads land keeps its synthesised voice. A recorded loop is imported
+looping and played by one voice. `mad.audio.stats` reports how many sounds are
+recorded. Tested: `MadFall.Audio.Recordings` (every folder names a sound, every
+wave loads and has length, loops loop, at least 25 sounds recorded).
+
+**Music** (`UMadMusicSubsystem`): three CC0 tracks from OpenGameArt in
+`/Game/Music` - "EmptyCity" by yd by day, "Cold Silence" by Eponasoft by night,
+"Zombies' March" by yd while a horde attacks (`MadFall::Music::ChooseTrack`).
+Day and night tracks play through and then leave 60-150 s of quiet
+(`SilenceAfter`), so a whole day is not one theme on repeat; the horde track
+loops for the length of the horde. A change fades the old track over four
+seconds and, except for a horde arriving, waits six before the new one.
+`Scripts/prepare_audio.py` normalises them to -20 LUFS, under the effects, at
+32 kHz stereo, with the six-minute night track cut to 150 s with fades: at full
+length and rate the three were 95 MB of PCM, against a 1 GB LFS allowance
+(25 MB imported). `mad.audio.MusicVolume` (0.6) is its own menu setting. Starts
+are counted without an audio device; the zombie gate checks the horde track
+started on horde night (`mad.music.status`). Tested: `MadFall.Audio.Music`.
+
 **Zombie bodies were also a frame-budget change**: fourteen rig components
 registered inside `SpawnActor` put a horde wave's construction on one frame
 (3.3 ms); rigs now assemble on their first tick, at most two per frame.
@@ -1904,6 +1942,20 @@ Console (used by the survival gate): `mad.player.store <item>`,
    - The mannequin material's Paint Tint takes the skin colour (head, arms,
      legs) and the clothes colour (torso), matte, with the logo hidden; a hit
      flashes it red.
+   - **Zombies wear decay as an overlay material** (`M_MadZombieOverlay`,
+     `Scripts/make_zombie_overlay_material.py`). A green-tinted mannequin read
+     as a clean painted robot. The overlay is a second translucent pass over
+     the mannequin's own shading, so its panel normals survive and nothing
+     references the uncommitted Epic textures: grime heavier towards the feet,
+     grey-green rot blotches and blood around the mouth, down the chest and on
+     the hands, all from the pre-skinned position (so a wound stays put as the
+     body moves) and shifted per zombie by its seed, with rot and blood amounts
+     varied too. The pre-skinned position and normal only exist in the vertex
+     shader and reach the pixel shader through vertex interpolators - wired
+     directly, the material fell back to the default. Not drawn beyond 40 m
+     or on the living. Found on the way: in an uncooked `-game` run a new
+     material draws nothing until its shaders compile, which looked like a
+     broken overlay for three probes; a cooked build compiles them at cook.
    - Cost: posed only when rendered (`OnlyTickPoseWhenRendered`), with update
      rate optimisations for distant ones, fixed bounds and no bone updates to
      physics; evaluation runs on animation workers. Measured with a CSV
@@ -1915,6 +1967,33 @@ Console (used by the survival gate): `mad.player.store <item>`,
      allocator.
    Tested: `MadFall.AI.CharacterAnim` (blend weights and rates, the reach
    direction through a swing, and the installed sequences when present).
+
+   **The deer and the wolf are animated models too** (Quaternius, Ultimate
+   Animated Animal Pack, CC0, via Poly Pizza; no CC0 animated rabbit or boar
+   was found that was not a cartoon character or a block toy, so those two keep
+   their proportioned figures). Definitions name the model and a clip per role
+   in `appearance.model` (`FMadAnimalModel`), and `UMadQuadrupedRigComponent`
+   drives them with the same `UMadCharacterAnimInstance` as the mannequins,
+   given the model's cycle speeds, a whole-body attack clip blended through
+   each attack, and a graze clip in place of the idle while grazing.
+   - `Scripts/prepare_animals.py` rewrites the downloaded glTFs before import.
+     The pack carries a 100x scale and a -90 degree turn on the armature and
+     mesh nodes, which Unreal's importer does not carry through a skinned mesh:
+     the first import had the deer's head and tail bones on one side of its
+     body and bone bounds kilometres wide; fixing the scale alone stood it on
+     its tail. The script bakes both into joint translations and rotations,
+     their keys, vertices, normals and inverse bind matrices, and the import
+     keeps one copy of each clip (every clip came in twice).
+   - `FitModel` scales the model uniformly to the figure's height and lifts its
+     lowest point to the ground, so the capsule, sized from the same
+     proportions, still matches.
+   - `UMadCharacterAssetSubsystem` loads the mannequins and every animal model
+     asynchronously when a rendering world starts; rigs wait up to ten seconds
+     for it rather than load a skeletal mesh, skeleton, physics asset and clips
+     on the frame their first character appears. Only packages that exist are
+     requested, so a checkout without the mannequins loads quietly.
+   Tested: `MadFall.Animals.Definitions` (the model block parses, rejects ids and
+   inverted cycle speeds, every shipped clip loads, `FitModel` scales and lifts).
 
    The survivor's own hand was invisible, so a swing had no visible feedback.
    `UMadViewModelComponent` (on the camera) draws the held item from basic shapes
@@ -2098,8 +2177,8 @@ Console (used by the survival gate): `mad.player.store <item>`,
    `air`; turning padding into `void` is a manual edit.
 3. ~~**Markers are data only.**~~ Resolved in Phase 4: loot markers sit on
    container blocks rolled by `UMadContainerSubsystem`, spawn markers wake
-   sleepers through `UMadHordeSubsystem`. Looted state is not yet persisted
-   (Phase 4 gap 1).
+   sleepers through `UMadHordeSubsystem`. Looted state persists with the
+   containers in `gameplay.json` (Phase 4 persistence).
 4. **FIXED: roads have banks.** A road into a slope was a trench: its surface
    followed the smoothed, unwarped height field, but the real ground - that
    height moved by the 3D warp, up to 9 voxels - stood above the 4-voxel

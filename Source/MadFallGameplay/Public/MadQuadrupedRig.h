@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
+#include "MadGameplayDefinitions.h"
 #include "MadQuadrupedRig.generated.h"
 
 class UMaterialInstanceDynamic;
+class USkeletalMeshComponent;
 class UStaticMeshComponent;
 
 /** A four-legged pose for one frame. Angles in degrees; positive swings a leg forward. */
@@ -69,6 +71,16 @@ public:
 	/** Head down to the grass while standing still. */
 	void SetGrazing(bool bInGrazing) { bGrazing = bInGrazing; }
 
+	/** An animated model to draw instead of the figure, fitted to the shape. Call before the first tick. */
+	void SetModel(const FMadAnimalModel& InModel) { Model = InModel; }
+
+	/**
+	 * The transform that stands a model on the rig's origin at a target height:
+	 * a uniform scale from the mesh's reference bounds and a lift that puts its
+	 * lowest point on the ground. Pure, for tests.
+	 */
+	static FTransform FitModel(const FBoxSphereBounds& MeshBounds, float TargetHeight, float Yaw);
+
 	void PlayAttack();
 	void PlayHit();
 	void PlayDeath();
@@ -78,6 +90,8 @@ public:
 
 private:
 	void Build();
+	/** The animated model; false (nothing built) without one, without a renderer, or if it does not load. */
+	bool BuildSkeletal();
 	void ApplyTint(float Flash);
 	/** Part kinds: the coat, a darker shade of it (legs, snout, tail), and the head (with eyes). */
 	enum class EPart : uint8 { Coat, Dark, Head };
@@ -102,6 +116,15 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Parts;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USkeletalMeshComponent> Skeletal;
+	FMadAnimalModel Model;
+	float AttackClipSeconds = 0.0f;
+	float DeathClipSeconds = 0.0f;
+	float SinceHit = 1000.0f;
+	float SinceDeath = -1.0f;
+	float AssetWaitSeconds = 0.0f;
 
 	/** One per part (M_MadCharacter's Size differs per part), parallel to PartKinds. */
 	UPROPERTY(Transient)

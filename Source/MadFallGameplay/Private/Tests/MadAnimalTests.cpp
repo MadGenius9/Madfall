@@ -68,7 +68,9 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 			"stats": { "health": 150, "walk_speed": 1.0, "run_speed": 6.0, "attack_damage": 15, "attack_seconds": 1.5, "damage_type": "madfall:pierce" },
 			"senses": { "sight": 30, "hearing": 35, "flee": 14 },
 			"rewards": { "experience": 40, "loot_table": "madfall:loot/deer" },
-			"appearance": { "body": [140, 40, 60], "legs": 80, "neck": 50, "scale": 1.2, "tint": [1.0, 0.5, 0.0] }
+			"appearance": { "body": [140, 40, 60], "legs": 80, "neck": 50, "scale": 1.2, "tint": [1.0, 0.5, 0.0],
+				"model": { "mesh": "/Game/Animals/Elk/SK_Elk.SK_Elk", "idle": "/Game/Animals/Elk/Idle.Idle", "walk": "/Game/Animals/Elk/Walk.Walk",
+					"run": "/Game/Animals/Elk/Run.Run", "walk_cycle_speed": 1.4, "run_cycle_speed": 8.0, "yaw": -90 } }
 		})")), TEXT("elk.json"), FName(TEXT("test")), Animal, Errors);
 		TestTrue(TEXT("parses"), bParsed);
 		TestEqual(TEXT("no errors"), Errors.Num(), 0);
@@ -80,6 +82,11 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("flee range"), Animal.FleeRange, 14.0f);
 		TestEqual(TEXT("body"), Animal.BodySize, FVector(140.0, 40.0, 60.0));
 		TestEqual(TEXT("scale"), Animal.Scale, 1.2f);
+		TestTrue(TEXT("a model with mesh, idle and walk is set"), Animal.Model.IsSet());
+		TestEqual(TEXT("its run clip"), Animal.Model.Run.ToString(), FString(TEXT("/Game/Animals/Elk/Run.Run")));
+		TestTrue(TEXT("unnamed clips stay unset"), Animal.Model.Attack.IsNull() && Animal.Model.Graze.IsNull());
+		TestEqual(TEXT("cycle speed"), Animal.Model.RunCycleSpeed, 8.0f);
+		TestEqual(TEXT("yaw"), Animal.Model.Yaw, -90.0f);
 		TestEqual(TEXT("tint converts sRGB to linear"), Animal.Tint.G, MadFall::Surfaces::SRGBToLinear(0.5f), 1e-4f);
 		TestTrue(TEXT("active at night"), Animal.IsActive(true));
 		TestFalse(TEXT("not by day"), Animal.IsActive(false));
@@ -91,9 +98,11 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 		TArray<FMadDefinitionError> Errors;
 		MadFall::GameplayDefinitionsJson::ParseAnimal(Json(TEXT(R"({
 			"schema": "madfall.animal/1", "id": "test:bad", "behaviour": "shy",
-			"spawn": { "herd": [3, 1], "active": "dusk" }, "stats": { "health": 0 }, "appearance": { "body": [10, 0] }
+			"spawn": { "herd": [3, 1], "active": "dusk" }, "stats": { "health": 0 },
+			"appearance": { "body": [10, 0], "model": { "mesh": "madfall:deer", "walk_cycle_speed": 2, "run_cycle_speed": 1 } }
 		})")), TEXT("bad.json"), FName(TEXT("test")), Animal, Errors);
-		for (const TCHAR* Pointer : { TEXT("/behaviour"), TEXT("/spawn/herd"), TEXT("/spawn/active"), TEXT("/stats/health"), TEXT("/appearance/body") })
+		for (const TCHAR* Pointer : { TEXT("/behaviour"), TEXT("/spawn/herd"), TEXT("/spawn/active"), TEXT("/stats/health"), TEXT("/appearance/body"),
+			TEXT("/appearance/model/mesh"), TEXT("/appearance/model"), TEXT("/appearance/model/run_cycle_speed") })
 		{
 			TestTrue(*FString::Printf(TEXT("error at %s"), Pointer), Errors.ContainsByPredicate(
 				[Pointer](const FMadDefinitionError& E) { return E.ToString().Contains(Pointer); }));
@@ -116,6 +125,19 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 		}
 		TestTrue(*FString::Printf(TEXT("%s drops something"), *Animal.Id.ToString()),
 			!Animal.LootTable.IsNone() && Defs.FindLootTable(Animal.LootTable) != nullptr);
+		// A model path that does not load draws the figure with a warning - easy to
+		// ship unnoticed - so every clip a shipped model names must load.
+		if (Animal.Model.IsSet())
+		{
+			TestNotNull(*FString::Printf(TEXT("%s's model mesh loads"), *Animal.Id.ToString()), Animal.Model.Mesh.TryLoad());
+			for (const FSoftObjectPath* Clip : { &Animal.Model.Idle, &Animal.Model.Walk, &Animal.Model.Run, &Animal.Model.Attack, &Animal.Model.Hit, &Animal.Model.Death, &Animal.Model.Graze })
+			{
+				if (!Clip->IsNull())
+				{
+					TestNotNull(*FString::Printf(TEXT("%s's clip %s loads"), *Animal.Id.ToString(), *Clip->ToString()), Clip->TryLoad());
+				}
+			}
+		}
 	}
 	for (const TCHAR* Biome : { TEXT("madfall:plains"), TEXT("madfall:forest"), TEXT("madfall:desert"), TEXT("madfall:tundra"), TEXT("madfall:highlands") })
 	{
@@ -125,6 +147,15 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 			UMadAnimalSubsystem::GetCandidates(Defs.GetAnimals(), FName(Biome), bNight, Candidates);
 			TestTrue(*FString::Printf(TEXT("%s has wildlife by %s"), Biome, bNight ? TEXT("night") : TEXT("day")), Candidates.Num() > 0);
 		}
+	}
+
+	// A model authored at any size and height stands on the rig's origin at the figure's height.
+	{
+		const FBoxSphereBounds Authored(FVector(0.0, 0.0, 50.0), FVector(10.0, 20.0, 100.0), 110.0);
+		const FTransform Fit = UMadQuadrupedRigComponent::FitModel(Authored, 100.0f, 90.0f);
+		TestEqual(TEXT("a 200 cm model fitted to 100 cm is halved"), Fit.GetScale3D().X, 0.5, 1e-6);
+		TestEqual(TEXT("and lifted so its lowest point (-50 cm, halved) is on the ground"), Fit.GetLocation().Z, 25.0, 1e-6);
+		TestEqual(TEXT("and turned by its yaw"), Fit.GetRotation().Rotator().Yaw, 90.0, 1e-4);
 	}
 
 	TArray<const FMadAnimalDefinition*> Plains;

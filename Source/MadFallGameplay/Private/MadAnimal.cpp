@@ -146,6 +146,7 @@ void AMadAnimal::InitialiseFromDefinition(const FMadAnimalDefinition& InDefiniti
 	Body->SetShape(Definition.BodySize * Definition.Scale, Definition.LegLength * Definition.Scale, Definition.NeckLength * Definition.Scale);
 	Body->SetColour(Definition.Tint);
 	Body->SetGallopSpeed(Definition.RunSpeed * 100.0f);
+	Body->SetModel(Definition.Model);
 }
 
 FIntVector AMadAnimal::GetFeetVoxel() const

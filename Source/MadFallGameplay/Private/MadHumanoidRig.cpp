@@ -4,6 +4,7 @@
 
 #include "MadBasicShapes.h"
 #include "MadCharacterAnimInstance.h"
+#include "MadCharacterAssetSubsystem.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -26,14 +27,9 @@ namespace
 	constexpr float HumanHitSeconds = 0.15f;
 	constexpr float HumanDeathSeconds = 0.6f;
 
-	TAutoConsoleVariable<int32> CVarSkeletalCharacters(
-		TEXT("mad.characters.Skeletal"),
-		1,
-		TEXT("Draw humanoids as the UE5 mannequin when its assets are installed (Scripts/copy_mannequin.ps1). 0 draws the box figures. Applies to characters built after the change."),
-		ECVF_Default);
-
 	const TCHAR* MannyPath = TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple");
 	const TCHAR* QuinnPath = TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple");
+	const TCHAR* ZombieOverlayPath = TEXT("/Game/Materials/M_MadZombieOverlay.M_MadZombieOverlay");
 }
 
 FMadHumanoidPose MadFall::Humanoid::ComputePose(float Phase, float SpeedFactor, float Attack, float Death)
@@ -150,7 +146,7 @@ bool UMadHumanoidRigComponent::BuildSkeletal()
 {
 	// Nothing to see without a renderer, and animating a horde nobody can see
 	// would only cost the server and CI.
-	if (CVarSkeletalCharacters.GetValueOnGameThread() == 0 || !FApp::CanEverRender())
+	if (!MadFall::CharacterAnim::UseSkeletalBodies())
 	{
 		return false;
 	}
@@ -208,6 +204,21 @@ bool UMadHumanoidRigComponent::BuildSkeletal()
 		Body->SetMaterial(Slot, Material);
 		PartMaterials.Add(Material);
 		PartKinds.Add(Slot == 0 ? EPart::Skin : EPart::Shirt);
+	}
+	// Decay painted over the mannequin's own shading: rot, grime and blood that
+	// differ per zombie (Scripts/make_zombie_overlay_material.py). The living
+	// stay clean. Beyond 40 m the extra translucent pass is not worth drawing.
+	if (!bLiving)
+	{
+		if (UMaterialInterface* Decay = LoadObject<UMaterialInterface>(nullptr, ZombieOverlayPath))
+		{
+			UMaterialInstanceDynamic* Overlay = UMaterialInstanceDynamic::Create(Decay, this);
+			Overlay->SetScalarParameterValue(TEXT("Seed"), static_cast<float>(Seed % 997));
+			Overlay->SetScalarParameterValue(TEXT("Rot"), 0.6f + 0.4f * static_cast<float>((Seed >> 3) % 100) / 100.0f);
+			Overlay->SetScalarParameterValue(TEXT("Blood"), 0.5f + 0.5f * static_cast<float>((Seed >> 9) % 100) / 100.0f);
+			Body->SetOverlayMaterial(Overlay);
+			Body->SetOverlayMaterialMaxDrawDistance(4000.0f);
+		}
 	}
 	Skeletal = Body;
 	ApplyTint(0.0f);
@@ -288,6 +299,14 @@ void UMadHumanoidRigComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	if (!bBuilt)
 	{
+		// The first characters of a session wait a moment for the preloaded
+		// bodies rather than load them mid-frame (UMadCharacterAssetSubsystem).
+		const UMadCharacterAssetSubsystem* Assets = GetWorld() ? GetWorld()->GetSubsystem<UMadCharacterAssetSubsystem>() : nullptr;
+		if (Assets != nullptr && !Assets->IsSettled() && AssetWaitSeconds < 10.0f)
+		{
+			AssetWaitSeconds += DeltaTime;
+			return;
+		}
 		// At most two rigs are assembled per frame across every zombie.
 		static uint64 BuildFrame = 0;
 		static int32 BuiltThisFrame = 0;

@@ -3,7 +3,12 @@
 #include "MadQuadrupedRig.h"
 
 #include "MadBasicShapes.h"
+#include "MadCharacterAnimInstance.h"
+#include "MadCharacterAssetSubsystem.h"
+#include "Animation/AnimSequence.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -102,6 +107,70 @@ UStaticMeshComponent* UMadQuadrupedRigComponent::MakePart(const TCHAR* Name, USc
 	return Part;
 }
 
+FTransform UMadQuadrupedRigComponent::FitModel(const FBoxSphereBounds& MeshBounds, float TargetHeight, float Yaw)
+{
+	const double Height = FMath::Max(1.0e-3, 2.0 * MeshBounds.BoxExtent.Z);
+	const double Scale = FMath::Max(1.0e-4, static_cast<double>(TargetHeight) / Height);
+	const double Lowest = MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z;
+	return FTransform(FRotator(0.0, Yaw, 0.0), FVector(0.0, 0.0, -Lowest * Scale), FVector(Scale));
+}
+
+bool UMadQuadrupedRigComponent::BuildSkeletal()
+{
+	if (!Model.IsSet() || !MadFall::CharacterAnim::UseSkeletalBodies())
+	{
+		return false;
+	}
+	USkeletalMesh* Mesh = Cast<USkeletalMesh>(Model.Mesh.TryLoad());
+	auto Clip = [](const FSoftObjectPath& Path) { return Path.IsNull() ? nullptr : Cast<UAnimSequence>(Path.TryLoad()); };
+	UAnimSequence* Idle = Clip(Model.Idle);
+	UAnimSequence* Walk = Clip(Model.Walk);
+	if (Mesh == nullptr || Idle == nullptr || Walk == nullptr)
+	{
+		return false;
+	}
+
+	USkeletalMeshComponent* Component = NewObject<USkeletalMeshComponent>(GetOwner(), TEXT("RigModel"), RF_Transient);
+	Component->SetupAttachment(this);
+	// Fitted to the figure's height to the top of its head, so the model and the
+	// capsule sized from the same proportions agree (and so a model authored at
+	// any scale, as this pack's are at a hundred times life, stands right).
+	const float TargetHeight = LegLength + BodySize.Z + NeckLength * 0.8f;
+	Component->SetRelativeTransform(FitModel(Mesh->GetBounds(), TargetHeight, Model.Yaw));
+	Component->SetSkeletalMesh(Mesh);
+	Component->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	Component->SetAnimInstanceClass(UMadCharacterAnimInstance::StaticClass());
+	Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Component->SetGenerateOverlapEvents(false);
+	Component->SetCanEverAffectNavigation(false);
+	Component->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	Component->bEnableUpdateRateOptimizations = true;
+	Component->KinematicBonesUpdateType = EKinematicBonesUpdateToPhysics::SkipAllBones;
+	Component->bComponentUseFixedSkelBounds = true;
+	Component->RegisterComponent();
+
+	UMadCharacterAnimInstance* Anim = Cast<UMadCharacterAnimInstance>(Component->GetAnimInstance());
+	if (Anim == nullptr)
+	{
+		Component->DestroyComponent();
+		return false;
+	}
+	Anim->Idle = Idle;
+	Anim->Walk = Walk;
+	Anim->Jog = Clip(Model.Run) ? Clip(Model.Run) : Walk;
+	Anim->HitReact = Clip(Model.Hit);
+	Anim->Death = Clip(Model.Death);
+	Anim->Attack = Clip(Model.Attack);
+	Anim->Graze = Clip(Model.Graze);
+	Anim->WalkCycleSpeed = Model.WalkCycleSpeed * 100.0f;
+	Anim->JogCycleSpeed = Model.RunCycleSpeed * 100.0f;
+	Anim->Inputs.bZombie = false;
+	AttackClipSeconds = Anim->Attack ? Anim->Attack->GetPlayLength() : 0.0f;
+	DeathClipSeconds = Anim->Death ? Anim->Death->GetPlayLength() : 0.0f;
+	Skeletal = Component;
+	return true;
+}
+
 void UMadQuadrupedRigComponent::Build()
 {
 	if (bBuilt || GetOwner() == nullptr || GetWorld() == nullptr || !GetWorld()->IsGameWorld())
@@ -109,6 +178,10 @@ void UMadQuadrupedRigComponent::Build()
 		return;
 	}
 	bBuilt = true;
+	if (BuildSkeletal())
+	{
+		return;
+	}
 
 	const double HalfLength = BodySize.X * 0.5;
 	const double HalfWidth = BodySize.Y * 0.5;
@@ -191,6 +264,7 @@ void UMadQuadrupedRigComponent::PlayAttack()
 
 void UMadQuadrupedRigComponent::PlayHit()
 {
+	SinceHit = 0.0f;
 	HitFlash = QuadHitSeconds;
 	ApplyTint(1.0f);
 }
@@ -205,6 +279,12 @@ void UMadQuadrupedRigComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	if (!bBuilt)
 	{
+		const UMadCharacterAssetSubsystem* Assets = GetWorld() ? GetWorld()->GetSubsystem<UMadCharacterAssetSubsystem>() : nullptr;
+		if (Assets != nullptr && !Assets->IsSettled() && AssetWaitSeconds < 10.0f)
+		{
+			AssetWaitSeconds += DeltaTime;
+			return;
+		}
 		static uint64 BuildFrame = 0;
 		static int32 BuiltThisFrame = 0;
 		if (BuildFrame != GFrameCounter)
@@ -218,6 +298,26 @@ void UMadQuadrupedRigComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		}
 		++BuiltThisFrame;
 		Build();
+	}
+	if (Skeletal != nullptr)
+	{
+		// The clips set the pace: an attack lasts its clip, and so does the fall.
+		AttackProgress = FMath::Min(1.0f, AttackProgress + DeltaTime / FMath::Max(AttackClipSeconds, QuadAttackPoseSeconds));
+		if (bDying)
+		{
+			DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / FMath::Max(DeathClipSeconds, QuadDeathSeconds));
+		}
+		SinceHit += DeltaTime;
+		SinceDeath = bDying ? FMath::Max(SinceDeath, 0.0f) + DeltaTime : -1.0f;
+		if (UMadCharacterAnimInstance* Anim = Cast<UMadCharacterAnimInstance>(Skeletal->GetAnimInstance()))
+		{
+			Anim->Inputs.Speed = GetOwner() != nullptr ? static_cast<float>(GetOwner()->GetVelocity().Size2D()) : 0.0f;
+			Anim->Inputs.Attack = AttackProgress;
+			Anim->Inputs.SinceHit = SinceHit;
+			Anim->Inputs.SinceDeath = SinceDeath;
+			Anim->Inputs.bGrazing = bGrazing;
+		}
+		return;
 	}
 	if (Root == nullptr)
 	{

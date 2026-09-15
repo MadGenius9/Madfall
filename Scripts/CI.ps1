@@ -699,6 +699,7 @@ else {
         'wait 4'
         'mad.ai.status'
         'mad.audio.stats'
+        'mad.music.status'
         'quit'
     ) -join '; '
 
@@ -744,7 +745,8 @@ else {
         # Sounds are counted even with no audio device, so this proves the events
         # reach the audio system; MadFall.Audio.Synth proves what they sound like.
         foreach ($pattern in @('Horde night 7 begins', 'Spawned [1-9][0-9]* of [0-9]+ horde zombie',
-                               'Audio: .*zombie_groan=[1-9]', 'Audio: .*zombie_attack=[1-9]', 'Audio: .*horde_horn=1', 'Audio: .*player_hurt=[1-9]')) {
+                               'Audio: .*zombie_groan=[1-9]', 'Audio: .*zombie_attack=[1-9]', 'Audio: .*horde_horn=1', 'Audio: .*player_hurt=[1-9]',
+                               'Music: horde, .*horde=[1-9]')) {
             if (Select-String -Path $zombieLog -Pattern $pattern -Quiet) {
                 Write-Host "OK: log contains '$pattern'" -ForegroundColor Green
             }

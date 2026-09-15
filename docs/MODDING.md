@@ -616,6 +616,25 @@ Folder: `definitions/animals/`. Wildlife to hunt, and wildlife that hunts back.
   (`mad.animals.Max`); animals are not saved.
 - `appearance`: the four-legged rig is sized from `body` (length, width, height
   in cm), `legs` and `neck`; `tint` is sRGB.
+- `appearance.model` draws an animated skeletal model instead of that figure:
+
+  ```json
+  "model": { "mesh": "/MyMod/Animals/Elk/SK_Elk.SK_Elk",
+             "idle": "...", "walk": "...", "run": "...", "attack": "...",
+             "hit": "...", "death": "...", "graze": "...",
+             "walk_cycle_speed": 1.3, "run_cycle_speed": 7.5, "yaw": 90 }
+  ```
+
+  `mesh`, `idle` and `walk` are required; any other clip left out is simply not
+  animated (no `run` gallops with the walk played faster). The model is scaled
+  and lifted so it stands on the ground at the figure's height to the top of
+  its head (`legs + body height + 0.8 x neck`), so it can be authored at any
+  size. `walk_cycle_speed` and `run_cycle_speed` are the ground speeds (m/s) at
+  which those clips play at their authored rate, so the feet keep pace; `yaw`
+  turns the model so its head points forward. The game preloads every model
+  when a world starts. Without a renderer, or with `mad.characters.Skeletal 0`,
+  the figure is drawn. `MadFall.Animals.Definitions` checks every shipped
+  model's clips load.
 - Animals never dig. Killing one drops `rewards.loot_table` where it falls; use
   `"always": true` entries so a carcass always yields meat.
 

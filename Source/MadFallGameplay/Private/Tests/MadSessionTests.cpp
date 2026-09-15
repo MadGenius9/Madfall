@@ -131,6 +131,7 @@ bool FMadSettingsTest::RunTest(const FString& Parameters)
 	Custom.ViewDistance = 12;
 	Custom.Language = TEXT("de");
 	Custom.Volume = 0.35f;
+	Custom.MusicVolume = 0.2f;
 	Custom.Quality = 1;
 	FString Error;
 	TestTrue(TEXT("settings save"), MadFall::Settings::Save(Custom, Path, Error));
@@ -141,6 +142,7 @@ bool FMadSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("view distance"), Loaded.ViewDistance, 12);
 	TestEqual(TEXT("language"), Loaded.Language, FString(TEXT("de")));
 	TestEqual(TEXT("volume"), Loaded.Volume, 0.35f);
+	TestEqual(TEXT("music volume"), Loaded.MusicVolume, 0.2f);
 	TestEqual(TEXT("quality"), Loaded.Quality, 1);
 
 	// A hand-edited file with nonsense is clamped, not trusted.

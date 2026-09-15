@@ -830,7 +830,37 @@ namespace MadFall::GameplayDefinitionsJson
 			R.ReadFloat(S, TEXT("neck"), TEXT("/appearance/neck"), Data.NeckLength);
 			R.ReadFloat(S, TEXT("scale"), TEXT("/appearance/scale"), Data.Scale);
 			ReadColour(R, S, TEXT("tint"), TEXT("/appearance/tint"), Data.Tint);
-			R.ReportUnknownFields(S, { TEXT("body"), TEXT("legs"), TEXT("neck"), TEXT("scale"), TEXT("tint") });
+
+			TSharedPtr<FJsonObject> ModelSection;
+			if (R.ReadObject(S, TEXT("model"), TEXT("/appearance/model"), ModelSection))
+			{
+				const TSharedRef<FJsonObject> M = ModelSection.ToSharedRef();
+				FMadAnimalModel& Model = Data.Model;
+				R.ReadSoftPath(M, TEXT("mesh"), TEXT("/appearance/model/mesh"), Model.Mesh);
+				R.ReadSoftPath(M, TEXT("idle"), TEXT("/appearance/model/idle"), Model.Idle);
+				R.ReadSoftPath(M, TEXT("walk"), TEXT("/appearance/model/walk"), Model.Walk);
+				R.ReadSoftPath(M, TEXT("run"), TEXT("/appearance/model/run"), Model.Run);
+				R.ReadSoftPath(M, TEXT("attack"), TEXT("/appearance/model/attack"), Model.Attack);
+				R.ReadSoftPath(M, TEXT("hit"), TEXT("/appearance/model/hit"), Model.Hit);
+				R.ReadSoftPath(M, TEXT("death"), TEXT("/appearance/model/death"), Model.Death);
+				R.ReadSoftPath(M, TEXT("graze"), TEXT("/appearance/model/graze"), Model.Graze);
+				R.ReadFloat(M, TEXT("walk_cycle_speed"), TEXT("/appearance/model/walk_cycle_speed"), Model.WalkCycleSpeed);
+				R.ReadFloat(M, TEXT("run_cycle_speed"), TEXT("/appearance/model/run_cycle_speed"), Model.RunCycleSpeed);
+				R.ReadFloat(M, TEXT("yaw"), TEXT("/appearance/model/yaw"), Model.Yaw);
+				R.ReportUnknownFields(M, { TEXT("mesh"), TEXT("idle"), TEXT("walk"), TEXT("run"), TEXT("attack"), TEXT("hit"),
+					TEXT("death"), TEXT("graze"), TEXT("walk_cycle_speed"), TEXT("run_cycle_speed"), TEXT("yaw") });
+				if (!Model.IsSet())
+				{
+					R.AddError(TEXT("/appearance/model"), TEXT("needs at least mesh, idle and walk; the animal is drawn as a figure"));
+				}
+				if (Model.WalkCycleSpeed <= 0.0f || Model.RunCycleSpeed <= Model.WalkCycleSpeed)
+				{
+					R.AddError(TEXT("/appearance/model/run_cycle_speed"), TEXT("cycle speeds must be above 0, the run's above the walk's"));
+					Model.WalkCycleSpeed = FMath::Max(0.1f, Model.WalkCycleSpeed);
+					Model.RunCycleSpeed = FMath::Max(Model.WalkCycleSpeed * 2.0f, Model.RunCycleSpeed);
+				}
+			}
+			R.ReportUnknownFields(S, { TEXT("body"), TEXT("legs"), TEXT("neck"), TEXT("scale"), TEXT("tint"), TEXT("model") });
 		}
 
 		R.ReportUnknownFields(Object, { TEXT("schema"), TEXT("id"), TEXT("display_name"), TEXT("tags"), TEXT("behaviour"),

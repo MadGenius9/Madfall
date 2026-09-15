@@ -49,6 +49,7 @@ void FMadSettings::Sanitize()
 	ViewDistance = FMath::Clamp(ViewDistance, 3, 16);
 	Quality = FMath::Clamp(Quality, 0, 3);
 	Volume = FMath::Clamp(Volume, 0.0f, 1.0f);
+	MusicVolume = FMath::Clamp(MusicVolume, 0.0f, 1.0f);
 	Language = Language.TrimStartAndEnd().Left(16);
 
 	// Round trip through the bindings so unknown actions, bad key names and
@@ -79,6 +80,7 @@ FMadSettings MadFall::Settings::Load(const FString& Path)
 		if (Json->TryGetNumberField(TEXT("view_distance"), Number)) { Out.ViewDistance = static_cast<int32>(Number); }
 		if (Json->TryGetNumberField(TEXT("quality"), Number)) { Out.Quality = static_cast<int32>(Number); }
 		if (Json->TryGetNumberField(TEXT("volume"), Number)) { Out.Volume = static_cast<float>(Number); }
+		if (Json->TryGetNumberField(TEXT("music_volume"), Number)) { Out.MusicVolume = static_cast<float>(Number); }
 		Json->TryGetStringField(TEXT("language"), Out.Language);
 		const TSharedPtr<FJsonObject>* Keys = nullptr;
 		if (Json->TryGetObjectField(TEXT("keys"), Keys))
@@ -110,6 +112,7 @@ bool MadFall::Settings::Save(const FMadSettings& In, const FString& Path, FStrin
 	Json->SetNumberField(TEXT("view_distance"), Settings.ViewDistance);
 	Json->SetNumberField(TEXT("quality"), Settings.Quality);
 	Json->SetNumberField(TEXT("volume"), Settings.Volume);
+	Json->SetNumberField(TEXT("music_volume"), Settings.MusicVolume);
 	Json->SetStringField(TEXT("language"), Settings.Language);
 
 	const TSharedRef<FJsonObject> Keys = MakeShared<FJsonObject>();
@@ -145,6 +148,7 @@ void MadFall::Settings::Apply(const FMadSettings& In)
 	Scalability::SetQualityLevels(Levels, /*bForce*/ true);
 	SetCVar(TEXT("mad.models.LightShadows"), Settings.Quality >= 2 ? TEXT("1") : TEXT("0"));
 	SetCVar(TEXT("mad.audio.Volume"), LexToString(Settings.Volume));
+	SetCVar(TEXT("mad.audio.MusicVolume"), LexToString(Settings.MusicVolume));
 	SetCVar(TEXT("mad.Language"), Settings.Language);
 
 	FMadKeyBindings Bindings;
@@ -167,6 +171,10 @@ FMadSettings MadFall::Settings::FromConsoleVariables()
 	if (const IConsoleVariable* Volume = IConsoleManager::Get().FindConsoleVariable(TEXT("mad.audio.Volume")))
 	{
 		Out.Volume = Volume->GetFloat();
+	}
+	if (const IConsoleVariable* Music = IConsoleManager::Get().FindConsoleVariable(TEXT("mad.audio.MusicVolume")))
+	{
+		Out.MusicVolume = Music->GetFloat();
 	}
 	if (const IConsoleVariable* Language = IConsoleManager::Get().FindConsoleVariable(TEXT("mad.Language")))
 	{

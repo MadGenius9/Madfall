@@ -37,6 +37,9 @@ struct MADFALLGAMEPLAY_API FMadSettings
 	/** mad.audio.Volume, 0..1. */
 	float Volume = 0.8f;
 
+	/** mad.audio.MusicVolume, 0..1; separate so a player can keep the effects and lose the music. */
+	float MusicVolume = 0.6f;
+
 	/** mad.Language; empty follows the system. */
 	FString Language;
 

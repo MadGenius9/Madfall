@@ -22,6 +22,8 @@ struct FMadCharacterAnimInputs
 	float SinceDeath = -1.0f;
 	/** Arms reach forward and swing: a zombie. A living person walks with their arms down. */
 	bool bZombie = true;
+	/** Head down at the grass (animals with a graze clip), instead of idling. */
+	bool bGrazing = false;
 };
 
 /** Locomotion weights and play rates for a ground speed. */
@@ -43,6 +45,9 @@ namespace MadFall::CharacterAnim
 	/** Seconds the death animation takes to put the body on the ground. */
 	inline constexpr float DeathSeconds = 1.1f;
 
+	/** Whether rigs draw skeletal bodies: `mad.characters.Skeletal` and a renderer. */
+	MADFALLGAMEPLAY_API bool UseSkeletalBodies();
+
 	/**
 	 * Idle, walk and jog weights for a ground speed (they sum to 1) and the rates
 	 * that make the feet match it. Pure, for tests.
@@ -51,7 +56,7 @@ namespace MadFall::CharacterAnim
 	 * rate a walk reads as a shamble, which is the look wanted, but not below 0.35,
 	 * where it reads as slow motion.
 	 */
-	MADFALLGAMEPLAY_API FMadCharacterBlend ComputeBlend(float Speed);
+	MADFALLGAMEPLAY_API FMadCharacterBlend ComputeBlend(float Speed, float WalkCycleSpeed = WalkAnimSpeed, float JogCycleSpeed = JogAnimSpeed);
 
 	/**
 	 * The component-space direction a zombie's upper arms reach (mesh forward is
@@ -92,6 +97,10 @@ private:
 	const UAnimSequence* Jog = nullptr;
 	const UAnimSequence* HitReact = nullptr;
 	const UAnimSequence* Death = nullptr;
+	const UAnimSequence* Attack = nullptr;
+	const UAnimSequence* Graze = nullptr;
+	float WalkCycleSpeed = MadFall::CharacterAnim::WalkAnimSpeed;
+	float JogCycleSpeed = MadFall::CharacterAnim::JogAnimSpeed;
 
 	double IdleTime = 0.0;
 	/** Walk and jog share one normalised phase, so blending between them keeps the feet in step. */
@@ -117,9 +126,21 @@ public:
 	TObjectPtr<UAnimSequence> HitReact;
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimSequence> Death;
+	/** A whole-body attack clip, played through each swing; without one a zombie swings its reaching arms instead. */
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> Attack;
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> Graze;
+
+	/** Ground speeds, cm/s, at which Walk and Jog play at their authored rate. */
+	float WalkCycleSpeed = MadFall::CharacterAnim::WalkAnimSpeed;
+	float JogCycleSpeed = MadFall::CharacterAnim::JogAnimSpeed;
 
 	/** Loads the mannequin animations; false if they are not installed (Scripts/copy_mannequin.ps1). */
 	static bool LoadSequences(UMadCharacterAnimInstance& Instance);
+
+	/** The mannequin meshes and animations, for preloading. */
+	static void GetMannequinPaths(TArray<FSoftObjectPath>& Out);
 
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override { return new FMadCharacterAnimProxy(this); }

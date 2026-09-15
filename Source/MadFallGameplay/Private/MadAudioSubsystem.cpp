@@ -2,7 +2,11 @@
 
 #include "MadAudioSubsystem.h"
 
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "AudioDevice.h"
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
+#include "Sound/SoundWave.h"
 #include "Components/AudioComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -57,6 +61,8 @@ TStatId UMadAudioSubsystem::GetStatId() const
 void UMadAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	Recordings.SetNum(static_cast<int32>(EMadSound::Num));
+	LoadRecordings();
 
 	// Every variation of every sound, off the game thread: the three-second horde
 	// horn alone measured 4.5 ms to synthesise, and doing it on first play put
@@ -77,6 +83,11 @@ void UMadAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UMadAudioSubsystem::Deinitialize()
 {
 	SynthTask.Wait();
+	if (RecordingsHandle.IsValid())
+	{
+		RecordingsHandle->CancelHandle();
+		RecordingsHandle.Reset();
+	}
 	for (const FVoice& Voice : Voices)
 	{
 		if (UAudioComponent* Component = Voice.Component.Get())
@@ -86,6 +97,106 @@ void UMadAudioSubsystem::Deinitialize()
 	}
 	Voices.Reset();
 	Super::Deinitialize();
+}
+
+FString UMadAudioSubsystem::GetRecordingFolder(EMadSound Sound)
+{
+	return FString::Printf(TEXT("/Game/Audio/%s"), MadFall::Synth::GetName(Sound));
+}
+
+EMadSound UMadAudioSubsystem::FindSoundByName(const FString& Name)
+{
+	for (int32 Index = 0; Index < static_cast<int32>(EMadSound::Num); ++Index)
+	{
+		if (Name.Equals(MadFall::Synth::GetName(static_cast<EMadSound>(Index)), ESearchCase::IgnoreCase))
+		{
+			return static_cast<EMadSound>(Index);
+		}
+	}
+	return EMadSound::Num;
+}
+
+int32 UMadAudioSubsystem::GetRecordingCount(EMadSound Sound) const
+{
+	const int32 Index = static_cast<int32>(Sound);
+	return Recordings.IsValidIndex(Index) ? Recordings[Index].Waves.Num() : 0;
+}
+
+void UMadAudioSubsystem::LoadRecordings()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;   // a server makes no sound
+	}
+	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get();
+#if WITH_EDITOR
+	// An editor build discovers assets in the background; the audio folder is
+	// small, so wait for it rather than miss recordings for the first session.
+	Registry.ScanPathsSynchronous({ TEXT("/Game/Audio") }, /*bForceRescan*/ false);
+#endif
+	TArray<FAssetData> Assets;
+	FARFilter Filter;
+	Filter.PackagePaths.Add(TEXT("/Game/Audio"));
+	Filter.bRecursivePaths = true;
+	Filter.ClassPaths.Add(USoundWave::StaticClass()->GetClassPathName());
+	Registry.GetAssets(Filter, Assets);
+
+	TArray<FSoftObjectPath> ToLoad;
+	for (const FAssetData& Asset : Assets)
+	{
+		const FString Folder = FPaths::GetCleanFilename(Asset.PackagePath.ToString());
+		if (FindSoundByName(Folder) == EMadSound::Num)
+		{
+			UE_LOG(LogMadFallGameplay, Warning, TEXT("Recording %s is in /Game/Audio/%s, which is not a sound name; it is never played."),
+				*Asset.AssetName.ToString(), *Folder);
+			continue;
+		}
+		ToLoad.Add(Asset.GetSoftObjectPath());
+	}
+	if (ToLoad.Num() == 0)
+	{
+		return;
+	}
+
+	// Asynchronously: a hundred small waves loaded on the game thread at world
+	// start is a hitch for no reason, when the synthesised voices cover the
+	// first seconds.
+	TWeakObjectPtr<UMadAudioSubsystem> WeakThis(this);
+	RecordingsHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(ToLoad, [WeakThis, ToLoad]()
+	{
+		UMadAudioSubsystem* This = WeakThis.Get();
+		if (This == nullptr)
+		{
+			return;
+		}
+		for (const FSoftObjectPath& Path : ToLoad)
+		{
+			USoundWave* Wave = Cast<USoundWave>(Path.ResolveObject());
+			const EMadSound Sound = FindSoundByName(FPaths::GetCleanFilename(FPaths::GetPath(Path.GetLongPackageName())));
+			if (Wave != nullptr && Sound != EMadSound::Num)
+			{
+				This->Recordings[static_cast<int32>(Sound)].Waves.Add(Wave);
+			}
+		}
+		UE_LOG(LogMadFallGameplay, Log, TEXT("Loaded %d sound recording(s)."), ToLoad.Num());
+	});
+}
+
+USoundWave* UMadAudioSubsystem::PickRecording(EMadSound Sound)
+{
+	FMadSoundRecordings& Set = Recordings[static_cast<int32>(Sound)];
+	const int32 Count = Set.Waves.Num();
+	if (Count == 0)
+	{
+		return nullptr;
+	}
+	int32 Pick = FMath::RandHelper(Count);
+	if (Count > 1 && Pick == Set.Last)
+	{
+		Pick = (Pick + 1 + FMath::RandHelper(Count - 1)) % Count;
+	}
+	Set.Last = Pick;
+	return Set.Waves[Pick];
 }
 
 void UMadAudioSubsystem::SetLoop(int32 Channel, EMadSound Sound, float Volume)
@@ -139,6 +250,21 @@ void UMadAudioSubsystem::TickLoops()
 		}
 		if (!bDevice)
 		{
+			continue;
+		}
+
+		if (USoundWave* Recorded = GetRecordingCount(Loop.Sound) > 0 ? Recordings[static_cast<int32>(Loop.Sound)].Waves[0].Get() : nullptr)
+		{
+			// Imported with looping on (Scripts/import_audio.py), so one voice plays it forever.
+			if (Component == nullptr)
+			{
+				Component = UGameplayStatics::SpawnSound2D(World, Recorded, Volume, 1.0f, 0.0f, nullptr, true, false);
+				Loop.Component = Component;
+			}
+			if (Component != nullptr)
+			{
+				Component->SetVolumeMultiplier(Volume);
+			}
 			continue;
 		}
 
@@ -265,15 +391,30 @@ void UMadAudioSubsystem::PlayInternal(EMadSound Sound, const FVector* Location, 
 		return;   // counted, not heard: headless runs have no device
 	}
 
-	if (!bReady)
-	{
-		return;   // still synthesising (the first moments of a session)
-	}
 	Voices.RemoveAll([](const FVoice& Voice) { return !Voice.Component.IsValid(); });
 	if (Voices.Num() >= FMath::Max(1, CVarMaxVoices.GetValueOnGameThread()))
 	{
 		++Dropped;
 		return;
+	}
+
+	// A little pitch spread on top of the variations.
+	const float Pitch = FMath::FRandRange(0.94f, 1.06f);
+	if (USoundWave* Recorded = PickRecording(Sound))
+	{
+		UAudioComponent* Component = Location
+			? UGameplayStatics::SpawnSoundAtLocation(World, Recorded, *Location, FRotator::ZeroRotator, FinalVolume, Pitch, 0.0f, GetAttenuation())
+			: UGameplayStatics::SpawnSound2D(World, Recorded, FinalVolume, Pitch);
+		if (Component != nullptr)
+		{
+			Voices.Add(FVoice{ Component, Now + Recorded->Duration / Pitch + 0.1 });
+		}
+		return;
+	}
+
+	if (!bReady)
+	{
+		return;   // still synthesising (the first moments of a session)
 	}
 
 	const TArray<int16>& Samples = GetVariation(Sound, static_cast<int32>(NextVariation++ % Variations));
@@ -290,8 +431,6 @@ void UMadAudioSubsystem::PlayInternal(EMadSound Sound, const FVector* Location, 
 	Wave->bLooping = false;
 	Wave->QueueAudio(reinterpret_cast<const uint8*>(Samples.GetData()), Samples.Num() * sizeof(int16));
 
-	// A little pitch spread on top of the variations.
-	const float Pitch = FMath::FRandRange(0.94f, 1.06f);
 	UAudioComponent* Component = Location
 		? UGameplayStatics::SpawnSoundAtLocation(World, Wave, *Location, FRotator::ZeroRotator, FinalVolume, Pitch, 0.0f, GetAttenuation())
 		: UGameplayStatics::SpawnSound2D(World, Wave, FinalVolume, Pitch);
@@ -304,8 +443,13 @@ void UMadAudioSubsystem::PlayInternal(EMadSound Sound, const FVector* Location, 
 FString UMadAudioSubsystem::DescribeStats() const
 {
 	TStringBuilder<1024> Builder;
-	Builder.Appendf(TEXT("Audio: %d voice(s) playing, %d dropped, device %s; plays:"), Voices.Num(), Dropped,
-		GetWorld() && GetWorld()->GetAudioDeviceRaw() ? TEXT("yes") : TEXT("none"));
+	int32 Recorded = 0;
+	for (const FMadSoundRecordings& Set : Recordings)
+	{
+		Recorded += Set.Waves.Num() > 0 ? 1 : 0;
+	}
+	Builder.Appendf(TEXT("Audio: %d voice(s) playing, %d dropped, device %s, %d of %d sounds recorded; plays:"), Voices.Num(), Dropped,
+		GetWorld() && GetWorld()->GetAudioDeviceRaw() ? TEXT("yes") : TEXT("none"), Recorded, static_cast<int32>(EMadSound::Num));
 	for (int32 Index = 0; Index < static_cast<int32>(EMadSound::Num); ++Index)
 	{
 		if (PlayCounts[Index] > 0)

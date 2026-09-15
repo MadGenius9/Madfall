@@ -391,6 +391,38 @@ enum class EMadAnimalActivity : uint8
  * they share with zombies - pathing, senses, a loot bag on death - is shared in
  * code, not in the schema.
  */
+/**
+ * An animated skeletal model an animal is drawn with (appearance.model), instead
+ * of the figure built from its body proportions.
+ *
+ * WHY THE PATHS ARE DATA: the shipped deer and wolf come from one CC0 pack whose
+ * clips are named per animal (DeerGallop, WolfAttack), and a mod's animal will
+ * come from anywhere. Naming each clip's role keeps the rig from guessing, and
+ * leaving a role out (a deer model with no attack clip, say)
+ * just means that moment is not animated.
+ */
+struct MADFALLCORE_API FMadAnimalModel
+{
+	FSoftObjectPath Mesh;
+	FSoftObjectPath Idle;
+	FSoftObjectPath Walk;
+	FSoftObjectPath Run;
+	FSoftObjectPath Attack;
+	FSoftObjectPath Hit;
+	FSoftObjectPath Death;
+	FSoftObjectPath Graze;
+
+	/** Ground speed, m/s, at which the walk and run cycles play at their authored rate, so the feet keep pace. */
+	float WalkCycleSpeed = 1.2f;
+	float RunCycleSpeed = 6.0f;
+
+	/** Degrees the model is turned about Z so its head points along the animal's forward (+X). */
+	float Yaw = 0.0f;
+
+	/** A mesh and the two clips an animal cannot do without. */
+	bool IsSet() const { return !Mesh.IsNull() && !Idle.IsNull() && !Walk.IsNull(); }
+};
+
 struct MADFALLCORE_API FMadAnimalDefinition
 {
 	FName Id;
@@ -432,6 +464,9 @@ struct MADFALLCORE_API FMadAnimalDefinition
 
 	/** Coat colour, linear (authored as sRGB in appearance.tint). */
 	FLinearColor Tint = FLinearColor(0.2f, 0.12f, 0.06f);
+
+	/** Drawn instead of the proportioned figure when set and its assets load; sized to the proportions above. */
+	FMadAnimalModel Model;
 
 	FName SourceModId;
 	FString SourcePath;

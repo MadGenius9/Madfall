@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/StreamableManager.h"
 #include "MadSynth.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Tasks/Task.h"
@@ -11,10 +12,35 @@
 
 class UAudioComponent;
 class USoundAttenuation;
+class USoundWave;
+
+/** The recordings of one sound. A struct so the array of them can be a UPROPERTY. */
+USTRUCT()
+struct FMadSoundRecordings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USoundWave>> Waves;
+
+	/** The last one played, so the same recording is not heard twice in a row. */
+	int32 Last = INDEX_NONE;
+};
 
 /**
- * Plays MadFall's synthesised sound effects.
+ * Plays MadFall's sound effects: recordings where they exist, synthesised
+ * voices otherwise.
  *
+ * RECORDINGS: every USoundWave in /Game/Audio/<sound name>/ (the names
+ * MadFall::Synth::GetName gives, e.g. /Game/Audio/step_wood/) is a recording
+ * of that sound, loaded asynchronously when the world starts and picked at
+ * random, never the same one twice running. The shipped ones are CC0 packs
+ * prepared by Scripts/prepare_audio.py and imported by Scripts/import_audio.py.
+ * A sound with no folder - the horde horn, the collapse rumble - keeps its
+ * synthesised voice, as does every sound until the loads land, so nothing is
+ * ever silent for want of an asset.
+ *
+ * SYNTHESISED:
  * Sounds are generated once per variation (MadFall::Synth, a few variations
  * each, on first use) and played through a USoundWaveProcedural fed that PCM.
  * A procedural wave keeps its voice until stopped, so every play is tracked and
@@ -58,10 +84,25 @@ public:
 	void SetLoop(int32 Channel, EMadSound Sound, float Volume);
 
 	int32 GetPlayCount(EMadSound Sound) const { return PlayCounts[static_cast<int32>(Sound)]; }
+
+	/** Recordings loaded for a sound; 0 while it plays synthesised. */
+	int32 GetRecordingCount(EMadSound Sound) const;
+
+	/** Where a sound's recordings live: /Game/Audio/<sound name>. */
+	static FString GetRecordingFolder(EMadSound Sound);
+
+	/** The sound a recordings folder name belongs to, or EMadSound::Num. */
+	static EMadSound FindSoundByName(const FString& Name);
 	FString DescribeStats() const;
 
 private:
 	void PlayInternal(EMadSound Sound, const FVector* Location, float Volume);
+
+	/** Finds every recording under /Game/Audio and starts loading them. */
+	void LoadRecordings();
+
+	/** A recording to play for a sound, or null to synthesise. */
+	USoundWave* PickRecording(EMadSound Sound);
 	const TArray<int16>& GetVariation(EMadSound Sound, int32 Variation);
 	USoundAttenuation* GetAttenuation();
 
@@ -99,4 +140,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundAttenuation> Attenuation;
+
+	/** One entry per EMadSound. */
+	UPROPERTY(Transient)
+	TArray<FMadSoundRecordings> Recordings;
+
+	TSharedPtr<FStreamableHandle> RecordingsHandle;
 };

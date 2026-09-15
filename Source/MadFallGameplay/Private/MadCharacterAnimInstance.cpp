@@ -6,6 +6,8 @@
 #include "Animation/AnimSequence.h"
 #include "AnimationRuntime.h"
 #include "BonePose.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/App.h"
 
 namespace
 {
@@ -14,6 +16,14 @@ namespace
 	const TCHAR* JogPath = TEXT("/Game/Characters/Mannequins/Anims/Unarmed/Jog/MF_Unarmed_Jog_Fwd.MF_Unarmed_Jog_Fwd");
 	const TCHAR* HitReactPath = TEXT("/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_01.MM_HitReact_Front_Lgt_01");
 	const TCHAR* DeathPath = TEXT("/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01.MM_Death_Front_01");
+	const TCHAR* MannyMeshPath = TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple");
+	const TCHAR* QuinnMeshPath = TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple");
+
+	TAutoConsoleVariable<int32> CVarSkeletalCharacters(
+		TEXT("mad.characters.Skeletal"),
+		1,
+		TEXT("Draw humanoids as the UE5 mannequin (Scripts/copy_mannequin.ps1) and animals with a model as their animated model. 0 draws the box figures. Applies to characters built after the change."),
+		ECVF_Default);
 
 	/** The forward lean of a zombie's upper spine, degrees. */
 	constexpr float ZombieLeanDegrees = 12.0f;
@@ -86,17 +96,26 @@ namespace
 	}
 }
 
-FMadCharacterBlend MadFall::CharacterAnim::ComputeBlend(float Speed)
+bool MadFall::CharacterAnim::UseSkeletalBodies()
+{
+	return CVarSkeletalCharacters.GetValueOnGameThread() != 0 && FApp::CanEverRender();
+}
+
+FMadCharacterBlend MadFall::CharacterAnim::ComputeBlend(float Speed, float WalkCycleSpeed, float JogCycleSpeed)
 {
 	FMadCharacterBlend Result;
 	Speed = FMath::Max(0.0f, Speed);
-	const float Moving = FMath::Clamp(Speed / 60.0f, 0.0f, 1.0f);
-	const float Jogging = FMath::Clamp((Speed - WalkAnimSpeed) / 200.0f, 0.0f, 1.0f);
+	WalkCycleSpeed = FMath::Max(1.0f, WalkCycleSpeed);
+	JogCycleSpeed = FMath::Max(WalkCycleSpeed * 1.1f, JogCycleSpeed);
+	// Moving past a fifth of a walk; the jog takes over across the first two
+	// thirds of the gap between the cycles' speeds (for the mannequin, 300 to 500).
+	const float Moving = FMath::Clamp(Speed / (WalkCycleSpeed * 0.2f), 0.0f, 1.0f);
+	const float Jogging = FMath::Clamp((Speed - WalkCycleSpeed) / ((JogCycleSpeed - WalkCycleSpeed) * (2.0f / 3.0f)), 0.0f, 1.0f);
 	Result.Idle = 1.0f - Moving;
 	Result.Walk = Moving * (1.0f - Jogging);
 	Result.Jog = Moving * Jogging;
-	Result.WalkRate = FMath::Clamp(Speed / WalkAnimSpeed, 0.35f, 1.6f);
-	Result.JogRate = FMath::Clamp(Speed / JogAnimSpeed, 0.6f, 1.5f);
+	Result.WalkRate = FMath::Clamp(Speed / WalkCycleSpeed, 0.35f, 1.6f);
+	Result.JogRate = FMath::Clamp(Speed / JogCycleSpeed, 0.6f, 1.5f);
 	return Result;
 }
 
@@ -123,6 +142,14 @@ bool UMadCharacterAnimInstance::LoadSequences(UMadCharacterAnimInstance& Instanc
 	return Instance.Idle != nullptr && Instance.Walk != nullptr && Instance.Jog != nullptr;
 }
 
+void UMadCharacterAnimInstance::GetMannequinPaths(TArray<FSoftObjectPath>& Out)
+{
+	for (const TCHAR* Path : { MannyMeshPath, QuinnMeshPath, IdlePath, WalkPath, JogPath, HitReactPath, DeathPath })
+	{
+		Out.Emplace(Path);
+	}
+}
+
 void UMadCharacterAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
@@ -146,11 +173,15 @@ void FMadCharacterAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float Delt
 	Jog = Instance->Jog;
 	HitReact = Instance->HitReact;
 	Death = Instance->Death;
+	Attack = Instance->Attack;
+	Graze = Instance->Graze;
+	WalkCycleSpeed = Instance->WalkCycleSpeed;
+	JogCycleSpeed = Instance->JogCycleSpeed;
 }
 
 void FMadCharacterAnimProxy::Update(float DeltaSeconds)
 {
-	Blend = MadFall::CharacterAnim::ComputeBlend(Inputs.Speed);
+	Blend = MadFall::CharacterAnim::ComputeBlend(Inputs.Speed, WalkCycleSpeed, JogCycleSpeed);
 	IdleTime += DeltaSeconds;
 
 	const float Moving = Blend.Walk + Blend.Jog;
@@ -203,12 +234,25 @@ bool FMadCharacterAnimProxy::Evaluate(FPoseContext& Output)
 	{
 		HitWeight = 0.7f * FMath::Sin(UE_PI * Inputs.SinceHit / HitReact->GetPlayLength());
 	}
-	const float Locomotion = (1.0f - DeathWeight) * (1.0f - HitWeight);
+	// A whole-body attack clip, where there is one, peaks early in the swing and
+	// hands back to locomotion at its end.
+	float AttackWeight = 0.0f;
+	if (Attack != nullptr && Inputs.Attack < 1.0f)
+	{
+		AttackWeight = FMath::Min(1.0f, 2.5f * FMath::Sin(UE_PI * Inputs.Attack));
+	}
+	const float Locomotion = (1.0f - DeathWeight) * (1.0f - HitWeight) * (1.0f - AttackWeight);
 
-	AddLayer(Idle, FMath::Fmod(IdleTime, static_cast<double>(Idle->GetPlayLength())), true, Locomotion * Blend.Idle);
+	const bool bGrazing = Inputs.bGrazing && Graze != nullptr;
+	const UAnimSequence* Resting = bGrazing ? Graze : Idle;
+	AddLayer(Resting, FMath::Fmod(IdleTime, static_cast<double>(Resting->GetPlayLength())), true, Locomotion * Blend.Idle);
 	AddLayer(Walk, StridePhase * Walk->GetPlayLength(), true, Locomotion * Blend.Walk);
 	AddLayer(Jog, StridePhase * Jog->GetPlayLength(), true, Locomotion * Blend.Jog);
 	AddLayer(HitReact, Inputs.SinceHit, false, (1.0f - DeathWeight) * HitWeight);
+	if (AttackWeight > 0.0f)
+	{
+		AddLayer(Attack, Inputs.Attack * Attack->GetPlayLength(), false, (1.0f - DeathWeight) * (1.0f - HitWeight) * AttackWeight);
+	}
 	if (DeathWeight > 0.0f)
 	{
 		AddLayer(Death, FMath::Min(Inputs.SinceDeath, Death->GetPlayLength()), false, DeathWeight);

@@ -505,6 +505,10 @@ private:
 				SNew(SSpinBox<float>).MinValue(0.0f).MaxValue(1.0f).Delta(0.05f)
 				.Value_Lambda([this]() { return Pending.Volume; })
 				.OnValueChanged_Lambda([this](float V) { Pending.Volume = V; })) ]
+			+ SVerticalBox::Slot().AutoHeight() [ SettingRow(L(TEXT("@menu.music_volume")),
+				SNew(SSpinBox<float>).MinValue(0.0f).MaxValue(1.0f).Delta(0.05f)
+				.Value_Lambda([this]() { return Pending.MusicVolume; })
+				.OnValueChanged_Lambda([this](float V) { Pending.MusicVolume = V; })) ]
 			+ SVerticalBox::Slot().AutoHeight() [ SettingRow(L(TEXT("@menu.language")),
 				SNew(SButton)
 				.OnClicked_Lambda([this]() { CycleLanguage(); return FReply::Handled(); })

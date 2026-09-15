@@ -44,6 +44,24 @@ The storage barrel and loot crate are photo-scanned models from
 torch, door, bedroll and ladder are built from primitives by
 `Scripts/build_prop_meshes.py` (no downloads).
 
+## Sound
+
+Most sound effects are recordings from CC0 packs - [Kenney](https://kenney.nl)'s
+Impact Sounds and RPG Audio, and from [OpenGameArt](https://opengameart.org) the
+Zombies Sound Pack, 100 CC0 SFX #2, 30 CC0 SFX loops and Wind Whoosh Loop. The
+imported assets in `Content/Audio` are committed; to rebuild them run
+`Scripts/fetch_audio.ps1`, `python Scripts/prepare_audio.py` (needs ffmpeg) and
+`Scripts/import_audio.py` through `UnrealEditor-Cmd -ExecutePythonScript`. Sounds
+without a recording are synthesised in code. Music, also CC0 from OpenGameArt:
+"EmptyCity" and "Zombies' March" by yd, "Cold Silence" by Eponasoft.
+
+## Animals
+
+The deer and the wolf are Quaternius' animated models (Ultimate Animated Animal
+Pack, CC0). The imported assets in `Content/Animals` are committed; to rebuild
+them run `Scripts/fetch_animals.ps1`, `python Scripts/prepare_animals.py` and
+`Scripts/import_animals.py` through `UnrealEditor-Cmd -ExecutePythonScript`.
+
 ## Characters
 
 Zombies and traders are drawn as Epic's UE5 mannequins when they are installed.
