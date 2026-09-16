@@ -2,6 +2,8 @@
 
 #include "MadAnimal.h"
 
+#include "MadBlockRegistry.h"
+
 #include "HAL/IConsoleManager.h"
 
 #include "AIController.h"
@@ -21,6 +23,34 @@
 #include "MadTraps.h"
 #include "MadVoxelRaycast.h"
 #include "MadVoxelWorldSubsystem.h"
+
+namespace
+{
+	/**
+	 * How much slower a body moves through water: waist deep is a wade, over
+	 * the head is worse. A horde crossing a moat should arrive late and strung
+	 * out rather than as a wall, which is the whole point of digging one.
+	 */
+	float WaterSlowFactor(const UWorld* World, const FIntVector& Feet)
+	{
+		const UMadVoxelWorldSubsystem* VoxelWorld = World ? World->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
+		if (VoxelWorld == nullptr)
+		{
+			return 1.0f;
+		}
+		auto IsLiquid = [VoxelWorld](const FIntVector& V)
+		{
+			const FMadBlockDefinitionData* Block = UMadVoxelWorldSubsystem::GetBlockRegistry().FindDefinition(
+				VoxelWorld->GetVoxel(V.X, V.Y, V.Z).BlockTypeID);
+			return Block != nullptr && Block->bLiquid;
+		};
+		if (!IsLiquid(Feet))
+		{
+			return 1.0f;
+		}
+		return IsLiquid(Feet + FIntVector(0, 0, 1)) ? 0.45f : 0.6f;
+	}
+}
 
 int32 AMadAnimal::TotalKills = 0;
 int32 AMadAnimal::TotalPlayerHits = 0;
@@ -243,7 +273,8 @@ void AMadAnimal::Think()
 			}
 		}
 	}
-	GetCharacterMovement()->MaxWalkSpeed = (bRunning ? Definition.RunSpeed : Definition.WalkSpeed) * 100.0f * TrapSlow;
+	GetCharacterMovement()->MaxWalkSpeed = (bRunning ? Definition.RunSpeed : Definition.WalkSpeed) * 100.0f * TrapSlow
+		* WaterSlowFactor(GetWorld(), GetFeetVoxel());
 
 	switch (Next)
 	{
@@ -330,6 +361,18 @@ void AMadAnimal::RequestPath(const FIntVector& Goal)
 	FMadPathSettings Settings;
 	Settings.MaxNodes = PathNodes;
 	Settings.bAllowDigging = false;
+
+	// A deer does not wade a lake to reach grass; it walks round.
+	Settings.WaterCostPerStep = 8.0f;
+	Settings.IsLiquid = [VoxelWorld](const FIntVector& V)
+	{
+		if (!VoxelWorld->IsVoxelLoaded(V.X, V.Y, V.Z))
+		{
+			return false;
+		}
+		const FMadBlockDefinitionData* Block = UMadVoxelWorldSubsystem::GetBlockRegistry().FindDefinition(VoxelWorld->GetVoxel(V.X, V.Y, V.Z).BlockTypeID);
+		return Block != nullptr && Block->bLiquid;
+	};
 
 	MadFall::Pathfinding::FindPath(GetFeetVoxel(), Goal, Settings, GetVoxel, CannotBreak, Path);
 	StepIndex = 0;

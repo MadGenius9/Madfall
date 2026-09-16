@@ -213,6 +213,76 @@ bool FMadPathfinderTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadWaterPathTest,
+	"MadFall.AI.WaterPath",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadWaterPathTest::RunTest(const FString& Parameters)
+{
+	using namespace MadPathTests;
+
+	// A pond across the straight line from start to goal, with dry ground round
+	// it: the voxels at Z = 0 for -1 <= Y <= 1 and 2 <= X <= 6 are water.
+	auto IsPond = [](const FIntVector& V)
+	{
+		return V.Z == 0 && V.X >= 2 && V.X <= 6 && V.Y >= -1 && V.Y <= 1;
+	};
+
+	FWorld World;
+	const FIntVector Start(0, 0, 0);
+	const FIntVector Goal(8, 0, 0);
+
+	// Water is passable: without a cost for it, the way through is the way taken.
+	FMadVoxelPath Straight;
+	TestTrue(TEXT("a path exists across the pond"), Find(World, Start, Goal, Straight));
+	const int32 StraightSteps = Straight.Steps.Num();
+
+	FMadPathSettings Wet;
+	Wet.IsLiquid = IsPond;
+	FMadVoxelPath Around;
+	TestTrue(TEXT("and still exists once water costs something"), Find(World, Start, Goal, Around, Wet));
+
+	int32 WetSteps = 0;
+	for (const FMadPathStep& Step : Around.Steps)
+	{
+		WetSteps += IsPond(Step.Feet) ? 1 : 0;
+	}
+	TestEqual(TEXT("the dry way round is taken"), WetSteps, 0);
+	TestTrue(TEXT("and it is longer than the straight line through"), Around.Steps.Num() > StraightSteps);
+
+	// A pond with no way round is still crossed: water is a toll, not a wall.
+	auto IsCanal = [](const FIntVector& V) { return V.Z == 0 && V.X >= 2 && V.X <= 4; };
+	FMadPathSettings Canal;
+	Canal.IsLiquid = IsCanal;
+	FMadVoxelPath Through;
+	TestTrue(TEXT("a canal across the world is crossed anyway"), Find(World, Start, Goal, Through, Canal));
+	int32 CanalSteps = 0;
+	for (const FMadPathStep& Step : Through.Steps)
+	{
+		CanalSteps += IsCanal(Step.Feet) ? 1 : 0;
+	}
+	TestTrue(TEXT("by wading through it"), CanalSteps > 0);
+
+	// Deeper water costs more than a wade, so a shallow ford wins over a channel.
+	auto IsDeep = [](const FIntVector& V) { return (V.Z == 0 || V.Z == 1) && V.X >= 2 && V.X <= 4 && V.Y <= 0; };
+	FMadPathSettings Ford;
+	Ford.IsLiquid = [&IsDeep](const FIntVector& V)
+	{
+		// Deep channel south of the line, one voxel of water north of it.
+		return IsDeep(V) || (V.Z == 0 && V.X >= 2 && V.X <= 4 && V.Y > 0);
+	};
+	FMadVoxelPath Crossing;
+	TestTrue(TEXT("a crossing is found"), Find(World, Start, Goal, Crossing, Ford));
+	bool bUsedDeep = false;
+	for (const FMadPathStep& Step : Crossing.Steps)
+	{
+		bUsedDeep = bUsedDeep || IsDeep(Step.Feet);
+	}
+	TestFalse(TEXT("the shallow ford is preferred to the deep channel"), bUsedDeep);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMadUndermineTest,
 	"MadFall.AI.Undermine",
 	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)

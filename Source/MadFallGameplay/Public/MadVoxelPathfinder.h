@@ -62,7 +62,22 @@ struct MADFALLGAMEPLAY_API FMadPathSettings
 	int32 MaxDrop = 3;
 
 	float StepUpCost = 1.6f;
+
+	/**
+	 * What a step through water costs, on top of the step itself: waist deep
+	 * once, over the head twice that.
+	 *
+	 * WHY: water was free. A horde crossed a lake in a straight line as if it
+	 * were a field, which made a moat - the oldest defence there is - worth
+	 * nothing. Deep water is passable, not forbidden: a zombie that can only
+	 * reach the survivor by wading still comes, it just takes the dry way round
+	 * when there is one.
+	 */
+	float WaterCostPerStep = 2.5f;
 	float DropCostPerVoxel = 0.4f;
+
+	/** True for a voxel of water (or any liquid). Nothing charges for water without it. */
+	TFunction<bool(const FIntVector&)> IsLiquid;
 
 	/**
 	 * Cost units per second of digging. 1.0 means a block that takes 5 seconds

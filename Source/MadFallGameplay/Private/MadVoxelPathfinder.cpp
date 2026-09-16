@@ -118,9 +118,26 @@ namespace MadFall::Pathfinding
 		int32 Best = 0;
 		int32 Reached = INDEX_NONE;
 
+		// Wading is slow and swimming is slower, so a route through water costs
+		// more than the same number of dry steps. Charged on the voxel being
+		// entered, at the feet and again over the head.
+		auto WaterCost = [&Settings](const FIntVector& Feet)
+		{
+			if (!Settings.IsLiquid || Settings.WaterCostPerStep <= 0.0f)
+			{
+				return 0.0f;
+			}
+			float Cost = Settings.IsLiquid(Feet) ? Settings.WaterCostPerStep : 0.0f;
+			if (Cost > 0.0f && Settings.IsLiquid(Feet + Up))
+			{
+				Cost += Settings.WaterCostPerStep;
+			}
+			return Cost;
+		};
+
 		auto Consider = [&](int32 From, const FIntVector& Feet, float StepCost, TArray<FIntVector, TInlineAllocator<2>>&& Breaks, EMadPathMove Move)
 		{
-			const float G = Nodes[From].G + StepCost;
+			const float G = Nodes[From].G + StepCost + WaterCost(Feet);
 			if (int32* Existing = Index.Find(Feet))
 			{
 				FNode& Node = Nodes[*Existing];

@@ -1564,6 +1564,18 @@ get under the surface.
   surfacing refills it; a soaked coat does not keep a survivor warm), and the CI
   gate "water", which swims in the ocean, dives until it drowns, surfaces, and
   drops a survivor twenty voxels into the sea to prove water breaks a fall.
+- **Water costs something to cross.** It used to be free: a horde walked a lake
+  in a straight line as if it were a field, which made a moat - the oldest
+  defence there is - worth nothing. A step into water now costs
+  `WaterCostPerStep` on top of the step, doubled when it closes over the head,
+  and wading halves the mover's speed (0.45 when submerged). Deep water is a
+  toll, not a wall: a zombie that can only reach the survivor by wading still
+  comes, it just takes the dry way round when there is one, and arrives late and
+  strung out. Animals pay three times as much - a deer walks round a lake rather
+  than through it, and nothing shipped swims.
+  Tested: `MadFall.AI.WaterPath` (a pond is crossed when water is free and
+  walked around when it is not; a canal with no way round is still waded; a
+  shallow ford beats a deep channel).
 - Known gaps: the water surface seen from below is a dark plane (it is a
   one-sided surface, and there is no underwater fog material), zombies and
   animals walk along the bottom rather than swimming, and there is no current,
