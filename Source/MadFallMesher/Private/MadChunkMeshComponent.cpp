@@ -52,7 +52,8 @@ void UMadChunkMeshComponent::Prepare(FMadChunkMesh& Mesh)
 			Vertex.UV0 = FVector2D(Source.UVs[Index]);
 			const uint8 Occlusion = Source.Occlusion[Index];
 			Vertex.UV1 = FVector2D((Occlusion & 3) / 3.0, (Occlusion & FMadMeshSection::CubicFaceFlag) != 0 ? 1.0 : 0.0);
-			Vertex.UV2 = FVector2D::ZeroVector;
+			// Damage in UV2.x, 0 whole to 1 destroyed, for the material's cracks.
+			Vertex.UV2 = FVector2D(Source.Damage.IsValidIndex(Index) ? Source.Damage[Index] / 255.0 : 0.0, 0.0);
 			Vertex.UV3 = FVector2D::ZeroVector;
 			Ready.SectionLocalBox += Vertex.Position;
 		}

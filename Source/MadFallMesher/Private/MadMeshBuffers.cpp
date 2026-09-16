@@ -3,13 +3,14 @@
 #include "MadMeshBuffers.h"
 
 int32 FMadMeshSection::AddVertex(const FVector3f& Position, const FVector3f& Normal,
-	const FVector2f& UV, const FColor& Color, uint8 InOcclusion)
+	const FVector2f& UV, const FColor& Color, uint8 InOcclusion, uint8 InDamage)
 {
 	const int32 Index = Positions.Add(Position);
 	Normals.Add(Normal);
 	UVs.Add(UV);
 	Colors.Add(Color);
 	Occlusion.Add(InOcclusion);
+	Damage.Add(InDamage);
 
 	// A tangent perpendicular to the normal, chosen from whichever world axis
 	// is least aligned with it. Generated geometry has no authored UV frame, so
@@ -38,6 +39,7 @@ int64 FMadMeshSection::GetAllocatedSize() const
 		+ UVs.GetAllocatedSize()
 		+ Colors.GetAllocatedSize()
 		+ Occlusion.GetAllocatedSize()
+		+ Damage.GetAllocatedSize()
 		+ Indices.GetAllocatedSize();
 }
 

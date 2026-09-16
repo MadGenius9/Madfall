@@ -40,6 +40,7 @@ import unreal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from surface_sets import ARRAY_LAYERS, SETS  # noqa: E402
+from crack_shader import CRACK_APPLY, CRACK_METHOD  # noqa: E402
 
 PACKAGE_PATH = "/Game/Materials"
 ASSET_NAME = "M_MadVoxelPBR"
@@ -52,7 +53,7 @@ HELD_ASSET_NAME = "M_MadVoxelPBRHeld"
 ARRAY_ASSET_NAME = "M_MadVoxelPBRArray"
 ARRAY_HELD_ASSET_NAME = "M_MadVoxelPBRArrayHeld"
 VERSION_TAG = "MadFallPBRVersion"
-MATERIAL_VERSION = "7"
+MATERIAL_VERSION = "9"
 
 PBR_HLSL = """
 struct FMadPBR
@@ -71,7 +72,7 @@ struct FMadPBR
 		return lerp(lerp(H(float3(I, S)), H(float3(I + float2(1, 0), S)), Fr.x),
 			lerp(H(float3(I + float2(0, 1), S)), H(float3(I + float2(1, 1), S)), Fr.x), Fr.y);
 	}
-};
+%CRACK_METHOD%};
 FMadPBR F;
 
 float3 NN = normalize(N);
@@ -150,6 +151,7 @@ Col = lerp(Col, float3(0.86, 0.88, 0.92) * (0.94 + 0.08 * Grain), SnowMask);
 Rough = lerp(Rough, 0.65, SnowMask);
 WN = normalize(lerp(WN, NN, SnowMask * 0.8));
 
+%CRACK_APPLY%
 BumpNormal = WN;
 %OUTPUTS%
 return saturate(Col) * (1.0 - 0.5 * saturate(Occ.x));
@@ -199,9 +201,10 @@ def array_layer_code(held):
 
 
 def shader(array, held):
+    code = PBR_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY)
     if array:
-        return PBR_HLSL.replace("%LAYER%", array_layer_code(held)).replace("%SAMPLE%", ARRAY_SAMPLE).replace("%OUTPUTS%", "Metal = Metallic;")
-    return PBR_HLSL.replace("%LAYER%", "").replace("%SAMPLE%", SINGLE_SAMPLE).replace("%OUTPUTS%", "")
+        return code.replace("%LAYER%", array_layer_code(held)).replace("%SAMPLE%", ARRAY_SAMPLE).replace("%OUTPUTS%", "Metal = Metallic;")
+    return code.replace("%LAYER%", "").replace("%SAMPLE%", SINGLE_SAMPLE).replace("%OUTPUTS%", "")
 
 
 def build(material, editing, library, held, array=False):
@@ -236,6 +239,10 @@ def build(material, editing, library, held, array=False):
         occlusion.set_editor_property("r", 0.0)
         occlusion.set_editor_property("g", 1.0)
         inputs["Occ"] = occlusion
+        damage = editing.create_material_expression(material, unreal.MaterialExpressionScalarParameter, -1100, place())
+        damage.set_editor_property("parameter_name", "Damage")
+        damage.set_editor_property("default_value", 0.0)
+        inputs["Dmg"] = damage
         if array:
             layer = editing.create_material_expression(material, unreal.MaterialExpressionScalarParameter, -1100, place())
             layer.set_editor_property("parameter_name", "Layer")
@@ -251,6 +258,16 @@ def build(material, editing, library, held, array=False):
         occlusion = editing.create_material_expression(material, unreal.MaterialExpressionTextureCoordinate, -1100, place())
         occlusion.set_editor_property("coordinate_index", 1)
         inputs["Occ"] = occlusion
+        damage_uv = editing.create_material_expression(material, unreal.MaterialExpressionTextureCoordinate, -1250, place())
+        damage_uv.set_editor_property("coordinate_index", 2)
+        damage_mask = editing.create_material_expression(material, unreal.MaterialExpressionComponentMask, -1100, place())
+        damage_mask.set_editor_property("r", True)
+        damage_mask.set_editor_property("g", False)
+        ok &= editing.connect_material_expressions(damage_uv, "", damage_mask, "")
+        inputs["Dmg"] = damage_mask
+
+    depth = editing.create_material_expression(material, unreal.MaterialExpressionPixelDepth, -1100, place())
+    inputs["Dist"] = depth
 
     collection = library.load_asset("/Game/Materials/MPC_MadWeather")
     exposure = None

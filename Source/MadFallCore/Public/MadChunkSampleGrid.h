@@ -35,6 +35,31 @@ struct MADFALLCORE_API FMadChunkSampleGrid
 	TArray<uint16> BlockId;
 	TArray<uint8> Flags;
 
+	/**
+	 * Damage of this chunk's own voxels, 1-255, for the ones that have any.
+	 *
+	 * Sparse and centre-only on purpose. Damage is stored sparsely because
+	 * almost no voxel has any, and probing it for all 39304 samples of a
+	 * snapshot is exactly what GetMeshSample was written to avoid; and a face is
+	 * drawn by the chunk that owns the voxel, so a margin voxel's damage is
+	 * never needed. Keyed by MadFall::VoxelIndex within the chunk.
+	 */
+	TMap<int32, uint8> Damage;
+
+	/** True when anything in this chunk is damaged; the meshers skip the lookups otherwise. */
+	FORCEINLINE bool HasDamage() const { return !Damage.IsEmpty(); }
+
+	/** Damage of a voxel of this chunk, 0 when undamaged or outside it. */
+	FORCEINLINE uint8 GetDamage(int32 X, int32 Y, int32 Z) const
+	{
+		if (Damage.IsEmpty() || X < 0 || Y < 0 || Z < 0
+			|| X >= MadFall::ChunkSize || Y >= MadFall::ChunkSize || Z >= MadFall::ChunkSize)
+		{
+			return 0;
+		}
+		return Damage.FindRef(MadFall::VoxelIndex(X, Y, Z));
+	}
+
 	FMadChunkSampleGrid()
 	{
 		Density.SetNumZeroed(Count);
@@ -178,4 +203,12 @@ struct MADFALLCORE_API FMadLodSampleGrid
 			}
 		}
 	}
+	/**
+	 * Distant terrain does not crack: the cell network would alias into a grey
+	 * haze long before a coarse chunk is close enough to read. The mesher is one
+	 * template over both grids, so the answer is here rather than in an #if.
+	 */
+	FORCEINLINE bool HasDamage() const { return false; }
+	FORCEINLINE uint8 GetDamage(int32, int32, int32) const { return 0; }
+
 };

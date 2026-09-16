@@ -1591,6 +1591,27 @@ namespace
 			GEngine->Exec(World, *Command);
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs CmdSceneDamage(
+		TEXT("mad.scene.damage"),
+		TEXT("mad.scene.damage <dx> <dy> <dz> <amount> [type] - mad.damage, offset from the scene anchor."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			FIntVector Delta;
+			if (P == nullptr || !ParseVoxel(Args, 0, Delta) || Args.Num() < 4)
+			{
+				UE_LOG(LogMadFallGameplay, Error, TEXT("Usage: mad.scene.damage <dx> <dy> <dz> <amount> [type]"));
+				return;
+			}
+			const FIntVector At = SceneAnchor(P) + Delta;
+			FString Command = FString::Printf(TEXT("mad.damage %d %d %d"), At.X, At.Y, At.Z);
+			for (int32 Index = 3; Index < Args.Num(); ++Index)
+			{
+				Command += TEXT(" ") + Args[Index];
+			}
+			GEngine->Exec(World, *Command);
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs CmdSceneAim(
 		TEXT("mad.scene.aim"),
 		TEXT("mad.scene.aim <dx> <dy> <dz> - looks at a voxel offset from the scene anchor."),

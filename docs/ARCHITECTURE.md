@@ -963,6 +963,40 @@ Blocks read as materials, not coloured cubes, without a texture asset. Code:
   stretched gradient would misplace the shadow), and each quad splits along
   the diagonal joining its more alike corners. An open 32x32 floor still
   merges to one quad. Smooth terrain is not occluded.
+- **Damage shows as cracks** (`Scripts/crack_shader.py`, shared by the procedural
+  and the textured material so the two cannot drift). A block's damage was
+  invisible: a wall a horde had worked on all night looked exactly like a fresh
+  one, and mining gave no feedback between the first hit and the block
+  vanishing - the only readout was the target line's "42% damaged". The mesher
+  puts the voxel's damage in UV2.x and the material draws a crack network there:
+  a jittered cell lattice where a pixel nearly equidistant from two cell centres
+  is on a fracture, three cells to a voxel. Cells crack in an order fixed by a
+  hash, so damage spreads as a few fissures and becomes a web, and each crack is
+  a groove - the normal tilts out of it, so cracks catch the light rather than
+  being painted on.
+  - *Free of new meshing cost:* damage travels through `SetVoxel`, which already
+    remeshes the chunk, so every hit was rebuilding the mesh before this and
+    changing nothing on screen. The snapshot carries the centre chunk's damage
+    map (sparse, usually empty, and a face is drawn by the chunk that owns the
+    voxel, so margins never need theirs).
+  - *Merging:* damage joins the greedy mesher's face key, quantised to 16 steps,
+    so a cracked block never merges into a whole neighbour and stretches its
+    cracks over both, while a wall under attack does not split into a quad a
+    block for a difference no eye can see.
+  - *Mined ground cracks too:* an isosurface vertex takes the worst damage of the
+    solid voxels around it. It is interpolated across the triangles, so a
+    half-mined voxel's cracks bleed a little into the ground beside it - smooth
+    terrain has no per-voxel discontinuity to stop them at.
+  - *Cost:* three crack evaluations a pixel, but only on a damaged surface within
+    45 m; a whole block takes the branch and none of them, and distance fades
+    them out where the cell network would alias. Coarse (LOD) terrain has no
+    damage at all.
+  - Tested: `MadFall.Mesher.Damage` (a whole slab still merges to six quads and
+    carries no damage; a damaged block splits the face and only its own corners
+    carry it, quantised; two differently damaged blocks stay apart; a scratch
+    below one step changes nothing; mined ground carries it through the
+    isosurface path).
+
 - **The held block wears its pattern.** `M_MadVoxelHeld` runs the same HLSL
   from the cube's local position, colour and pattern from parameters, so the
   pattern rides with the view model instead of swimming through world space.
@@ -2295,7 +2329,8 @@ Console (used by the survival gate): `mad.player.store <item>`,
      relief put a placed block where a scripted walk went. A scene now calls
      `mad.scene.anchor` (the survivor's spawn voxel), `mad.scene.pad` (a flat
      square of stone with clear air above) and places everything with
-     `mad.scene.set`, `mad.scene.box`, `mad.scene.aim` and `mad.scene.tp`,
+     `mad.scene.set`, `mad.scene.box`, `mad.scene.damage`, `mad.scene.aim` and
+     `mad.scene.tp`,
      relative to that anchor - not to the survivor, who moves while a scene is
      built. 33 placements, 7 aims and 5 teleports converted across seven scenes.
      Two follow-ons the pad itself caused: collision for new ground cooks a few
@@ -2332,7 +2367,8 @@ there are textures and meshes to work with. What is there instead:
    art does.
 
    **PARTLY ADDRESSED (Phase 6): procedural patterns and corner occlusion.** See
-   "Block look" below. Still no textures, normal maps or slope/biome blending.
+   "Block look" below. Photo-textured surfaces landed later (see "Realism pass"),
+   and damaged blocks now crack; still no slope or biome blending.
 
    **FIXED (Phase 5): the material's base colour was never connected.**
    `Scripts/make_voxel_material.py` connected the vertex colour node's `"RGB"`

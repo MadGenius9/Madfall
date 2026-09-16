@@ -43,16 +43,22 @@
 # left alone; an older one has its expressions rebuilt in place, so every
 # reference to the asset stays valid.
 
+import os
 import sys
 
 import unreal
+
+# The cracks are shared with the textured material, so the two cannot drift.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from crack_shader import CRACK_APPLY, CRACK_METHOD  # noqa: E402
 
 PACKAGE_PATH = "/Game/Materials"
 ASSET_NAME = "M_MadVoxel"
 HELD_ASSET_NAME = "M_MadVoxelHeld"   # the same patterns on the block in the survivor's hand
 FOLIAGE_ASSET_NAME = "M_MadVoxelFoliage"   # leaves: the same, lit through from behind
+
 VERSION_TAG = "MadFallVoxelMaterialVersion"
-MATERIAL_VERSION = "8"
+MATERIAL_VERSION = "10"
 
 # Pattern index from vertex alpha: alpha = 255 - index * 16.
 PATTERN_ID = "int Id = (int)round((1.0 - VA) * 255.0 / 16.0);\n"
@@ -222,7 +228,7 @@ struct FMadVoxelPattern
 		if (Id == 12) { return 0.82; }
 		return 0.95;
 	}
-};
+%CRACK_METHOD%};
 FMadVoxelPattern F;
 
 """ + PATTERN_ID + """
@@ -308,7 +314,12 @@ if (Occ.y < 0.5 && Up > 0.93 && WetAmt > 0.3)
 C = lerp(C, float3(0.86, 0.88, 0.92) * (0.94 + 0.08 * Grain), SnowMask);
 Rough = lerp(Rough, 0.65, SnowMask);
 BumpNormal = normalize(lerp(BumpNormal, NN, SnowMask * 0.8));
-return saturate(C) * AO;
+// The cracks want the same names the textured material's do.
+float3 Col = C;
+float3 WN = BumpNormal;
+%CRACK_APPLY%
+BumpNormal = WN;
+return saturate(Col) * AO;
 """
 
 ROUGHNESS_HLSL = PATTERN_ID + """
@@ -355,8 +366,8 @@ def connect(editing, source, source_pin, target, target_pin):
 def build(material, editing, held, foliage=False):
     editing.delete_all_material_expressions(material)
 
-    albedo = custom_node(material, editing, ALBEDO_HLSL, unreal.CustomMaterialOutputType.CMOT_FLOAT3,
-                         ["WP", "N", "VC", "VA", "Dist", "Occ", "Wet", "Snow"], -450, -100, "MadFall surface pattern",
+    albedo = custom_node(material, editing, ALBEDO_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY), unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+                         ["WP", "N", "VC", "VA", "Dist", "Occ", "Wet", "Snow", "Dmg"], -450, -100, "MadFall surface pattern",
                          extra_outputs=[("BumpNormal", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                                         ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     collection = unreal.EditorAssetLibrary.load_asset("/Game/Materials/MPC_MadWeather")
@@ -400,6 +411,9 @@ def build(material, editing, held, foliage=False):
         occlusion = editing.create_material_expression(material, unreal.MaterialExpressionConstant2Vector, -900, 360)
         occlusion.set_editor_property("r", 0.0)
         occlusion.set_editor_property("g", 1.0)
+        damage = editing.create_material_expression(material, unreal.MaterialExpressionScalarParameter, -900, 400)
+        damage.set_editor_property("parameter_name", "Damage")
+        damage.set_editor_property("default_value", 0.0)
         ok &= connect(editing, voxel_position, "", albedo, "WP")
         # The held pattern works in the cube's own space, so its normal comes back
         # to world space for lighting.
@@ -408,6 +422,7 @@ def build(material, editing, held, foliage=False):
         ok &= connect(editing, pattern, "", albedo, "VA")
         ok &= connect(editing, depth, "", albedo, "Dist")
         ok &= connect(editing, occlusion, "", albedo, "Occ")
+        ok &= connect(editing, damage, "", albedo, "Dmg")
         ok &= connect(editing, pattern, "", roughness, "VA")
         ok &= connect(editing, pattern, "", metallic, "VA")
     else:
@@ -417,12 +432,20 @@ def build(material, editing, held, foliage=False):
         depth = editing.create_material_expression(material, unreal.MaterialExpressionPixelDepth, -900, 200)
         occlusion = editing.create_material_expression(material, unreal.MaterialExpressionTextureCoordinate, -900, 320)
         occlusion.set_editor_property("coordinate_index", 1)
+        # Damage rides in UV2.x, written by the mesher from the voxel.
+        damage_uv = editing.create_material_expression(material, unreal.MaterialExpressionTextureCoordinate, -1050, 400)
+        damage_uv.set_editor_property("coordinate_index", 2)
+        damage = editing.create_material_expression(material, unreal.MaterialExpressionComponentMask, -900, 400)
+        damage.set_editor_property("r", True)
+        damage.set_editor_property("g", False)
+        ok &= connect(editing, damage_uv, "", damage, "")
         ok &= connect(editing, world_position, "", albedo, "WP")
         ok &= connect(editing, normal, "", albedo, "N")
         ok &= connect(editing, vertex_color, "", albedo, "VC")
         ok &= connect(editing, vertex_color, "A", albedo, "VA")
         ok &= connect(editing, depth, "", albedo, "Dist")
         ok &= connect(editing, occlusion, "", albedo, "Occ")
+        ok &= connect(editing, damage, "", albedo, "Dmg")
         ok &= connect(editing, vertex_color, "A", roughness, "VA")
         ok &= connect(editing, vertex_color, "A", metallic, "VA")
 

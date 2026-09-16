@@ -132,6 +132,8 @@ namespace MadFall::ChunkMesher
 			FVector3f Position = FVector3f::ZeroVector;
 			FVector3f Normal = FVector3f::UpVector;
 			FName MaterialClass;
+			/** The worst damage of the solid corners around it, for the material's cracks. */
+			uint8 Damage = 0;
 			bool bValid = false;
 		};
 
@@ -184,6 +186,7 @@ namespace MadFall::ChunkMesher
 			Cells.SetNum(CellSpan * CellSpan * CellSpanZ);
 
 			// --- pass 1: one vertex per cell the surface passes through ---
+			const bool bAnyDamage = Grid.HasDamage();
 			for (int32 CellZ = CellMin; CellZ <= CellMaxZ; ++CellZ)
 			{
 				for (int32 CellY = CellMin; CellY <= CellMax; ++CellY)
@@ -194,6 +197,7 @@ namespace MadFall::ChunkMesher
 						bool bInside[8];
 						uint16 BlockIds[8];
 						int32 InsideCount = 0;
+						uint8 CellDamage = 0;
 
 						for (int32 Corner = 0; Corner < 8; ++Corner)
 						{
@@ -211,6 +215,14 @@ namespace MadFall::ChunkMesher
 							BlockIds[Corner] = Grid.GetBlockId(X, Y, Z);
 
 							InsideCount += bInside[Corner] ? 1 : 0;
+							if (bAnyDamage && bInside[Corner])
+							{
+								// The worst of the ground this vertex sits on: a
+								// vertex is shared by up to eight voxels, and a
+								// half-mined one should show its cracks rather
+								// than have them averaged away by whole neighbours.
+								CellDamage = FMath::Max(CellDamage, Grid.GetDamage(X, Y, Z));
+							}
 						}
 
 						if (InsideCount == 0 || InsideCount == 8)
@@ -343,6 +355,7 @@ namespace MadFall::ChunkMesher
 						}
 						Cell.Normal = Normal;
 						Cell.MaterialClass = Materials.GetMaterialClass(DominantBlock);
+						Cell.Damage = CellDamage;
 						Cell.bValid = true;
 					}
 				}
@@ -374,7 +387,7 @@ namespace MadFall::ChunkMesher
 				// rendered as bright zig-zag lines, along every material boundary.
 				FColor Color = ColorForMaterialClass(Vertex.MaterialClass);
 				Color.A = ColorForMaterialClass(Section.MaterialClass).A;
-				const int32 Index = Section.AddVertex(Vertex.Position, Vertex.Normal, UV, Color);
+				const int32 Index = Section.AddVertex(Vertex.Position, Vertex.Normal, UV, Color, /*Occlusion*/ 0, Vertex.Damage);
 
 				Cache.Add(Cell, Index);
 				return Index;
@@ -591,8 +604,17 @@ namespace MadFall::ChunkMesher
 
 									if (!bNeighbourSolid)
 									{
+										// Damage joins the key, so a cracked block never
+										// merges into a whole neighbour's rectangle and
+										// wear its cracks stretched across both. It is
+										// quantised to 16 steps first: merging is what
+										// keeps a wall one quad, and a wall taking horde
+										// hits would otherwise split into a quad a block
+										// for differences no eye can see.
+										const uint8 Damage = Grid.GetDamage(Voxel[0], Voxel[1], Voxel[2]);
 										Value = Grid.GetBlockId(Voxel[0], Voxel[1], Voxel[2])
-											| (static_cast<uint32>(ComputeFaceOcclusion(Grid, Materials, Voxel, Axis, Step, B, C)) << 16);
+											| (static_cast<uint32>(ComputeFaceOcclusion(Grid, Materials, Voxel, Axis, Step, B, C)) << 16)
+											| (static_cast<uint32>(Damage & 0xF0) << 20);
 										bAnyVisible = true;
 									}
 								}
@@ -619,6 +641,7 @@ namespace MadFall::ChunkMesher
 								}
 								const uint16 BlockId = static_cast<uint16>(FaceKey & 0xFFFF);
 								const uint8 Occlusion = static_cast<uint8>(FaceKey >> 16);
+								const uint8 Damage = static_cast<uint8>((FaceKey >> 20) & 0xF0);
 								const bool bMergeable = IsUniformOcclusion(Occlusion);
 
 								// Grow along B while the block id and occlusion match.
@@ -675,13 +698,13 @@ namespace MadFall::ChunkMesher
 								// material once per block rather than stretching
 								// one texture across the whole merged rectangle.
 								const int32 V0 = Section.AddVertex(Base * VoxelSize, Normal,
-									FVector2f(0.0f, 0.0f), Color, CubicVertex(Occlusion, 0));
+									FVector2f(0.0f, 0.0f), Color, CubicVertex(Occlusion, 0), Damage);
 								const int32 V1 = Section.AddVertex((Base + DeltaB) * VoxelSize, Normal,
-									FVector2f(static_cast<float>(Width), 0.0f), Color, CubicVertex(Occlusion, 1));
+									FVector2f(static_cast<float>(Width), 0.0f), Color, CubicVertex(Occlusion, 1), Damage);
 								const int32 V2 = Section.AddVertex((Base + DeltaB + DeltaC) * VoxelSize, Normal,
-									FVector2f(static_cast<float>(Width), static_cast<float>(Height)), Color, CubicVertex(Occlusion, 2));
+									FVector2f(static_cast<float>(Width), static_cast<float>(Height)), Color, CubicVertex(Occlusion, 2), Damage);
 								const int32 V3 = Section.AddVertex((Base + DeltaC) * VoxelSize, Normal,
-									FVector2f(0.0f, static_cast<float>(Height)), Color, CubicVertex(Occlusion, 3));
+									FVector2f(0.0f, static_cast<float>(Height)), Color, CubicVertex(Occlusion, 3), Damage);
 
 								// Walking B then C is counter-clockwise with a
 								// +Axis normal, so a -Axis face reverses. The quad

@@ -1142,6 +1142,15 @@ void UMadVoxelWorldSubsystem::SnapshotFromSources(const FSnapshotSources& Source
 		}
 	};
 
+	// The centre chunk's damage, so the mesher can crack a damaged face. Copied
+	// whole rather than sampled: it is a sparse map, usually empty, and a face is
+	// drawn by the chunk that owns the voxel, so margins never need theirs.
+	OutGrid.Damage.Reset();
+	if (const FMadChunkPtr& Centre = Neighbours[1][1][1]; Centre.IsValid())
+	{
+		OutGrid.Damage = Centre->Storage.GetDamageMap();
+	}
+
 	using MadFall::ChunkSize;
 
 	for (int32 Z = -1; Z <= ChunkSize; ++Z)

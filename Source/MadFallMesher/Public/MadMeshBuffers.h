@@ -40,6 +40,13 @@ struct MADFALLMESHER_API FMadMeshSection
 	 */
 	TArray<uint8> Occlusion;
 
+	/**
+	 * How broken this vertex's block is, 0 (whole) to 255, from the voxel's
+	 * damage. Reaches the material as UV2.x, which draws cracks that widen with
+	 * it, so a wall a horde is working on shows where it is going.
+	 */
+	TArray<uint8> Damage;
+
 	static constexpr uint8 CubicFaceFlag = 0x10;
 
 	TArray<uint32> Indices;
@@ -56,10 +63,11 @@ struct MADFALLMESHER_API FMadMeshSection
 		UVs.Reserve(VertexCount);
 		Colors.Reserve(VertexCount);
 		Occlusion.Reserve(VertexCount);
+		Damage.Reserve(VertexCount);
 		Indices.Reserve(IndexCount);
 	}
 
-	int32 AddVertex(const FVector3f& Position, const FVector3f& Normal, const FVector2f& UV, const FColor& Color, uint8 InOcclusion = 0);
+	int32 AddVertex(const FVector3f& Position, const FVector3f& Normal, const FVector2f& UV, const FColor& Color, uint8 InOcclusion = 0, uint8 InDamage = 0);
 
 	/** Emits two triangles for a quad given in counter-clockwise order. */
 	void AddQuad(int32 V0, int32 V1, int32 V2, int32 V3)

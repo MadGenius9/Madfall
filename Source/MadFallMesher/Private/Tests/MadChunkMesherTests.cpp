@@ -364,6 +364,136 @@ bool FMadGreedyMesherTest::RunTest(const FString& Parameters)
 }
 
 // ===========================================================================
+// Damage: the cracks a broken block wears
+// ===========================================================================
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadBlockDamageMeshTest,
+	"MadFall.Mesher.Damage",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadBlockDamageMeshTest::RunTest(const FString& Parameters)
+{
+	using namespace MadMesherTests;
+
+	FMadBlockRegistry Registry;
+	const FTestBlocks Blocks = BuildRegistry(Registry);
+	MadFall::ChunkMesher::FMeshSettings Settings;
+	Settings.bIsosurface = false;
+
+	auto Slab = [](int32 X, int32 Y, int32 Z) -> uint8
+	{
+		return (Z == 0 && X >= 0 && X < 8 && Y >= 0 && Y < 8) ? 255 : 0;
+	};
+
+	// --- an undamaged slab is one quad a face and carries no damage -----------
+	{
+		const FMadChunkSampleGrid Grid = MakeGrid(Blocks.Rock, Slab, /*bCubic*/ true);
+		FMadChunkMesh Mesh;
+		MadFall::ChunkMesher::BuildChunkMesh(Grid, Registry, Settings, Mesh);
+		TestEqual(TEXT("a whole 8x8 slab is still 6 quads"), Mesh.TotalTriangles(), 12);
+		for (const FMadMeshSection& Section : Mesh.Sections)
+		{
+			TestEqual(TEXT("damage per vertex"), Section.Damage.Num(), Section.NumVertices());
+			for (uint8 Damage : Section.Damage)
+			{
+				TestEqual(TEXT("a whole block's vertices are undamaged"), static_cast<int32>(Damage), 0);
+			}
+		}
+	}
+
+	// --- one damaged block in the middle of it -------------------------------
+	{
+		FMadChunkSampleGrid Grid = MakeGrid(Blocks.Rock, Slab, /*bCubic*/ true);
+		Grid.Damage.Add(MadFall::VoxelIndex(3, 3, 0), 200);
+		FMadChunkMesh Mesh;
+		MadFall::ChunkMesher::BuildChunkMesh(Grid, Registry, Settings, Mesh);
+
+		// The damaged block cannot merge into its whole neighbours, or its cracks
+		// would stretch across the lot: the slab's top face breaks up.
+		TestTrue(TEXT("a damaged block splits the merged face"), Mesh.TotalTriangles() > 12);
+
+		int32 DamagedVertices = 0;
+		int32 DamagedTopVertices = 0;
+		for (const FMadMeshSection& Section : Mesh.Sections)
+		{
+			for (int32 Index = 0; Index < Section.NumVertices(); ++Index)
+			{
+				const uint8 Damage = Section.Damage[Index];
+				if (Damage == 0)
+				{
+					continue;
+				}
+				++DamagedVertices;
+				DamagedTopVertices += Section.Normals[Index].Z > 0.5f ? 1 : 0;
+				// Quantised to 16 steps, so a wall under attack does not split
+				// into a quad a block for a difference no eye can see.
+				TestEqual(TEXT("the damage is the voxel's, quantised"), static_cast<int32>(Damage), 200 & 0xF0);
+				const FVector3f& P = Section.Positions[Index];
+				TestTrue(TEXT("only the damaged block's own corners carry it"),
+					P.X >= 3.0f * MadFall::VoxelSizeUU - 0.01f && P.X <= 4.0f * MadFall::VoxelSizeUU + 0.01f
+					&& P.Y >= 3.0f * MadFall::VoxelSizeUU - 0.01f && P.Y <= 4.0f * MadFall::VoxelSizeUU + 0.01f);
+			}
+		}
+		TestEqual(TEXT("its top face is four damaged corners"), DamagedTopVertices, 4);
+		// The slab is one voxel thick, so its underside is a visible face too.
+		TestEqual(TEXT("and its underside another four"), DamagedVertices, 8);
+	}
+
+	// --- two blocks damaged by different amounts stay apart ------------------
+	{
+		FMadChunkSampleGrid Grid = MakeGrid(Blocks.Rock, Slab, /*bCubic*/ true);
+		Grid.Damage.Add(MadFall::VoxelIndex(3, 3, 0), 200);
+		Grid.Damage.Add(MadFall::VoxelIndex(4, 3, 0), 32);
+		FMadChunkMesh Mesh;
+		MadFall::ChunkMesher::BuildChunkMesh(Grid, Registry, Settings, Mesh);
+
+		TSet<int32> Levels;
+		for (const FMadMeshSection& Section : Mesh.Sections)
+		{
+			for (uint8 Damage : Section.Damage)
+			{
+				Levels.Add(Damage);
+			}
+		}
+		TestTrue(TEXT("whole, barely damaged and badly damaged all show"), Levels.Contains(0) && Levels.Contains(32) && Levels.Contains(200 & 0xF0));
+	}
+
+	// --- damage below one step is invisible, and does not split the face ------
+	{
+		FMadChunkSampleGrid Grid = MakeGrid(Blocks.Rock, Slab, /*bCubic*/ true);
+		Grid.Damage.Add(MadFall::VoxelIndex(3, 3, 0), 9);
+		FMadChunkMesh Mesh;
+		MadFall::ChunkMesher::BuildChunkMesh(Grid, Registry, Settings, Mesh);
+		TestEqual(TEXT("a scratch does not split the merged face"), Mesh.TotalTriangles(), 12);
+	}
+
+	// --- mined ground: the isosurface carries it too --------------------------
+	{
+		MadFall::ChunkMesher::FMeshSettings Smooth;
+		Smooth.bIsosurface = true;
+		FMadChunkSampleGrid Grid = MakeGrid(Blocks.Rock,
+			[](int32 X, int32 Y, int32 Z) -> uint8 { return Z <= 4 ? 255 : 0; });
+		Grid.Damage.Add(MadFall::VoxelIndex(5, 5, 4), 128);
+		FMadChunkMesh Mesh;
+		MadFall::ChunkMesher::BuildChunkMesh(Grid, Registry, Smooth, Mesh);
+
+		int32 Damaged = 0;
+		for (const FMadMeshSection& Section : Mesh.Sections)
+		{
+			TestEqual(TEXT("damage per vertex"), Section.Damage.Num(), Section.NumVertices());
+			for (uint8 Damage : Section.Damage)
+			{
+				Damaged += Damage > 0 ? 1 : 0;
+			}
+		}
+		TestTrue(TEXT("the ground around a half-mined voxel shows it"), Damaged > 0);
+	}
+
+	return true;
+}
+
+// ===========================================================================
 // Corner ambient occlusion
 // ===========================================================================
 
