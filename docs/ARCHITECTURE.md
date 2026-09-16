@@ -1576,10 +1576,18 @@ get under the surface.
   Tested: `MadFall.AI.WaterPath` (a pond is crossed when water is free and
   walked around when it is not; a canal with no way round is still waded; a
   shallow ford beats a deep channel).
-- Known gaps: the water surface seen from below is a dark plane (it is a
-  one-sided surface, and there is no underwater fog material), zombies and
-  animals walk along the bottom rather than swimming, and there is no current,
-  no waves and no swimming animation.
+- **Water you can see through, and see from underneath** (`M_MadVoxelWater`,
+  the same pattern shader as every other surface). It was opaque and
+  single-sided: a lake read as polished stone from above, and from below - which
+  nobody could reach until swimming existed - its surface was an unlit black
+  plane that looked like a hole in the world. It is now translucent (flat 0.72
+  opacity, per-pixel translucent lighting so the surface still catches the sun)
+  and two-sided, the one surface in the game that is: a chunk mesh only emits
+  outward faces, so single-sided is what makes a bad winding show up as a hole
+  rather than hide silently. Cost: water draws in the translucent pass, which
+  is why the opacity is flat rather than a scene-depth fade.
+- Known gaps: zombies and animals walk along the bottom rather than swimming,
+  and there is no current, no waves and no swimming animation.
 
 ### Clothing
 

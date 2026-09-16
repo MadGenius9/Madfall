@@ -8,7 +8,7 @@
 	{ "schema": "madfall.surface/1", "id": "madfall:grass",    "color": [0.30, 0.46, 0.20], "impact": "dirt", "pattern": "grass", "material": "/Game/Materials/M_MadVoxelPBRArray.M_MadVoxelPBRArray", "texture_layer": 2, "cover": { "density": 0.45, "flowers": 0.02, "height": [0.3, 0.6] } },
 	{ "schema": "madfall.surface/1", "id": "madfall:sand",     "color": [0.76, 0.70, 0.50], "impact": "dirt", "pattern": "sand", "material": "/Game/Materials/M_MadVoxelPBRArray.M_MadVoxelPBRArray", "texture_layer": 3 },
 	{ "schema": "madfall.surface/1", "id": "madfall:gravel",   "color": [0.45, 0.43, 0.40], "impact": "dirt", "pattern": "gravel", "material": "/Game/Materials/M_MadVoxelPBRArray.M_MadVoxelPBRArray", "texture_layer": 7 },
-	{ "schema": "madfall.surface/1", "id": "madfall:water",    "color": [0.15, 0.30, 0.45], "impact": "dirt", "pattern": "water" },
+	{ "schema": "madfall.surface/1", "id": "madfall:water",    "color": [0.15, 0.30, 0.45], "impact": "dirt", "pattern": "water", "material": "/Game/Materials/M_MadVoxelWater.M_MadVoxelWater" },
 	{ "schema": "madfall.surface/1", "id": "madfall:wood",     "color": [0.52, 0.37, 0.22], "impact": "wood", "pattern": "planks", "material": "/Game/Materials/M_MadVoxelPBRArray.M_MadVoxelPBRArray", "texture_layer": 4 },
 	{ "schema": "madfall.surface/1", "id": "madfall:concrete", "color": [0.55, 0.55, 0.52], "impact": "stone", "pattern": "concrete", "material": "/Game/Surfaces/MI_Concrete034.MI_Concrete034" },
 	{ "schema": "madfall.surface/1", "id": "madfall:steel",    "color": [0.42, 0.44, 0.47], "impact": "metal", "pattern": "metal", "material": "/Game/Materials/M_MadVoxelPBRArray.M_MadVoxelPBRArray", "texture_layer": 6 },

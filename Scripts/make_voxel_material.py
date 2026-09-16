@@ -56,9 +56,10 @@ PACKAGE_PATH = "/Game/Materials"
 ASSET_NAME = "M_MadVoxel"
 HELD_ASSET_NAME = "M_MadVoxelHeld"   # the same patterns on the block in the survivor's hand
 FOLIAGE_ASSET_NAME = "M_MadVoxelFoliage"   # leaves: the same, lit through from behind
+WATER_ASSET_NAME = "M_MadVoxelWater"       # water: the same, but you can see through it and under it
 
 VERSION_TAG = "MadFallVoxelMaterialVersion"
-MATERIAL_VERSION = "10"
+MATERIAL_VERSION = "11"
 
 # Pattern index from vertex alpha: alpha = 255 - index * 16.
 PATTERN_ID = "int Id = (int)round((1.0 - VA) * 255.0 / 16.0);\n"
@@ -363,7 +364,7 @@ def connect(editing, source, source_pin, target, target_pin):
     return True
 
 
-def build(material, editing, held, foliage=False):
+def build(material, editing, held, foliage=False, water=False):
     editing.delete_all_material_expressions(material)
 
     albedo = custom_node(material, editing, ALBEDO_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY), unreal.CustomMaterialOutputType.CMOT_FLOAT3,
@@ -491,20 +492,37 @@ def build(material, editing, held, foliage=False):
         transmission.set_editor_property("const_b", 0.6)
         ok &= connect(editing, albedo, "", transmission, "A")
         ok &= editing.connect_material_property(transmission, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    if water:
+        # Water you can see through, and see from underneath. It was opaque and
+        # single-sided: a lake read as polished stone from above, and from below
+        # - which nobody could reach until swimming existed - its surface was an
+        # unlit black plane that looked like a hole in the world.
+        #
+        # Per-pixel lighting rather than the cheaper volumetric modes, so the
+        # surface still catches the sun; two-sided so the underside draws; and
+        # the opacity is flat rather than depth-based, which would want a scene
+        # depth read and a sorting pass this does not need.
+        material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+        material.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
+        opacity = editing.create_material_expression(material, unreal.MaterialExpressionConstant, -150, 140)
+        opacity.set_editor_property("r", 0.72)
+        ok &= editing.connect_material_property(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+
     if not ok or editing.get_material_property_input_node(material, unreal.MaterialProperty.MP_BASE_COLOR) is None:
         unreal.log_error("[MadFall] {} is incompletely connected".format(material.get_name()))
         return False
 
     # Chunk meshes only ever emit outward faces: single-sided makes a bad winding
-    # show up as a hole instead of being silently hidden.
-    material.set_editor_property("two_sided", False)
+    # show up as a hole instead of being silently hidden. Water is the exception -
+    # a swimmer under it has to see its underside.
+    material.set_editor_property("two_sided", bool(water))
     # The held variant also draws model blocks (UMadModelInstanceSubsystem), which
     # are instanced: a cooked build cannot compile that usage on demand.
     material.set_editor_property("used_with_instanced_static_meshes", True)
     return True
 
 
-def make(editing, library, asset_name, held, foliage=False):
+def make(editing, library, asset_name, held, foliage=False, water=False):
     full_path = "{}/{}".format(PACKAGE_PATH, asset_name)
     if library.does_asset_exist(full_path):
         material = library.load_asset(full_path)
@@ -519,7 +537,7 @@ def make(editing, library, asset_name, held, foliage=False):
             unreal.log_error("[MadFall] Could not create {}".format(full_path))
             return False
 
-    if not build(material, editing, held, foliage):
+    if not build(material, editing, held, foliage, water):
         return False
 
     editing.recompile_material(material)
@@ -535,6 +553,7 @@ def main():
     ok = make(editing, library, ASSET_NAME, held=False)
     ok &= make(editing, library, HELD_ASSET_NAME, held=True)
     ok &= make(editing, library, FOLIAGE_ASSET_NAME, held=False, foliage=True)
+    ok &= make(editing, library, WATER_ASSET_NAME, held=False, water=True)
     return 0 if ok else 1
 
 
