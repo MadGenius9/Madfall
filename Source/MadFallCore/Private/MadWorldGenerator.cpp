@@ -78,7 +78,9 @@ uint64 FMadWorldGenSettings::GetGenerationVersion() const
 	// 6: highlands became mountains (base 74, variation 78, ridging 0.95), which
 	//    streaming can now follow: chunk columns load the layers their ground
 	//    reaches instead of a fixed window around the player.
-	Mix(6u);
+	// 7: mountains settled at base 62, variation 54, ridging 0.92 (peaks around
+	//    116) after measuring what the taller ones cost to mesh.
+	Mix(7u);
 
 	return (static_cast<uint64>(Hash) << 32) | MadFall::Noise::HashInt(Hash);
 }

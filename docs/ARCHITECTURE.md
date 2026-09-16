@@ -2419,8 +2419,8 @@ Console (used by the survival gate): `mad.player.store <item>`,
    level.
 
    **Then the ceiling was removed and the highlands became mountains**
-   (base 74, variation 78, ridging 0.95: peaks around 150 voxels, 140 m of
-   relief above the sea). What had capped them was streaming, not the world -
+   (base 62, variation 54, ridging 0.92: peaks around 116 voxels, a hundred
+   metres of relief above the sea). What had capped them was streaming, not the world -
    the world spans 512 voxels - because the streamer loaded a cylinder of fixed
    height around the player, so ground more than two chunk layers above them
    never arrived. **Each chunk column now loads the layers its own ground
@@ -2431,9 +2431,33 @@ Console (used by the survival gate): `mad.player.store <item>`,
    dropped the moment they arrived. Flat ground costs exactly what it did;
    standing in the mountains holds about 30% more chunks (1137 -> 1481 at the
    same radius), most of them solid rock or empty air, which the mesher skips
-   without building anything. Generation revision 6. The frame-budget session
+   without building anything. Generation revision 7. The frame-budget session
    now teleports into the highlands and walks there, so the cost is measured
    rather than assumed.
+
+   **What mountains cost, and what paid for it.** With the same session
+   teleporting into flat plains instead, the frame budget is 0.30% and 0.28% of
+   frames over 2 ms across two runs; into the mountains it was 0.45% and 0.51%,
+   against a gate of 0.5%, with occasional 4-5 ms frames - too close to ship.
+   The breakdown said what was doing it: meshing was the largest system in 53 of
+   58 over-budget frames, at up to 4.7 ms, while streaming was the largest in
+   one and loading in none. A mountain chunk simply has far more surface than a
+   chunk of rolling ground.
+   - *Two attempts that did not work, recorded so they are not tried again.*
+     Queueing the terrain-driven layers behind the player's own window, and then
+     rate-limiting them to a couple a tick, changed nothing measurable
+     (0.435-0.525%): the burst was never in the loading. Counting vertical
+     distance toward the LOD level - a peak three layers overhead is a hundred
+     metres away - also changed nothing measurable, and one run showed a 5.4 ms
+     frame. Both were reverted. Tuning the peaks down from 150 to 116 barely
+     moved it either, because what costs is the steep surface, not the height.
+   - *What worked:* coarsening sooner. `mad.mesh.LodDistance` 5 -> 4 and
+     `mad.mesh.Lod2Distance` 11 -> 9, so terrain halves resolution at 128 m
+     instead of 160 m and quarters it at 288 m instead of 352 m. The mountain
+     session came back to 0.29% and 0.40% - about a third of a percent, against
+     0.3% for flat ground - and the 4-5 ms outliers went away. The trade is
+     detail at middle distance, which a screenshot from the plains cannot
+     distinguish; the gain is a world with mountains in it.
    Generator revision 5 marks the change; a world saved before it keeps its
    old chunks, so a seam shows where old and new ground meet.
    - **Found by it: a lid over road edges.** The road-bank test found 24 walls

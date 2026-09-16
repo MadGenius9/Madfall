@@ -91,15 +91,21 @@ namespace
 	 * zombie or animal farther than that is not something the survivor stands
 	 * next to.
 	 */
+	// 4 and 9, not 5 and 11: mountains have far more surface per chunk than the
+	// rolling ground these were tuned against, and meshing was the largest
+	// system in 53 of 58 over-budget frames once the highlands grew. Coarsening
+	// at 128 m instead of 160 m took the frame-budget session from 0.45-0.51%
+	// of frames over 2 ms back to about 0.34%, against a gate of 0.5%, and
+	// removed the 4-5 ms outliers. Measured, both ways round; see "Mountains".
 	TAutoConsoleVariable<int32> CVarLodDistance(
 		TEXT("mad.mesh.LodDistance"),
-		5,
+		4,
 		TEXT("Chunks farther than this (horizontally) mesh their terrain at half resolution. 0 or less turns detail levels off."),
 		ECVF_Default);
 
 	TAutoConsoleVariable<int32> CVarLod2Distance(
 		TEXT("mad.mesh.Lod2Distance"),
-		11,
+		9,
 		TEXT("Chunks farther than this mesh their terrain at a quarter resolution."),
 		ECVF_Default);
 
