@@ -91,7 +91,7 @@ Run the game (`-game`, or the packaged exe) and it starts at the title screen:
 easy, normal or hard), **Load
 World** (every saved world with its day and seed; delete from there too),
 **Settings** (look sensitivity, invert look, field of view, view distance,
-graphics quality low to epic, volume, language, key bindings; saved to `Saved/Config/MadFallSettings.json`), **How to Play**, and
+graphics quality low to epic, HUD size, volume, language, key bindings; saved to `Saved/Config/MadFallSettings.json`), **How to Play**, and
 **Continue** for the last world played. Pressing Play in the editor, `-MadWorld=<name>` or
 `-unattended` skips the title and plays a world directly. The survivor spawns
 once the ground under them has streamed in.

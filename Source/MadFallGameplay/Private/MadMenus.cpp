@@ -497,6 +497,10 @@ private:
 				SNew(SSpinBox<int32>).MinValue(3).MaxValue(16).Delta(1)
 				.Value_Lambda([this]() { return Pending.ViewDistance; })
 				.OnValueChanged_Lambda([this](int32 V) { Pending.ViewDistance = V; })) ]
+			+ SVerticalBox::Slot().AutoHeight() [ SettingRow(L(TEXT("@menu.hud_scale")),
+				SNew(SSpinBox<float>).MinValue(0.5f).MaxValue(2.0f).Delta(0.05f)
+				.Value_Lambda([this]() { return Pending.UiScale; })
+				.OnValueChanged_Lambda([this](float V) { Pending.UiScale = V; })) ]
 			+ SVerticalBox::Slot().AutoHeight() [ SettingRow(L(TEXT("@menu.quality")),
 				SNew(SButton)
 				.OnClicked_Lambda([this]() { Pending.Quality = (Pending.Quality + 1) % 4; return FReply::Handled(); })

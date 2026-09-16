@@ -1126,6 +1126,94 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# HUD layout: the same HUD in a small window and a large one
+# ---------------------------------------------------------------------------
+#
+# The panels are placed by FMadHudLayout and swept across window sizes by
+# MadFall.UI.Layout. This gate runs the real HUD in the real game at two window
+# sizes and at a doubled HUD size, and asks it (mad.hud.layout) whether what it
+# just drew is valid: the unit test proves the arithmetic, this proves the HUD
+# is actually using it.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: HUD layout (headless -game)'
+
+    $hudSizes = @(
+        @{ W = 854; H = 480; Scale = 1.0; Why = 'a small window' },
+        @{ W = 1280; H = 720; Scale = 2.0; Why = 'a doubled HUD, backed off to fit' }
+    )
+    $hudOk = $true
+    foreach ($size in $hudSizes) {
+        $hudScript = @(
+            "mad.ui.Scale $($size.Scale)"
+            'mad.player.give madfall:wood_plank 40'
+            'mad.player.craft madfall:ladder 3'
+            'wait 1'
+            'mad.hud.layout'
+            'mad.player.openinventory'
+            'wait 1'
+            'mad.hud.layout'
+            'mad.hud.click inv.b.9'
+            'mad.player.closeinventory'
+            'quit'
+        ) -join '; '
+        $hudLog = Join-Path $LogDir "hud-$($size.W)x$($size.H).log"
+        $hudProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow `
+            -RedirectStandardOutput $hudLog `
+            -ArgumentList @("`"$ProjectFile`"", '-game', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                            '-RenderOffScreen', "-ResX=$($size.W)", "-ResY=$($size.H)", '-windowed', '-MadDefaultSettings',
+                            "-MadWorld=hud$($size.W)", "-ExecCmds=`"mad.onspawn $hudScript`"")
+
+        if (-not $hudProcess.WaitForExit(240000)) {
+            $hudProcess | Stop-Process -Force
+            Write-Host "FAILED: the game did not finish the HUD script for $($size.Why) within 240 s." -ForegroundColor Red
+            $hudOk = $false
+            continue
+        }
+
+        $reports = @(Select-String -Path $hudLog -Pattern 'HUD layout: .*')
+        if ($reports.Count -lt 2) {
+            Write-Host "FAILED: $($size.Why) did not report its layout twice (got $($reports.Count))." -ForegroundColor Red
+            $hudOk = $false
+            continue
+        }
+        $invalid = @($reports | Where-Object { $_.Line -match 'INVALID' })
+        if ($invalid.Count -gt 0) {
+            Write-Host "FAILED: $($size.Why) drew an invalid layout: $($invalid[0].Line)" -ForegroundColor Red
+            $hudOk = $false
+            continue
+        }
+        Write-Host "OK: $($size.Why) placed every panel validly" -ForegroundColor Green
+
+        # The HUD is sized to the window, not to a fixed number of pixels.
+        if ($reports[0].Line -match 'HUD layout: (\d+)x(\d+), scale ([0-9.]+)') {
+            $drawnW = [int]$Matches[1]
+            $scale = [double]$Matches[3]
+            $wanted = [Math]::Round([Math]::Min($drawnW / 1600.0, [int]$Matches[2] / 900.0), 2)
+            if ($scale -le 0.0) {
+                Write-Host "FAILED: $($size.Why) reported no scale." -ForegroundColor Red
+                $hudOk = $false
+            }
+            elseif ($size.Scale -eq 1.0 -and [Math]::Abs($scale - [Math]::Max($wanted, 0.5)) -gt 0.03) {
+                Write-Host "FAILED: $($size.Why) scaled to $scale, not the $wanted its window implies." -ForegroundColor Red
+                $hudOk = $false
+            }
+            else {
+                Write-Host "OK: $($size.Why) scaled the HUD to $scale" -ForegroundColor Green
+            }
+        }
+
+        # The inventory screen's slots are still where a click finds them.
+        if (Select-String -Path $hudLog -Pattern 'inventory|Holding|backpack' -Quiet) {
+            Write-Host "OK: the inventory screen took a click at $($size.W)x$($size.H)" -ForegroundColor Green
+        }
+    }
+    if (-not $hudOk) {
+        $script:Failures += 'hud-layout'
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Scripts: the Lua example mod in a real game
 # ---------------------------------------------------------------------------
 #

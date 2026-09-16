@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MadHudLayout.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/HUD.h"
 #include "MadInventory.h"
@@ -24,9 +25,13 @@ public:
 /**
  * The survival HUD, drawn on the canvas.
  *
- * Deliberately canvas rather than UMG for now: it has no assets, so it is
- * reviewable in a diff and cannot drift from the C++ state it shows. Phase 7
- * replaces it with a styled UMG layer reading the same accessors.
+ * Deliberately canvas rather than UMG: it has no assets, so it is reviewable in
+ * a diff and cannot drift from the C++ state it shows.
+ *
+ * Where everything goes is FMadHudLayout's job, not this class's: sizes are
+ * authored at 1600x900 and scaled to the window (mad.ui.Scale), so the panels
+ * neither overlap in a small window nor shrink to nothing on a 4K screen, and
+ * a test sweeps the placement across window sizes a screenshot never would.
  */
 UCLASS()
 class MADFALLGAMEPLAY_API AMadHUD : public AHUD
@@ -45,22 +50,36 @@ public:
 	 */
 	void ClickBox(FName BoxName, bool bQuick, bool bHalf, bool bCtrl = false);
 
-	/** Width of the crafting / skills column beside the inventory. */
+	/** Width of the crafting / skills column beside the inventory, in design pixels. */
 	static constexpr float SkillsPanelWidth = 380.0f;
 
+	/** Where the panels are this frame; rebuilt from the viewport every DrawHUD. */
+	const struct FMadHudLayout& GetLayout() const { return Layout; }
+
 private:
-	void DrawBar(float X, float Y, float Width, float Fraction, const FLinearColor& Colour, const FString& Label);
+	void DrawBar(float X, float Y, float Width, float Height, float Fraction, const FLinearColor& Colour, const FString& Label);
 	void DrawInventoryScreen(const class AMadPlayerCharacter& Player);
 	void DrawSlot(const struct FMadItemStack& Stack, float X, float Y, float Size, bool bHighlighted, FName HitBox);
 	/** An item's icon (MadFall::IconCache) as a Size x Size tile. False, drawing nothing, without one. */
 	bool DrawItemIcon(FName ItemId, float X, float Y, float Size, float Opacity = 1.0f);
-	/** A stack count right-aligned at RightX, shadowed. */
-	void DrawCount(int32 Count, float RightX, float Y);
+	/** A stack count right-aligned at RightX, shadowed, at the scale of what it labels. */
+	void DrawCount(int32 Count, float RightX, float Y, float Scale = 1.0f);
 	void DrawSkillsPanel(const class AMadPlayerCharacter& Player, float X, float Y, float Height);
 	void DrawCraftingPanel(const class AMadPlayerCharacter& Player, float X, float Y, float Height);
 	void DrawTooltip(const FMadItemStack& Stack);
 	/** The held stack's icon and count beside the mouse, over everything else on the screen. */
 	void DrawHeldStack(const class AMadPlayerCharacter& Player);
+
+	/** Design pixels to screen pixels, for the window this frame. */
+	float Px(float DesignPixels) const;
+	/** Text at the HUD's scale: the engine's fonts are fixed size, so they are scaled. */
+	void DrawScaled(const FString& Text, const FLinearColor& Colour, float X, float Y, class UFont* Font);
+	float ScaledTextWidth(const FString& Text, class UFont* Font) const;
+
+	/** Where every panel goes, rebuilt each frame from the viewport size. */
+	FMadHudLayout Layout;
+	/** The inventory screen's own layout, rebuilt when that screen is drawn. */
+	FMadInventoryLayout Bag;
 
 	/** The mouse position this frame, and the stack under it (set while drawing slots). */
 	FVector2D Mouse = FVector2D(-1.0, -1.0);

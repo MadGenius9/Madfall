@@ -18,6 +18,7 @@
 #include "MadFarming.h"
 #include "MadGameplayDefinitions.h"
 #include "MadHarvest.h"
+#include "MadHudLayout.h"
 #include "MadKeyBindings.h"
 #include "MadProgression.h"
 #include "MadTrading.h"
@@ -56,22 +57,51 @@ UClass* AMadGameMode::GetDefaultPawnClassForController_Implementation(AControlle
 // HUD
 // ===========================================================================
 
-void AMadHUD::DrawBar(float X, float Y, float Width, float Fraction, const FLinearColor& Colour, const FString& Label)
+namespace
+{
+	TAutoConsoleVariable<float> CVarUiScale(
+		TEXT("mad.ui.Scale"), 1.0f,
+		TEXT("How big the HUD is, 0.5 to 2. Multiplies the size the window already implies; "
+			 "a window too small for the result gets the largest size that still fits."));
+}
+
+float AMadHUD::Px(float DesignPixels) const
+{
+	return Layout.Px(DesignPixels);
+}
+
+void AMadHUD::DrawScaled(const FString& Text, const FLinearColor& Colour, float X, float Y, UFont* Font)
+{
+	// The engine's built-in fonts are fixed-size bitmaps, so the canvas scales
+	// them. That is soft at 4K, but a HUD whose text stays 11 px tall on a 4K
+	// screen is unreadable, which is worse than soft.
+	DrawText(Text, Colour, X, Y, Font, Layout.FontScale());
+}
+
+float AMadHUD::ScaledTextWidth(const FString& Text, UFont* Font) const
+{
+	float Width = 0.0f;
+	float Height = 0.0f;
+	const_cast<AMadHUD*>(this)->GetTextSize(Text, Width, Height, Font, Layout.FontScale());
+	return Width;
+}
+
+void AMadHUD::DrawBar(float X, float Y, float Width, float Height, float Fraction, const FLinearColor& Colour, const FString& Label)
 {
 	// A framed bar with a lit top edge and its label inside, shadowed: flat
 	// rectangles with a label beside them read as a debug overlay. A vital below
 	// a quarter pulses, so a starving survivor notices without reading numbers.
-	constexpr float Height = 18.0f;
+	const float Edge = FMath::Max(1.0f, Px(1.0f));
 	const float Clamped = FMath::Clamp(Fraction, 0.0f, 1.0f);
 	const float Pulse = Clamped < 0.25f ? 0.65f + 0.35f * FMath::Sin(GetWorld()->GetRealTimeSeconds() * 6.0f) : 1.0f;
-	DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.7f), X - 1.0f, Y - 1.0f, Width + 2.0f, Height + 2.0f);
-	DrawRect(FLinearColor(Colour.R * 0.18f, Colour.G * 0.18f, Colour.B * 0.18f, 0.85f), X + 1.0f, Y + 1.0f, Width - 2.0f, Height - 2.0f);
-	const float FillW = (Width - 2.0f) * Clamped;
-	DrawRect(Colour * Pulse, X + 1.0f, Y + 1.0f, FillW, Height - 2.0f);
-	DrawRect(FLinearColor(1.0f, 1.0f, 1.0f, 0.18f * Pulse), X + 1.0f, Y + 1.0f, FillW, 4.0f);
+	DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.7f), X - Edge, Y - Edge, Width + 2.0f * Edge, Height + 2.0f * Edge);
+	DrawRect(FLinearColor(Colour.R * 0.18f, Colour.G * 0.18f, Colour.B * 0.18f, 0.85f), X + Edge, Y + Edge, Width - 2.0f * Edge, Height - 2.0f * Edge);
+	const float FillW = (Width - 2.0f * Edge) * Clamped;
+	DrawRect(Colour * Pulse, X + Edge, Y + Edge, FillW, Height - 2.0f * Edge);
+	DrawRect(FLinearColor(1.0f, 1.0f, 1.0f, 0.18f * Pulse), X + Edge, Y + Edge, FillW, Px(4.0f));
 	UFont* Small = GEngine->GetSmallFont();
-	DrawText(Label, FLinearColor(0.0f, 0.0f, 0.0f, 0.8f), X + 7.0f, Y + 1.0f, Small);
-	DrawText(Label, FLinearColor::White, X + 6.0f, Y, Small);
+	DrawScaled(Label, FLinearColor(0.0f, 0.0f, 0.0f, 0.8f), X + Px(7.0f), Y + Px(1.0f), Small);
+	DrawScaled(Label, FLinearColor::White, X + Px(6.0f), Y, Small);
 }
 
 void AMadHUD::DrawHUD()
@@ -89,31 +119,52 @@ void AMadHUD::DrawHUD()
 	UFont* Font = GEngine->GetMediumFont();
 	UFont* Small = GEngine->GetSmallFont();
 
+	// The journal is asked for before the layout is built because it is the one
+	// panel whose height is its content: two quests and their objectives.
+	const FMadGameplayDefinitions& Journal = MadFall::GetGameplayDefinitions();
+	TArray<TPair<const FMadQuestDefinition*, const FMadQuestProgress*>> Active;
+	Player->GetQuestLog().GetJournal(Journal, Active);
+	int32 WantedJournalLines = Active.Num() > 2 ? 1 : 0;
+	for (int32 Index = 0; Index < FMath::Min(2, Active.Num()); ++Index)
+	{
+		WantedJournalLines += 2 + Active[Index].Key->Objectives.Num();
+	}
+	Layout = MadFall::Hud::Build(W, H, CVarUiScale.GetValueOnGameThread(),
+		UMadInventoryComponent::HotbarSlots, WantedJournalLines);
+
 	if (Player->IsWaitingForWorld())
 	{
 		DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 1.0f), 0.0f, 0.0f, W, H);
-		DrawText(TEXT("Loading the world..."), FLinearColor::White, W * 0.5f - 90.0f, H * 0.5f, Font);
+		const FString Loading(TEXT("Loading the world..."));
+		DrawScaled(Loading, FLinearColor::White, W * 0.5f - ScaledTextWidth(Loading, Font) * 0.5f, H * 0.5f, Font);
 		return;
 	}
 
 	// --- crosshair ------------------------------------------------------------
-	DrawRect(FLinearColor::White, W * 0.5f - 1.0f, H * 0.5f - 8.0f, 2.0f, 16.0f);
-	DrawRect(FLinearColor::White, W * 0.5f - 8.0f, H * 0.5f - 1.0f, 16.0f, 2.0f);
+	const float Cross = Px(8.0f);
+	const float CrossThickness = FMath::Max(2.0f, Px(2.0f));
+	DrawRect(FLinearColor::White, W * 0.5f - CrossThickness * 0.5f, H * 0.5f - Cross, CrossThickness, Cross * 2.0f);
+	DrawRect(FLinearColor::White, W * 0.5f - Cross, H * 0.5f - CrossThickness * 0.5f, Cross * 2.0f, CrossThickness);
 
 	// --- vitals ---------------------------------------------------------------
 	const FMadSurvivalStats S = Player->GetSurvival()->GetStats();
-	float Y = H - 150.0f;
-	DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.3f), 14.0f, Y - 10.0f, 236.0f, 118.0f);
-	DrawBar(24.0f, Y, 216.0f, S.Health / S.MaxHealth, FLinearColor(0.75f, 0.1f, 0.1f), S.MaxHealth != 100.0f
+	const FBox2D& VitalsBox = Layout.Vitals;
+	const float BarHeight = Px(18.0f);
+	const float BarStep = Px(22.0f);
+	const float BarWidth = VitalsBox.GetSize().X - Px(20.0f);
+	float Y = VitalsBox.Min.Y + Px(10.0f);
+	DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.3f), VitalsBox.Min.X, VitalsBox.Min.Y, VitalsBox.GetSize().X, VitalsBox.GetSize().Y);
+	const float BarX = VitalsBox.Min.X + Px(10.0f);
+	DrawBar(BarX, Y, BarWidth, BarHeight, S.Health / S.MaxHealth, FLinearColor(0.75f, 0.1f, 0.1f), S.MaxHealth != 100.0f
 		? FString::Printf(TEXT("Health %.0f / %.0f"), S.Health, S.MaxHealth) : FString::Printf(TEXT("Health %.0f"), S.Health));
-	Y += 22.0f;
-	DrawBar(24.0f, Y, 216.0f, S.Stamina / S.MaxStamina, FLinearColor(0.85f, 0.7f, 0.15f), S.MaxStamina != 100.0f
+	Y += BarStep;
+	DrawBar(BarX, Y, BarWidth, BarHeight, S.Stamina / S.MaxStamina, FLinearColor(0.85f, 0.7f, 0.15f), S.MaxStamina != 100.0f
 		? FString::Printf(TEXT("Stamina %.0f / %.0f"), S.Stamina, S.MaxStamina) : FString::Printf(TEXT("Stamina %.0f"), S.Stamina));
-	Y += 22.0f;
-	DrawBar(24.0f, Y, 216.0f, S.Food / 100.0f, FLinearColor(0.6f, 0.36f, 0.12f), FString::Printf(TEXT("Food %.0f"), S.Food));
-	Y += 22.0f;
-	DrawBar(24.0f, Y, 216.0f, S.Water / 100.0f, FLinearColor(0.15f, 0.42f, 0.85f), FString::Printf(TEXT("Water %.0f"), S.Water));
-	Y += 24.0f;
+	Y += BarStep;
+	DrawBar(BarX, Y, BarWidth, BarHeight, S.Food / 100.0f, FLinearColor(0.6f, 0.36f, 0.12f), FString::Printf(TEXT("Food %.0f"), S.Food));
+	Y += BarStep;
+	DrawBar(BarX, Y, BarWidth, BarHeight, S.Water / 100.0f, FLinearColor(0.15f, 0.42f, 0.85f), FString::Printf(TEXT("Water %.0f"), S.Water));
+	Y += BarStep + Px(2.0f);
 
 	const FLinearColor TempColour = S.CoreTemperature < 35.5f ? FLinearColor(0.5f, 0.7f, 1.0f)
 		: (S.CoreTemperature > 38.5f ? FLinearColor(1.0f, 0.5f, 0.2f) : FLinearColor::White);
@@ -127,8 +178,8 @@ void AMadHUD::DrawHUD()
 	{
 		Worn += FString::Printf(TEXT("   Warmth +%.0f"), Survival->GetColdInsulation());
 	}
-	DrawText(FString::Printf(TEXT("Core %.1f C   Air %.0f C%s%s"), S.CoreTemperature, Survival->GetAmbientTemperature(),
-		S.Infection > 0.0f ? *FString::Printf(TEXT("   Infection %.0f%%"), S.Infection) : TEXT(""), *Worn), TempColour, 24.0f, Y, Small);
+	DrawScaled(FString::Printf(TEXT("Core %.1f C   Air %.0f C%s%s"), S.CoreTemperature, Survival->GetAmbientTemperature(),
+		S.Infection > 0.0f ? *FString::Printf(TEXT("   Infection %.0f%%"), S.Infection) : TEXT(""), *Worn), TempColour, BarX, Y, Small);
 
 	// --- clock ----------------------------------------------------------------
 	if (const UMadWorldClockSubsystem* Clock = GetWorld()->GetSubsystem<UMadWorldClockSubsystem>())
@@ -141,20 +192,23 @@ void AMadHUD::DrawHUD()
 		const UMadWeatherSubsystem* Weather = GetWorld()->GetSubsystem<UMadWeatherSubsystem>();
 		const FString Sky = Weather != nullptr && Weather->GetState().Kind != EMadWeather::Clear
 			? FString::Printf(TEXT("  %s"), MadFall::Weather::GetName(Weather->GetState().Kind)) : FString();
-		DrawText(FString::Printf(TEXT("Day %d  %02d:%02d%s%s"), Clock->GetDay(), Hours, Minutes, *Sky, *Horde),
-			Clock->IsHordeNight() ? FLinearColor(1.0f, 0.25f, 0.2f) : FLinearColor::White, 24.0f, 20.0f, Font);
+		DrawScaled(FString::Printf(TEXT("Day %d  %02d:%02d%s%s"), Clock->GetDay(), Hours, Minutes, *Sky, *Horde),
+			Clock->IsHordeNight() ? FLinearColor(1.0f, 0.25f, 0.2f) : FLinearColor::White,
+			Layout.Clock.Min.X + Px(10.0f), Layout.Clock.Min.Y + Px(6.0f), Font);
 	}
-	DrawText(FString::Printf(TEXT("Level %d  (%d/%d xp)  game stage %d%s"), Player->GetLevel(), Player->GetExperience(),
+	DrawScaled(FString::Printf(TEXT("Level %d  (%d/%d xp)  game stage %d%s"), Player->GetLevel(), Player->GetExperience(),
 		Player->GetExperienceForNextLevel(), Player->GetGameStage(),
-		Player->GetUnspentPerkPoints() > 0 ? *FString::Printf(TEXT("  [%d perk point(s)]"), Player->GetUnspentPerkPoints()) : TEXT("")), FLinearColor(0.8f, 0.8f, 0.8f), 24.0f, 48.0f, Small);
+		Player->GetUnspentPerkPoints() > 0 ? *FString::Printf(TEXT("  [%d perk point(s)]"), Player->GetUnspentPerkPoints()) : TEXT("")),
+		FLinearColor(0.8f, 0.8f, 0.8f), Layout.Clock.Min.X + Px(10.0f), Layout.Clock.Min.Y + Px(34.0f), Small);
 
 	// --- compass --------------------------------------------------------------
 	{
 		constexpr float HalfSpan = 60.0f;
-		constexpr float StripW = 520.0f;
-		constexpr float StripH = 22.0f;
-		const float StripX = W * 0.5f - StripW * 0.5f;
-		constexpr float StripY = 14.0f;
+		const float StripW = Layout.Compass.GetSize().X;
+		const float StripH = Px(22.0f);
+		const float StripX = Layout.Compass.Min.X;
+		const float StripY = Layout.Compass.Min.Y;
+		const float StripCentre = Layout.Compass.GetCenter().X;
 		const float Yaw = FRotator::ClampAxis(Player->GetControlRotation().Yaw);
 
 		DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.4f), StripX, StripY, StripW, StripH);
@@ -165,18 +219,19 @@ void AMadHUD::DrawHUD()
 			{
 				continue;
 			}
-			const float X = W * 0.5f + At.GetValue() * StripW * 0.5f;
+			const float X = StripCentre + At.GetValue() * StripW * 0.5f;
 			if (Degrees % 45 == 0)
 			{
-				const TCHAR* Name = MadFall::Compass::GetHeadingName(static_cast<float>(Degrees));
-				DrawText(Name, Degrees == 0 ? FLinearColor(1.0f, 0.4f, 0.3f) : FLinearColor::White, X - 4.0f * FCString::Strlen(Name), StripY + 4.0f, Small);
+				const FString Name(MadFall::Compass::GetHeadingName(static_cast<float>(Degrees)));
+				DrawScaled(Name, Degrees == 0 ? FLinearColor(1.0f, 0.4f, 0.3f) : FLinearColor::White,
+					X - ScaledTextWidth(Name, Small) * 0.5f, StripY + Px(4.0f), Small);
 			}
 			else
 			{
-				DrawRect(FLinearColor(0.8f, 0.8f, 0.8f, 0.6f), X - 0.5f, StripY + 7.0f, 1.0f, 8.0f);
+				DrawRect(FLinearColor(0.8f, 0.8f, 0.8f, 0.6f), X - Px(0.5f), StripY + Px(7.0f), FMath::Max(1.0f, Px(1.0f)), Px(8.0f));
 			}
 		}
-		DrawRect(FLinearColor(1.0f, 0.9f, 0.4f), W * 0.5f - 1.0f, StripY + StripH, 2.0f, 5.0f);
+		DrawRect(FLinearColor(1.0f, 0.9f, 0.4f), StripCentre - Px(1.0f), StripY + StripH, FMath::Max(2.0f, Px(2.0f)), Px(5.0f));
 
 		TArray<FMadCompassMarker> Markers;
 		MadFall::Compass::GatherMarkers(*Player, Markers);
@@ -188,21 +243,22 @@ void AMadHUD::DrawHUD()
 			{
 				continue;
 			}
-			const float X = W * 0.5f + At.GetValue() * StripW * 0.5f;
+			const float X = StripCentre + At.GetValue() * StripW * 0.5f;
 			const int32 Metres = FMath::RoundToInt32(FVector::Dist2D(Player->GetActorLocation(), Marker.Location) / 100.0);
-			DrawRect(Marker.Colour, X - 3.0f, StripY + StripH - 6.0f, 6.0f, 6.0f);
-			DrawText(FString::Printf(TEXT("%s %dm"), *Marker.Label, Metres), Marker.Colour, X - 20.0f, StripY + StripH + 6.0f, Small);
+			DrawRect(Marker.Colour, X - Px(3.0f), StripY + StripH - Px(6.0f), Px(6.0f), Px(6.0f));
+			const FString MarkerLabel = FString::Printf(TEXT("%s %dm"), *Marker.Label, Metres);
+			DrawScaled(MarkerLabel, Marker.Colour, X - ScaledTextWidth(MarkerLabel, Small) * 0.5f, StripY + StripH + Px(6.0f), Small);
 		}
 	}
 
 	// --- world map ----------------------------------------------------------------
 	if (const UMadWorldMapSubsystem* Map = GetWorld()->GetSubsystem<UMadWorldMapSubsystem>(); Map && Map->IsOpen())
 	{
-		// Clear of the compass above and the hotbar below.
-		const float MapSize = FMath::Min(W, H - 190.0f) * 0.95f;
-		const float MapX = W * 0.5f - MapSize * 0.5f;
-		const float MapY = 80.0f;
-		DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.75f), MapX - 12.0f, MapY - 36.0f, MapSize + 24.0f, MapSize + 60.0f);
+		// The layout keeps it clear of the compass above and the hotbar below.
+		const float MapSize = Layout.Map.GetSize().X;
+		const float MapX = Layout.Map.Min.X;
+		const float MapY = Layout.Map.Min.Y + Px(26.0f);
+		DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.75f), MapX - Px(12.0f), Layout.Map.Min.Y - Px(10.0f), MapSize + Px(24.0f), MapSize + Px(60.0f));
 		const FMadMapImage& Image = Map->GetImage();
 		if (Map->GetTexture() != nullptr && Image.Size > 0)
 		{
@@ -223,8 +279,8 @@ void AMadHUD::DrawHUD()
 				const FIntPoint Cell = MadFall::WorldMap::CellOf(Marker.Location.X / MadFall::VoxelSizeUU, Marker.Location.Y / MadFall::VoxelSizeUU);
 				if (OnMap(P) && Map->IsExplored(Cell))
 				{
-					DrawRect(Marker.Colour, P.X - 4.0f, P.Y - 4.0f, 8.0f, 8.0f);
-					DrawText(Marker.Label, Marker.Colour, P.X + 7.0f, P.Y - 8.0f, Small);
+					DrawRect(Marker.Colour, P.X - Px(4.0f), P.Y - Px(4.0f), Px(8.0f), Px(8.0f));
+					DrawScaled(Marker.Label, Marker.Colour, P.X + Px(7.0f), P.Y - Px(8.0f), Small);
 				}
 			}
 
@@ -233,20 +289,21 @@ void AMadHUD::DrawHUD()
 			const float Yaw = FMath::DegreesToRadians(Player->GetControlRotation().Yaw);
 			const FVector2D Forward(FMath::Sin(Yaw), -FMath::Cos(Yaw));
 			const FVector2D Side(-Forward.Y, Forward.X);
-			const FVector2D Tip = Me + Forward * 12.0f;
-			const FVector2D Left = Me - Forward * 7.0f + Side * 7.0f;
-			const FVector2D Right = Me - Forward * 7.0f - Side * 7.0f;
+			const FVector2D Tip = Me + Forward * Px(12.0f);
+			const FVector2D Left = Me - Forward * Px(7.0f) + Side * Px(7.0f);
+			const FVector2D Right = Me - Forward * Px(7.0f) - Side * Px(7.0f);
 			for (const TPair<FVector2D, FVector2D>& Edge : { TPair<FVector2D, FVector2D>(Tip, Left), TPair<FVector2D, FVector2D>(Left, Right), TPair<FVector2D, FVector2D>(Right, Tip) })
 			{
-				DrawLine(Edge.Key.X, Edge.Key.Y, Edge.Value.X, Edge.Value.Y, FLinearColor(1.0f, 0.2f, 0.15f), 3.0f);
+				DrawLine(Edge.Key.X, Edge.Key.Y, Edge.Value.X, Edge.Value.Y, FLinearColor(1.0f, 0.2f, 0.15f), FMath::Max(2.0f, Px(3.0f)));
 			}
 			const int32 Metres = FMath::RoundToInt32(Image.Size * Image.VoxelsPerPixel * MadFall::VoxelSizeUU / 100.0f);
-			DrawText(FString::Printf(TEXT("MAP   %d m across   N up   wheel: zoom   %s or Esc: close"), Metres, *MadFall::Input::GetKeyLabel(TEXT("map"))),
-				FLinearColor(0.9f, 0.8f, 0.3f), MapX, MapY - 26.0f, Small);
+			DrawScaled(FString::Printf(TEXT("MAP   %d m across   N up   wheel: zoom   %s or Esc: close"), Metres, *MadFall::Input::GetKeyLabel(TEXT("map"))),
+				FLinearColor(0.9f, 0.8f, 0.3f), MapX, MapY - Px(24.0f), Small);
 		}
 		else
 		{
-			DrawText(TEXT("Drawing the map..."), FLinearColor::White, W * 0.5f - 60.0f, H * 0.5f, Small);
+			const FString Drawing(TEXT("Drawing the map..."));
+			DrawScaled(Drawing, FLinearColor::White, W * 0.5f - ScaledTextWidth(Drawing, Small) * 0.5f, H * 0.5f, Small);
 		}
 	}
 
@@ -255,19 +312,24 @@ void AMadHUD::DrawHUD()
 	const UMadWorldMapSubsystem* OpenMap = GetWorld()->GetSubsystem<UMadWorldMapSubsystem>();
 	if (!Player->IsInventoryOpen() && !(OpenMap && OpenMap->IsOpen()))
 	{
-		const FMadGameplayDefinitions& Journal = MadFall::GetGameplayDefinitions();
-		TArray<TPair<const FMadQuestDefinition*, const FMadQuestProgress*>> Active;
-		Player->GetQuestLog().GetJournal(Journal, Active);
-		float QuestY = 70.0f;
-		const float QuestX = W - 330.0f;
+		// Only as many lines as the layout found room for: on a short screen the
+		// crafting queue below keeps its place and a quest is left off instead.
+		const float QuestLine = Px(18.0f);
+		const float JournalBottom = Layout.Journal.Max.Y;
+		float QuestY = Layout.Journal.Min.Y + Px(6.0f);
+		const float QuestX = Layout.Journal.Min.X + Px(8.0f);
 		for (int32 Index = 0; Index < FMath::Min(2, Active.Num()); ++Index)
 		{
 			const FMadQuestDefinition& Quest = *Active[Index].Key;
 			const FMadQuestProgress& Progress = *Active[Index].Value;
-			const float BoxH = 26.0f + 18.0f * Quest.Objectives.Num();
-			DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.35f), QuestX - 8.0f, QuestY - 4.0f, 318.0f, BoxH);
-			DrawText(MadFall::Localize(Quest.DisplayName), FLinearColor(0.95f, 0.8f, 0.35f), QuestX, QuestY, Small);
-			QuestY += 20.0f;
+			const float BoxH = Px(26.0f) + QuestLine * Quest.Objectives.Num();
+			if (QuestY + BoxH > JournalBottom + 0.5f)
+			{
+				break;
+			}
+			DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.35f), QuestX - Px(8.0f), QuestY - Px(4.0f), Layout.Journal.GetSize().X, BoxH);
+			DrawScaled(MadFall::Localize(Quest.DisplayName), FLinearColor(0.95f, 0.8f, 0.35f), QuestX, QuestY, Small);
+			QuestY += Px(20.0f);
 			for (int32 Objective = 0; Objective < Quest.Objectives.Num(); ++Objective)
 			{
 				const FMadQuestObjective& Goal = Quest.Objectives[Objective];
@@ -275,16 +337,16 @@ void AMadHUD::DrawHUD()
 				const bool bDone = Have >= Goal.Count;
 				const FString Count = Goal.Type == EMadQuestObjectiveType::ReachDay || Goal.Count == 1
 					? FString() : FString::Printf(TEXT("  %d/%d"), Have, Goal.Count);
-				DrawText(FString::Printf(TEXT("%s %s%s"), bDone ? TEXT("+") : TEXT("-"),
+				DrawScaled(FString::Printf(TEXT("%s %s%s"), bDone ? TEXT("+") : TEXT("-"),
 					*MadFall::Quests::DescribeObjective(Goal, Journal), *Count),
-					bDone ? FLinearColor(0.5f, 0.9f, 0.4f) : FLinearColor(0.9f, 0.9f, 0.9f), QuestX + 6.0f, QuestY, Small);
-				QuestY += 18.0f;
+					bDone ? FLinearColor(0.5f, 0.9f, 0.4f) : FLinearColor(0.9f, 0.9f, 0.9f), QuestX + Px(6.0f), QuestY, Small);
+				QuestY += QuestLine;
 			}
-			QuestY += 12.0f;
+			QuestY += Px(12.0f);
 		}
-		if (Active.Num() > 2)
+		if (Active.Num() > 2 && QuestY + QuestLine <= JournalBottom + 0.5f)
 		{
-			DrawText(FString::Printf(TEXT("(+%d more - mad.quests)"), Active.Num() - 2), FLinearColor(0.6f, 0.6f, 0.6f), QuestX, QuestY, Small);
+			DrawScaled(FString::Printf(TEXT("(+%d more - mad.quests)"), Active.Num() - 2), FLinearColor(0.6f, 0.6f, 0.6f), QuestX, QuestY, Small);
 		}
 	}
 
@@ -292,8 +354,8 @@ void AMadHUD::DrawHUD()
 	if (const AMadTrader* Aimed = Player->GetAimedTrader())
 	{
 		const FMadTraderDefinition* Trader = MadFall::GetGameplayDefinitions().FindTrader(Aimed->GetTraderId());
-		DrawText(FString::Printf(TEXT("%s  -  %s to trade"), Trader ? *MadFall::Localize(Trader->DisplayName) : *Aimed->GetTraderId().ToString(),
-			*MadFall::Input::GetKeyLabel(TEXT("interact"))), FLinearColor(0.95f, 0.85f, 0.4f), W * 0.5f + 16.0f, H * 0.5f + 12.0f, Small);
+		DrawScaled(FString::Printf(TEXT("%s  -  %s to trade"), Trader ? *MadFall::Localize(Trader->DisplayName) : *Aimed->GetTraderId().ToString(),
+			*MadFall::Input::GetKeyLabel(TEXT("interact"))), FLinearColor(0.95f, 0.85f, 0.4f), W * 0.5f + Px(16.0f), H * 0.5f + Px(12.0f), Small);
 	}
 	else if (Player->HasTarget())
 	{
@@ -307,7 +369,7 @@ void AMadHUD::DrawHUD()
 			{
 				Label += FString::Printf(TEXT("  %d%% damaged"), FMath::RoundToInt32(Voxel.Damage / 2.55f));
 			}
-			DrawText(Label, FLinearColor::White, W * 0.5f + 16.0f, H * 0.5f + 12.0f, Small);
+			DrawScaled(Label, FLinearColor::White, W * 0.5f + Px(16.0f), H * 0.5f + Px(12.0f), Small);
 
 			// Crops show how they are coming along instead of a structural load
 			// nobody farming cares about.
@@ -323,7 +385,7 @@ void AMadHUD::DrawHUD()
 						? FString::Printf(TEXT("growing %d%%"), FMath::RoundToInt32(Progress * 100.0f))
 						: FString(TEXT("not growing"));
 				}
-				DrawText(GrowthText, FLinearColor(0.5f, 0.9f, 0.4f), W * 0.5f + 16.0f, H * 0.5f + 28.0f, Small);
+				DrawScaled(GrowthText, FLinearColor(0.5f, 0.9f, 0.4f), W * 0.5f + Px(16.0f), H * 0.5f + Px(28.0f), Small);
 			}
 			// Structural load: how close this block is to its span or weight
 			// limit, so a builder can see which support is about to go.
@@ -350,7 +412,7 @@ void AMadHUD::DrawHUD()
 				}
 				if (!StressText.IsEmpty())
 				{
-					DrawText(StressText, StressColour, W * 0.5f + 16.0f, H * 0.5f + 28.0f, Small);
+					DrawScaled(StressText, StressColour, W * 0.5f + Px(16.0f), H * 0.5f + Px(28.0f), Small);
 				}
 			}
 		}
@@ -360,28 +422,40 @@ void AMadHUD::DrawHUD()
 	// With the inventory screen up, the screen draws them under its panels.
 	if (!Player->IsInventoryOpen())
 	{
-		float MessageY = H * 0.22f;
-		for (const AMadPlayerCharacter::FMessage& Message : Player->GetMessages())
+		// Bottom up from the messages box, so the newest line is nearest the
+		// hotbar the player is looking at and older ones climb away from it.
+		const float MessageLine = Px(26.0f);
+		const TArray<AMadPlayerCharacter::FMessage>& Messages = Player->GetMessages();
+		float MessageY = Layout.Messages.Max.Y - MessageLine * FMath::Min(Messages.Num(), 3);
+		for (int32 Index = FMath::Max(0, Messages.Num() - 3); Index < Messages.Num(); ++Index)
 		{
-			DrawText(Message.Text, FLinearColor(1.0f, 0.95f, 0.8f), W * 0.5f - 200.0f, MessageY, Font);
-			MessageY += 26.0f;
+			const FString& Text = Messages[Index].Text;
+			// Centred in the box, but never spilling out of it: a long pickup line
+			// centred on a narrow gap would run back over the vitals beside it.
+			const float TextW = ScaledTextWidth(Text, Font);
+			const float Centred = Layout.Messages.GetCenter().X - TextW * 0.5f;
+			const float MessageX = FMath::Clamp(Centred, static_cast<float>(Layout.Messages.Min.X),
+				FMath::Max(static_cast<float>(Layout.Messages.Min.X), static_cast<float>(Layout.Messages.Max.X) - TextW));
+			DrawScaled(Text, FLinearColor(1.0f, 0.95f, 0.8f), MessageX, MessageY, Font);
+			MessageY += MessageLine;
 		}
 	}
 
 	// --- hotbar ---------------------------------------------------------------
 	const UMadInventoryComponent* Inventory = Player->GetInventory();
 	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
-	constexpr float SlotSize = 64.0f;
-	const float HotbarX = W * 0.5f - (UMadInventoryComponent::HotbarSlots * (SlotSize + 4.0f)) * 0.5f;
-	const float HotbarY = H - SlotSize - 20.0f;
+	const float SlotGap = Px(4.0f);
+	const float SlotSize = (Layout.Hotbar.GetSize().X + SlotGap) / UMadInventoryComponent::HotbarSlots - SlotGap;
+	const float HotbarX = Layout.Hotbar.Min.X;
+	const float HotbarY = Layout.Hotbar.Min.Y;
 
 	for (int32 Slot = 0; Slot < UMadInventoryComponent::HotbarSlots; ++Slot)
 	{
-		const float X = HotbarX + Slot * (SlotSize + 4.0f);
+		const float X = HotbarX + Slot * (SlotSize + SlotGap);
 		const bool bSelected = Slot == Inventory->GetSelectedSlot();
 		DrawRect(bSelected ? FLinearColor(0.9f, 0.8f, 0.3f, 0.8f) : FLinearColor(0.0f, 0.0f, 0.0f, 0.5f), X, HotbarY, SlotSize, SlotSize);
-		DrawRect(FLinearColor(0.08f, 0.08f, 0.08f, 0.85f), X + 3.0f, HotbarY + 3.0f, SlotSize - 6.0f, SlotSize - 6.0f);
-		DrawText(FString::FromInt(Slot + 1), FLinearColor(0.6f, 0.6f, 0.6f), X + 5.0f, HotbarY + 3.0f, Small);
+		DrawRect(FLinearColor(0.08f, 0.08f, 0.08f, 0.85f), X + Px(3.0f), HotbarY + Px(3.0f), SlotSize - Px(6.0f), SlotSize - Px(6.0f));
+		DrawScaled(FString::FromInt(Slot + 1), FLinearColor(0.6f, 0.6f, 0.6f), X + Px(5.0f), HotbarY + Px(3.0f), Small);
 
 		const FMadItemStack& Stack = Inventory->GetInventory().GetSlot(Slot);
 		if (Stack.IsEmpty())
@@ -389,19 +463,17 @@ void AMadHUD::DrawHUD()
 			continue;
 		}
 
-		DrawItemIcon(Stack.Item, X + 8.0f, HotbarY + 8.0f, SlotSize - 16.0f);
+		DrawItemIcon(Stack.Item, X + Px(8.0f), HotbarY + Px(8.0f), SlotSize - Px(16.0f));
 		if (bSelected)
 		{
 			// The selected item's name over the hotbar: the icons say what, this says which.
 			const FString Name = Definitions.GetItemName(Stack.Item);
-			float NameW = 0.0f;
-			float NameH = 0.0f;
-			GetTextSize(Name, NameW, NameH, Small);
-			DrawText(Name, FLinearColor(1.0f, 1.0f, 1.0f, 0.9f), W * 0.5f - NameW * 0.5f, HotbarY - 22.0f, Small);
+			DrawScaled(Name, FLinearColor(1.0f, 1.0f, 1.0f, 0.9f), Layout.Hotbar.GetCenter().X - ScaledTextWidth(Name, Small) * 0.5f,
+				HotbarY - Px(22.0f), Small);
 		}
 		if (Stack.Count > 1)
 		{
-			DrawCount(Stack.Count, X + SlotSize - 5.0f, HotbarY + SlotSize - 20.0f);
+			DrawCount(Stack.Count, X + SlotSize - Px(5.0f), HotbarY + SlotSize - Px(20.0f), Layout.Scale);
 		}
 		if (Stack.Durability >= 0)
 		{
@@ -409,20 +481,27 @@ void AMadHUD::DrawHUD()
 			{
 				const float Fraction = static_cast<float>(Stack.Durability) / Item->Tool.Durability;
 				DrawRect(FLinearColor::LerpUsingHSV(FLinearColor::Red, FLinearColor::Green, Fraction),
-					X + 5.0f, HotbarY + SlotSize - 8.0f, (SlotSize - 10.0f) * Fraction, 3.0f);
+					X + Px(5.0f), HotbarY + SlotSize - Px(8.0f), (SlotSize - Px(10.0f)) * Fraction, FMath::Max(2.0f, Px(3.0f)));
 			}
 		}
 	}
 
 	// --- crafting queue -------------------------------------------------------
-	float QueueY = 20.0f;
+	// Bottom right, under the journal rather than through it: at the top right
+	// the queue's bars used to be drawn over the quest box on top of them.
+	const float QueueLine = Px(22.0f);
+	float QueueY = Layout.Queue.Min.Y;
 	for (const AMadPlayerCharacter::FCraftJob& Job : Player->GetCraftQueue())
 	{
+		if (QueueY + QueueLine > Layout.Queue.Max.Y + 0.5f)
+		{
+			break;
+		}
 		const FMadRecipeDefinition* Recipe = Definitions.FindRecipe(Job.Recipe);
 		const float Progress = Job.Total > 0.0f ? 1.0f - Job.Remaining / Job.Total : 1.0f;
-		DrawBar(W - 330.0f, QueueY, 120.0f, Progress, FLinearColor(0.9f, 0.8f, 0.3f),
+		DrawBar(Layout.Queue.Min.X, QueueY, Layout.Queue.GetSize().X, Px(18.0f), Progress, FLinearColor(0.9f, 0.8f, 0.3f),
 			Recipe ? FString::Printf(TEXT("%d x %s"), Recipe->Output.Count * Job.Times, *Definitions.GetItemName(Recipe->Output.Item)) : Job.Recipe.ToString());
-		QueueY += 22.0f;
+		QueueY += QueueLine;
 	}
 
 	if (Player->IsInventoryOpen())
@@ -460,23 +539,26 @@ bool AMadHUD::DrawItemIcon(FName ItemId, float X, float Y, float Size, float Opa
 	return true;
 }
 
-void AMadHUD::DrawCount(int32 Count, float RightX, float Y)
+void AMadHUD::DrawCount(int32 Count, float RightX, float Y, float Scale)
 {
 	// Right-aligned with a shadow, so a count reads over any icon.
 	UFont* Small = GEngine->GetSmallFont();
 	const FString Text = FString::FromInt(Count);
 	float TextW = 0.0f;
 	float TextH = 0.0f;
-	GetTextSize(Text, TextW, TextH, Small);
-	DrawText(Text, FLinearColor(0.0f, 0.0f, 0.0f, 0.85f), RightX - TextW + 1.0f, Y + 1.0f, Small);
-	DrawText(Text, FLinearColor::White, RightX - TextW, Y, Small);
+	GetTextSize(Text, TextW, TextH, Small, Scale);
+	DrawText(Text, FLinearColor(0.0f, 0.0f, 0.0f, 0.85f), RightX - TextW + Scale, Y + Scale, Small, Scale);
+	DrawText(Text, FLinearColor::White, RightX - TextW, Y, Small, Scale);
 }
 
 void AMadHUD::DrawSlot(const FMadItemStack& Stack, float X, float Y, float Size, bool bHighlighted, FName HitBox)
 {
+	// A slot's furniture is in proportion to the slot, so one number - the slot
+	// size the layout chose for this window - sizes the icon, count and bar too.
+	const float K = Size / 56.0f;
 	UFont* Small = GEngine->GetSmallFont();
 	DrawRect(bHighlighted ? FLinearColor(0.9f, 0.8f, 0.3f, 0.9f) : FLinearColor(0.0f, 0.0f, 0.0f, 0.6f), X, Y, Size, Size);
-	DrawRect(FLinearColor(0.1f, 0.1f, 0.1f, 0.9f), X + 3.0f, Y + 3.0f, Size - 6.0f, Size - 6.0f);
+	DrawRect(FLinearColor(0.1f, 0.1f, 0.1f, 0.9f), X + 3.0f * K, Y + 3.0f * K, Size - 6.0f * K, Size - 6.0f * K);
 	AddHitBox(FVector2D(X, Y), FVector2D(Size, Size), HitBox, /*bConsumesInput*/ true);
 
 	if (Stack.IsEmpty())
@@ -494,26 +576,28 @@ void AMadHUD::DrawSlot(const FMadItemStack& Stack, float X, float Y, float Size,
 
 	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
 	const bool bKnown = Definitions.FindItem(Stack.Item) != nullptr;
-	if (!bKnown || !DrawItemIcon(Stack.Item, X + 6.0f, Y + 6.0f, Size - 12.0f))
+	if (!bKnown || !DrawItemIcon(Stack.Item, X + 6.0f * K, Y + 6.0f * K, Size - 12.0f * K))
 	{
 		// An item a removed mod left behind, or no renderer: the name, red when unknown.
-		DrawText(Definitions.GetItemName(Stack.Item).Left(8), bKnown ? FLinearColor::White : FLinearColor(1.0f, 0.4f, 0.4f), X + 5.0f, Y + 6.0f, Small);
+		DrawText(Definitions.GetItemName(Stack.Item).Left(8), bKnown ? FLinearColor::White : FLinearColor(1.0f, 0.4f, 0.4f),
+			X + 5.0f * K, Y + 6.0f * K, Small, K);
 	}
 	if (Stack.Count > 1)
 	{
-		DrawCount(Stack.Count, X + Size - 5.0f, Y + Size - 20.0f);
+		DrawCount(Stack.Count, X + Size - 5.0f * K, Y + Size - 20.0f * K, K);
 	}
 	if (Stack.Durability >= 0)
 	{
 		if (const FMadItemDefinition* Item = Definitions.FindItem(Stack.Item); Item && Item->Tool.Durability > 0)
 		{
 			const float Fraction = FMath::Clamp(static_cast<float>(Stack.Durability) / Item->Tool.Durability, 0.0f, 1.0f);
-			DrawRect(FLinearColor::LerpUsingHSV(FLinearColor::Red, FLinearColor::Green, Fraction), X + 5.0f, Y + Size - 7.0f, (Size - 10.0f) * Fraction, 3.0f);
+			DrawRect(FLinearColor::LerpUsingHSV(FLinearColor::Red, FLinearColor::Green, Fraction), X + 5.0f * K, Y + Size - 7.0f * K,
+				(Size - 10.0f * K) * Fraction, FMath::Max(2.0f, 3.0f * K));
 		}
 	}
 	if (Stack.Mods.Num() > 0)
 	{
-		DrawText(FString::Printf(TEXT("+%d"), Stack.Mods.Num()), FLinearColor(0.5f, 0.8f, 1.0f), X + 5.0f, Y + Size - 22.0f, Small);
+		DrawText(FString::Printf(TEXT("+%d"), Stack.Mods.Num()), FLinearColor(0.5f, 0.8f, 1.0f), X + 5.0f * K, Y + Size - 22.0f * K, Small, K);
 	}
 }
 
@@ -523,18 +607,30 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 	const float H = Canvas->ClipY;
 	UFont* Small = GEngine->GetSmallFont();
 
-	constexpr float SlotSize = 56.0f;
-	constexpr float Gap = 4.0f;
-	constexpr int32 Columns = 9;
-	const float GridW = Columns * (SlotSize + Gap) - Gap;
-	const float PanelW = GridW + 32.0f;
+	// Rows first: the panel's height is its content, and the layout needs it to
+	// choose a scale the window can actually show (a trader's shelves under a
+	// full bag is half again as tall as the bag alone).
+	const FMadInventory* CountCrate = nullptr;
+	{
+		FMadTraderState* PeekState = nullptr;
+		const FMadTraderDefinition* PeekDef = nullptr;
+		CountCrate = Player.GetOpenTrade(PeekState, PeekDef) ? &PeekState->Stock : Player.GetOpenContainerInventory();
+	}
+	const int32 PanelRows = FMath::DivideAndRoundUp(UMadInventoryComponent::NumSlots - UMadInventoryComponent::HotbarSlots, 9)
+		+ 2  // the hotbar row and the worn row
+		+ (CountCrate ? FMath::DivideAndRoundUp(CountCrate->NumSlots(), 9) : 0);
+	Bag = MadFall::Hud::BuildInventory(W, H, CVarUiScale.GetValueOnGameThread(), PanelRows, /*ExtraDesignHeight*/ 190.0f, SkillsPanelWidth);
 
-	// The skills column sits beside the inventory when the screen is wide
-	// enough for both, and over its right edge when it is not.
-	constexpr float SkillsGap = 12.0f;
-	const bool bSideBySide = W >= PanelW + SkillsGap + SkillsPanelWidth + 32.0f;
-	const float PanelX = bSideBySide ? W * 0.5f - (PanelW + SkillsGap + SkillsPanelWidth) * 0.5f : W * 0.5f - PanelW * 0.5f;
-	const float SkillsX = bSideBySide ? PanelX + PanelW + SkillsGap : W - SkillsPanelWidth - 16.0f;
+	const float Sc = Bag.Scale;
+	auto P = [Sc](float DesignPixels) { return DesignPixels * Sc; };
+	const float SlotSize = Bag.SlotSize;
+	const float Gap = Bag.Gap;
+	const int32 Columns = Bag.Columns;
+	const float PanelW = Bag.Panel.GetSize().X;
+	const bool bSideBySide = Bag.bSideBySide;
+	const float PanelX = Bag.Panel.Min.X;
+	const float SkillsX = Bag.Side.Min.X;
+	const float SkillsWidth = Bag.Side.GetSize().X;
 
 	HoveredStack.Reset();
 	Mouse = FVector2D(-1.0, -1.0);
@@ -554,92 +650,92 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 	const FMadInventory* Crate = bTrading ? &TradeState->Stock : Player.GetOpenContainerInventory();
 	const int32 CrateRows = Crate ? FMath::DivideAndRoundUp(Crate->NumSlots(), Columns) : 0;
 	const int32 BackpackRows = FMath::DivideAndRoundUp(UMadInventoryComponent::NumSlots - UMadInventoryComponent::HotbarSlots, Columns);
-	const float CrateH = Crate ? 36.0f + CrateRows * (SlotSize + Gap) + 12.0f + (bTrading ? 20.0f : 0.0f) : 0.0f;
-	const float WornH = 24.0f + SlotSize + 12.0f;
-	// The last 24 are the footer line (the install hint, or what is picked up).
-	const float PanelH = 40.0f + CrateH + WornH + (BackpackRows + 1) * (SlotSize + Gap) + 24.0f + 40.0f + 24.0f;
-	const float PanelY = FMath::Max(16.0f, H * 0.5f - PanelH * 0.5f - 40.0f);
+	const float CrateH = Crate ? P(36.0f) + CrateRows * (SlotSize + Gap) + P(12.0f) + (bTrading ? P(20.0f) : 0.0f) : 0.0f;
+	const float WornH = P(24.0f) + SlotSize + P(12.0f);
+	// The last line is the footer (the install hint, or what is picked up).
+	const float PanelH = P(40.0f) + CrateH + WornH + (BackpackRows + 1) * (SlotSize + Gap) + P(24.0f + 40.0f + 24.0f);
+	const float PanelY = Bag.Panel.Min.Y;
 
 	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.85f), PanelX, PanelY, PanelW, PanelH);
 	DrawText(TEXT("INVENTORY   click: pick up / put down   right-click: half   shift-click: quick move or wear"),
-		FLinearColor(0.9f, 0.8f, 0.3f), PanelX + 16.0f, PanelY + 10.0f, Small);
+		FLinearColor(0.9f, 0.8f, 0.3f), PanelX + P(16.0f), PanelY + P(10.0f), Small, Sc);
 
 	const AMadPlayerCharacter::FInventoryCursor& Cursor = Player.GetInventoryCursor();
-	float Y = PanelY + 36.0f;
+	float Y = PanelY + P(36.0f);
 
 	if (bTrading)
 	{
 		const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
 		const int32 Coins = Player.GetInventory()->GetInventory().CountItem(TradeDef->Currency);
 		DrawText(FString::Printf(TEXT("%s   -   you have %d %s"), *MadFall::Localize(TradeDef->DisplayName), Coins, *Definitions.GetItemName(TradeDef->Currency)),
-			FLinearColor(0.95f, 0.85f, 0.4f), PanelX + 16.0f, Y, Small);
-		Y += 20.0f;
-		DrawText(TEXT("click: buy one   shift-click: buy the stack   shift-click your own items: sell"), FLinearColor(0.7f, 0.65f, 0.35f), PanelX + 16.0f, Y, Small);
-		Y += 24.0f;
+			FLinearColor(0.95f, 0.85f, 0.4f), PanelX + P(16.0f), Y, Small, Sc);
+		Y += P(20.0f);
+		DrawText(TEXT("click: buy one   shift-click: buy the stack   shift-click your own items: sell"), FLinearColor(0.7f, 0.65f, 0.35f), PanelX + P(16.0f), Y, Small, Sc);
+		Y += P(24.0f);
 		for (int32 Slot = 0; Slot < Crate->NumSlots(); ++Slot)
 		{
-			const float X = PanelX + 16.0f + (Slot % Columns) * (SlotSize + Gap);
+			const float X = PanelX + P(16.0f) + (Slot % Columns) * (SlotSize + Gap);
 			const float SlotY = Y + (Slot / Columns) * (SlotSize + Gap);
 			const FMadItemStack& Shelf = Crate->GetSlot(Slot);
 			DrawSlot(Shelf, X, SlotY, SlotSize, false, FName(*FString::Printf(TEXT("%s%d"), TradeBoxPrefix, Slot)));
 			if (const int32 Price = MadFall::Trade::GetUnitPrice(Shelf, *TradeDef, Definitions); Price > 0)
 			{
 				DrawText(FString::Printf(TEXT("$%d"), Price), Coins >= Price ? FLinearColor(0.95f, 0.85f, 0.4f) : FLinearColor(1.0f, 0.4f, 0.35f),
-					X + 5.0f, SlotY + SlotSize - 22.0f, Small);
+					X + P(5.0f), SlotY + SlotSize - P(22.0f), Small, Sc);
 			}
 		}
-		Y += CrateRows * (SlotSize + Gap) + 12.0f;
+		Y += CrateRows * (SlotSize + Gap) + P(12.0f);
 	}
 	else if (Crate != nullptr)
 	{
-		DrawText(TEXT("Container"), FLinearColor::White, PanelX + 16.0f, Y, Small);
-		const float ButtonX = PanelX + PanelW - 16.0f - 90.0f;
-		DrawRect(FLinearColor(0.3f, 0.3f, 0.15f, 0.9f), ButtonX, Y - 4.0f, 90.0f, 22.0f);
-		DrawText(TEXT("Take all"), FLinearColor::White, ButtonX + 16.0f, Y - 1.0f, Small);
-		AddHitBox(FVector2D(ButtonX, Y - 4.0f), FVector2D(90.0f, 22.0f), TakeAllBox, true);
-		const float SortX = ButtonX - 8.0f - 60.0f;
-		DrawRect(FLinearColor(0.2f, 0.22f, 0.26f, 0.9f), SortX, Y - 4.0f, 60.0f, 22.0f);
-		DrawText(TEXT("Sort"), FLinearColor::White, SortX + 16.0f, Y - 1.0f, Small);
-		AddHitBox(FVector2D(SortX, Y - 4.0f), FVector2D(60.0f, 22.0f), SortContainerBox, true);
-		Y += 24.0f;
+		DrawText(TEXT("Container"), FLinearColor::White, PanelX + P(16.0f), Y, Small, Sc);
+		const float ButtonX = PanelX + PanelW - P(16.0f) - P(90.0f);
+		DrawRect(FLinearColor(0.3f, 0.3f, 0.15f, 0.9f), ButtonX, Y - P(4.0f), P(90.0f), P(22.0f));
+		DrawText(TEXT("Take all"), FLinearColor::White, ButtonX + P(16.0f), Y - P(1.0f), Small, Sc);
+		AddHitBox(FVector2D(ButtonX, Y - P(4.0f)), FVector2D(P(90.0f), P(22.0f)), TakeAllBox, true);
+		const float SortX = ButtonX - P(8.0f) - P(60.0f);
+		DrawRect(FLinearColor(0.2f, 0.22f, 0.26f, 0.9f), SortX, Y - P(4.0f), P(60.0f), P(22.0f));
+		DrawText(TEXT("Sort"), FLinearColor::White, SortX + P(16.0f), Y - P(1.0f), Small, Sc);
+		AddHitBox(FVector2D(SortX, Y - P(4.0f)), FVector2D(P(60.0f), P(22.0f)), SortContainerBox, true);
+		Y += P(24.0f);
 
 		for (int32 Slot = 0; Slot < Crate->NumSlots(); ++Slot)
 		{
-			const float X = PanelX + 16.0f + (Slot % Columns) * (SlotSize + Gap);
+			const float X = PanelX + P(16.0f) + (Slot % Columns) * (SlotSize + Gap);
 			const float SlotY = Y + (Slot / Columns) * (SlotSize + Gap);
 			const bool bHeld = Cursor.bActive && Cursor.Side == EMadInventorySide::Container && Cursor.Slot == Slot;
 			DrawSlot(Crate->GetSlot(Slot), X, SlotY, SlotSize, bHeld, FName(*FString::Printf(TEXT("%s%d"), ContainerBoxPrefix, Slot)));
 		}
-		Y += CrateRows * (SlotSize + Gap) + 12.0f;
+		Y += CrateRows * (SlotSize + Gap) + P(12.0f);
 	}
 
 	// Worn: four labelled slots. Shift-click clothing in the backpack to put it on.
 	const FMadInventory& Worn = Player.GetInventory()->GetWorn();
 	const UMadSurvivalComponent* Survival = Player.GetSurvival();
 	DrawText(FString::Printf(TEXT("Worn   armor %.0f%%   warmth +%.0f C   cooling +%.0f C"), Survival->GetArmor() * 100.0f,
-		Survival->GetColdInsulation(), Survival->GetHeatInsulation()), FLinearColor::White, PanelX + 16.0f, Y, Small);
-	Y += 24.0f;
+		Survival->GetColdInsulation(), Survival->GetHeatInsulation()), FLinearColor::White, PanelX + P(16.0f), Y, Small, Sc);
+	Y += P(24.0f);
 	for (int32 Slot = 0; Slot < Worn.NumSlots(); ++Slot)
 	{
-		const float X = PanelX + 16.0f + Slot * (SlotSize + Gap) * 2.0f;
+		const float X = PanelX + P(16.0f) + Slot * (SlotSize + Gap) * 2.0f;
 		const bool bHeld = Cursor.bActive && Cursor.Side == EMadInventorySide::Worn && Cursor.Slot == Slot;
 		DrawSlot(Worn.GetSlot(Slot), X, Y, SlotSize, bHeld, FName(*FString::Printf(TEXT("%s%d"), WornBoxPrefix, Slot)));
 		if (Worn.GetSlot(Slot).IsEmpty())
 		{
-			DrawText(MadFall::Wear::GetSlotName(Slot).ToString(), FLinearColor(0.45f, 0.45f, 0.45f), X + 8.0f, Y + SlotSize * 0.5f - 6.0f, Small);
+			DrawText(MadFall::Wear::GetSlotName(Slot).ToString(), FLinearColor(0.45f, 0.45f, 0.45f), X + P(8.0f), Y + SlotSize * 0.5f - P(6.0f), Small, Sc);
 		}
 	}
-	Y += SlotSize + 12.0f;
+	Y += SlotSize + P(12.0f);
 
 	const FMadInventory& Backpack = Player.GetInventory()->GetInventory();
-	DrawText(TEXT("Backpack"), FLinearColor::White, PanelX + 16.0f, Y, Small);
+	DrawText(TEXT("Backpack"), FLinearColor::White, PanelX + P(16.0f), Y, Small, Sc);
 	{
-		const float SortX = PanelX + PanelW - 16.0f - 60.0f;
-		DrawRect(FLinearColor(0.2f, 0.22f, 0.26f, 0.9f), SortX, Y - 4.0f, 60.0f, 22.0f);
-		DrawText(TEXT("Sort"), FLinearColor::White, SortX + 16.0f, Y - 1.0f, Small);
-		AddHitBox(FVector2D(SortX, Y - 4.0f), FVector2D(60.0f, 22.0f), SortBackpackBox, true);
+		const float SortX = PanelX + PanelW - P(16.0f) - P(60.0f);
+		DrawRect(FLinearColor(0.2f, 0.22f, 0.26f, 0.9f), SortX, Y - P(4.0f), P(60.0f), P(22.0f));
+		DrawText(TEXT("Sort"), FLinearColor::White, SortX + P(16.0f), Y - P(1.0f), Small, Sc);
+		AddHitBox(FVector2D(SortX, Y - P(4.0f)), FVector2D(P(60.0f), P(22.0f)), SortBackpackBox, true);
 	}
-	Y += 24.0f;
+	Y += P(24.0f);
 
 	auto DrawBackpackSlot = [&](int32 Slot, float X, float SlotY)
 	{
@@ -650,17 +746,17 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 	for (int32 Slot = UMadInventoryComponent::HotbarSlots; Slot < Backpack.NumSlots(); ++Slot)
 	{
 		const int32 Index = Slot - UMadInventoryComponent::HotbarSlots;
-		DrawBackpackSlot(Slot, PanelX + 16.0f + (Index % Columns) * (SlotSize + Gap), Y + (Index / Columns) * (SlotSize + Gap));
+		DrawBackpackSlot(Slot, PanelX + P(16.0f) + (Index % Columns) * (SlotSize + Gap), Y + (Index / Columns) * (SlotSize + Gap));
 	}
-	Y += BackpackRows * (SlotSize + Gap) + 12.0f;
+	Y += BackpackRows * (SlotSize + Gap) + P(12.0f);
 
-	DrawText(TEXT("Hotbar"), FLinearColor(0.7f, 0.7f, 0.7f), PanelX + 16.0f, Y, Small);
-	Y += 20.0f;
+	DrawText(TEXT("Hotbar"), FLinearColor(0.7f, 0.7f, 0.7f), PanelX + P(16.0f), Y, Small, Sc);
+	Y += P(20.0f);
 	for (int32 Slot = 0; Slot < UMadInventoryComponent::HotbarSlots; ++Slot)
 	{
-		DrawBackpackSlot(Slot, PanelX + 16.0f + Slot * (SlotSize + Gap), Y);
+		DrawBackpackSlot(Slot, PanelX + P(16.0f) + Slot * (SlotSize + Gap), Y);
 	}
-	Y += SlotSize + 12.0f;
+	Y += SlotSize + P(12.0f);
 
 	// What is picked up, so a half-stack pickup is visibly different; otherwise
 	// the one instruction the header has no room for.
@@ -668,7 +764,7 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 	{
 		DrawText(FString::Printf(TEXT("mod onto a tool: install   ctrl-click a tool: remove its mod   wheel: scroll   %s/%s: close"),
 			*MadFall::Input::GetKeyLabel(TEXT("inventory")), *MadFall::Input::GetKeyLabel(TEXT("interact"))),
-			FLinearColor(0.7f, 0.65f, 0.35f), PanelX + 16.0f, Y, Small);
+			FLinearColor(0.7f, 0.65f, 0.35f), PanelX + P(16.0f), Y, Small, Sc);
 	}
 	else
 	{
@@ -679,31 +775,31 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 			const FMadItemStack& Held = Source->GetSlot(Cursor.Slot);
 			DrawText(FString::Printf(TEXT("Holding %d of %d x %s - click a slot to put it down   wheel: more / fewer"),
 				Player.GetHeldCount(), Held.Count, *MadFall::GetGameplayDefinitions().GetItemName(Held.Item)),
-				FLinearColor(0.9f, 0.8f, 0.3f), PanelX + 16.0f, Y, Small);
+				FLinearColor(0.9f, 0.8f, 0.3f), PanelX + P(16.0f), Y, Small, Sc);
 		}
 	}
 
 	// The right-hand column may run taller than the inventory, down to just above the hotbar.
 	{
-		const float ColumnH = FMath::Max(PanelH, H - PanelY - 100.0f);
-		constexpr float TabH = 26.0f;
+		const float ColumnH = FMath::Max(PanelH, FMath::Min(H - P(100.0f), Layout.Hotbar.Min.Y - P(12.0f)) - PanelY);
+		const float TabH = P(26.0f);
 		const EMadInventoryTab Tab = Player.GetInventoryTab();
 		for (int32 Index = 0; Index < 2; ++Index)
 		{
 			const bool bActive = static_cast<int32>(Tab) == Index;
-			const float TabX = SkillsX + Index * (SkillsPanelWidth * 0.5f);
-			DrawRect(bActive ? FLinearColor(0.9f, 0.8f, 0.3f, 0.9f) : FLinearColor(0.1f, 0.1f, 0.12f, 0.9f), TabX, PanelY, SkillsPanelWidth * 0.5f - 2.0f, TabH);
+			const float TabX = SkillsX + Index * (SkillsWidth * 0.5f);
+			DrawRect(bActive ? FLinearColor(0.9f, 0.8f, 0.3f, 0.9f) : FLinearColor(0.1f, 0.1f, 0.12f, 0.9f), TabX, PanelY, SkillsWidth * 0.5f - P(2.0f), TabH);
 			DrawText(Index == 0 ? FString::Printf(TEXT("CRAFTING (%s)"), *MadFall::Input::GetKeyLabel(TEXT("craft"))) : FString(TEXT("SKILLS")),
-				bActive ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor(0.8f, 0.8f, 0.8f), TabX + 12.0f, PanelY + 6.0f, Small);
-			AddHitBox(FVector2D(TabX, PanelY), FVector2D(SkillsPanelWidth * 0.5f - 2.0f, TabH), FName(Index == 0 ? TEXT("tab.crafting") : TEXT("tab.skills")), true);
+				bActive ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor(0.8f, 0.8f, 0.8f), TabX + P(12.0f), PanelY + P(6.0f), Small, Sc);
+			AddHitBox(FVector2D(TabX, PanelY), FVector2D(SkillsWidth * 0.5f - P(2.0f), TabH), FName(Index == 0 ? TEXT("tab.crafting") : TEXT("tab.skills")), true);
 		}
 		if (Tab == EMadInventoryTab::Crafting)
 		{
-			DrawCraftingPanel(Player, SkillsX, PanelY + TabH + 2.0f, ColumnH - TabH - 2.0f);
+			DrawCraftingPanel(Player, SkillsX, PanelY + TabH + P(2.0f), ColumnH - TabH - P(2.0f));
 		}
 		else
 		{
-			DrawSkillsPanel(Player, SkillsX, PanelY + TabH + 2.0f, ColumnH - TabH - 2.0f);
+			DrawSkillsPanel(Player, SkillsX, PanelY + TabH + P(2.0f), ColumnH - TabH - P(2.0f));
 		}
 	}
 
@@ -712,12 +808,12 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 		UFont* Font = GEngine->GetMediumFont();
 		const TArray<AMadPlayerCharacter::FMessage>& Messages = Player.GetMessages();
 		// Right of the vitals bars and their labels, which fill the bottom-left corner.
-		const float MessageX = FMath::Max(PanelX + 16.0f, 330.0f);
-		float MessageY = PanelY + PanelH + 8.0f;
+		const float MessageX = FMath::Max(PanelX + P(16.0f), Layout.Vitals.Max.X + P(16.0f));
+		float MessageY = PanelY + PanelH + P(8.0f);
 		for (int32 Index = FMath::Max(0, Messages.Num() - 2); Index < Messages.Num(); ++Index)
 		{
-			DrawText(Messages[Index].Text, FLinearColor(1.0f, 0.95f, 0.8f), MessageX, MessageY, Font);
-			MessageY += 24.0f;
+			DrawText(Messages[Index].Text, FLinearColor(1.0f, 0.95f, 0.8f), MessageX, MessageY, Font, Sc);
+			MessageY += P(24.0f);
 		}
 	}
 
@@ -734,6 +830,8 @@ void AMadHUD::DrawHeldStack(const AMadPlayerCharacter& Player)
 	// the screen closes), which left nothing under the mouse to show what a click
 	// would drop. A ghost of it follows the cursor instead.
 	const int32 Count = Player.GetHeldCount();
+	const float Sc = Bag.Scale;
+	auto P = [Sc](float DesignPixels) { return DesignPixels * Sc; };
 	if (Count <= 0 || Mouse.X < 0.0)
 	{
 		return;
@@ -746,39 +844,42 @@ void AMadHUD::DrawHeldStack(const AMadPlayerCharacter& Player)
 	{
 		return;
 	}
-	constexpr float Size = 44.0f;
-	const float X = static_cast<float>(Mouse.X) + 10.0f;
-	const float Y = static_cast<float>(Mouse.Y) + 10.0f;
-	DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.35f), X - 2.0f, Y - 2.0f, Size + 4.0f, Size + 4.0f);
+	const float Size = Bag.SlotSize * 0.8f;
+	const float X = static_cast<float>(Mouse.X) + P(10.0f);
+	const float Y = static_cast<float>(Mouse.Y) + P(10.0f);
+	DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.35f), X - P(2.0f), Y - P(2.0f), Size + P(4.0f), Size + P(4.0f));
 	if (!DrawItemIcon(Source->GetSlot(Cursor.Slot).Item, X, Y, Size, 0.9f))
 	{
-		DrawText(MadFall::GetGameplayDefinitions().GetItemName(Source->GetSlot(Cursor.Slot).Item).Left(6), FLinearColor::White, X + 2.0f, Y + 14.0f,
+		DrawText(MadFall::GetGameplayDefinitions().GetItemName(Source->GetSlot(Cursor.Slot).Item).Left(6), FLinearColor::White, X + P(2.0f), Y + P(14.0f),
 			GEngine->GetSmallFont());
 	}
 	if (Count > 1)
 	{
-		DrawCount(Count, X + Size - 2.0f, Y + Size - 16.0f);
+		DrawCount(Count, X + Size - P(2.0f), Y + Size - P(16.0f));
 	}
 }
 
 void AMadHUD::DrawSkillsPanel(const AMadPlayerCharacter& Player, float X, float Y, float Height)
 {
 	UFont* Small = GEngine->GetSmallFont();
+	const float Sc = Bag.Scale;
+	auto P = [Sc](float DesignPixels) { return DesignPixels * Sc; };
+	const float Width = Bag.Side.GetSize().X;
 	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
 
-	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.9f), X, Y, SkillsPanelWidth, Height);
+	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.9f), X, Y, Width, Height);
 	const int32 Points = Player.GetUnspentPerkPoints();
 	DrawText(FString::Printf(TEXT("SKILLS   level %d   %d point(s) to spend"), Player.GetLevel(), Points),
-		Points > 0 ? FLinearColor(0.95f, 0.8f, 0.3f) : FLinearColor(0.75f, 0.75f, 0.75f), X + 14.0f, Y + 10.0f, Small);
+		Points > 0 ? FLinearColor(0.95f, 0.8f, 0.3f) : FLinearColor(0.75f, 0.75f, 0.75f), X + P(14.0f), Y + P(10.0f), Small, Sc);
 
 	// A point comes with every level; say how far the next one is, since that
 	// is the question a player with none to spend is asking.
 	DrawText(FString::Printf(TEXT("next level at %d / %d xp"), Player.GetExperience(), Player.GetExperienceForNextLevel()),
-		FLinearColor(0.55f, 0.55f, 0.55f), X + 14.0f, Y + 28.0f, Small);
+		FLinearColor(0.55f, 0.55f, 0.55f), X + P(14.0f), Y + P(28.0f), Small, Sc);
 
 	constexpr int32 WrapChars = 58;
-	float RowY = Y + 54.0f;
-	const float Bottom = Y + Height - 24.0f;
+	float RowY = Y + P(54.0f);
+	const float Bottom = Y + Height - P(24.0f);
 	const TArray<FMadPerkDefinition>& Perks = Definitions.GetPerks();
 	// Tree order: perks grouped by attribute, each below what it needs.
 	const TArray<int32> Order = MadFall::Perks::GetTreeOrder(Definitions);
@@ -810,7 +911,7 @@ void AMadHUD::DrawSkillsPanel(const AMadPlayerCharacter& Player, float X, float 
 
 		const bool bNewGroup = Shown == 0 || Group != PreviousGroup;
 		const float HeaderH = bNewGroup ? 18.0f : 0.0f;
-		const float RowH = 20.0f + 16.0f * Wrapped.Num() + 16.0f + 8.0f;
+		const float RowH = 20.0f + 16.0f * Wrapped.Num() + P(16.0f) + P(8.0f);
 		if (RowY + HeaderH + RowH > Bottom)
 		{
 			break;
@@ -822,35 +923,35 @@ void AMadHUD::DrawSkillsPanel(const AMadPlayerCharacter& Player, float X, float 
 		{
 			FString Heading = Group.IsNone() ? FString(TEXT("OTHER")) : Group.ToString();
 			Heading.Split(TEXT("."), nullptr, &Heading, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-			DrawText(Heading.ToUpper(), FLinearColor(0.95f, 0.8f, 0.3f, 0.8f), X + 14.0f, RowY, Small);
+			DrawText(Heading.ToUpper(), FLinearColor(0.95f, 0.8f, 0.3f, 0.8f), X + P(14.0f), RowY, Small, Sc);
 			RowY += HeaderH;
 			PreviousGroup = Group;
 		}
 
-		DrawRect(FLinearColor(1.0f, 1.0f, 1.0f, 0.04f), X + 6.0f + Indent, RowY - 4.0f, SkillsPanelWidth - 12.0f - Indent, RowH - 4.0f);
+		DrawRect(FLinearColor(1.0f, 1.0f, 1.0f, 0.04f), X + P(6.0f) + Indent, RowY - P(4.0f), Width - P(12.0f) - Indent, RowH - P(4.0f));
 		if (Depth > 0)
 		{
 			// A branch mark: this perk hangs off something above it.
-			DrawRect(FLinearColor(0.95f, 0.8f, 0.3f, 0.5f), X + Indent, RowY + 2.0f, 2.0f, 12.0f);
+			DrawRect(FLinearColor(0.95f, 0.8f, 0.3f, 0.5f), X + Indent, RowY + P(2.0f), 2.0f, 12.0f);
 		}
 		DrawText(FString::Printf(TEXT("%s   %d / %d"), *Definitions.GetPerkName(Perk.Id), Owned, Perk.Ranks.Num()),
-			Owned > 0 ? FLinearColor(0.6f, 0.9f, 0.5f) : FLinearColor::White, X + 14.0f + Indent, RowY, Small);
+			Owned > 0 ? FLinearColor(0.6f, 0.9f, 0.5f) : FLinearColor::White, X + P(14.0f) + Indent, RowY, Small, Sc);
 
 		// Rank pips.
 		for (int32 Rank = 0; Rank < Perk.Ranks.Num(); ++Rank)
 		{
 			DrawRect(Rank < Owned ? FLinearColor(0.6f, 0.9f, 0.5f) : FLinearColor(0.3f, 0.3f, 0.3f),
-				X + 200.0f + Indent + Rank * 12.0f, RowY + 4.0f, 8.0f, 8.0f);
+				X + P(200.0f) + Indent + Rank * 12.0f, RowY + P(4.0f), 8.0f, 8.0f);
 		}
 
 		const EMadPerkResult Can = MadFall::Perks::CanBuy(Player.GetPerkRanks(), Perk.Id, Player.GetLevel(), Definitions);
 		constexpr float ButtonW = 64.0f;
-		const float ButtonX = X + SkillsPanelWidth - 14.0f - ButtonW;
+		const float ButtonX = X + Width - P(14.0f) - ButtonW;
 		if (Can == EMadPerkResult::Ok)
 		{
-			DrawRect(FLinearColor(0.25f, 0.5f, 0.2f, 0.95f), ButtonX, RowY - 2.0f, ButtonW, 20.0f);
-			DrawText(TEXT("Take"), FLinearColor::White, ButtonX + 18.0f, RowY, Small);
-			AddHitBox(FVector2D(ButtonX, RowY - 2.0f), FVector2D(ButtonW, 20.0f), FName(*FString::Printf(TEXT("perk.%s"), *Perk.Id.ToString())), true);
+			DrawRect(FLinearColor(0.25f, 0.5f, 0.2f, 0.95f), ButtonX, RowY - P(2.0f), ButtonW, 20.0f);
+			DrawText(TEXT("Take"), FLinearColor::White, ButtonX + P(18.0f), RowY, Small, Sc);
+			AddHitBox(FVector2D(ButtonX, RowY - P(2.0f)), FVector2D(ButtonW, 20.0f), FName(*FString::Printf(TEXT("perk.%s"), *Perk.Id.ToString())), true);
 		}
 		else
 		{
@@ -867,21 +968,21 @@ void AMadHUD::DrawSkillsPanel(const AMadPlayerCharacter& Player, float X, float 
 				: FString(MadFall::Perks::ToString(Can));
 			float WhyW = 0.0f;
 			float WhyH = 0.0f;
-			GetTextSize(Why, WhyW, WhyH, Small);
+			GetTextSize(Why, WhyW, WhyH, Small, Sc);
 			DrawText(Why, bMissing ? FLinearColor(0.85f, 0.6f, 0.35f) : FLinearColor(0.5f, 0.5f, 0.5f),
-				FMath::Min(ButtonX + 4.0f, ButtonX + ButtonW - WhyW), RowY, Small);
+				FMath::Min(ButtonX + P(4.0f), ButtonX + ButtonW - WhyW), RowY, Small, Sc);
 		}
 
-		float LineY = RowY + 20.0f;
+		float LineY = RowY + P(20.0f);
 		for (const FString& Line : Wrapped)
 		{
-			DrawText(Line, FLinearColor(0.7f, 0.7f, 0.7f), X + 14.0f + Indent, LineY, Small);
-			LineY += 16.0f;
+			DrawText(Line, FLinearColor(0.7f, 0.7f, 0.7f), X + P(14.0f) + Indent, LineY, Small, Sc);
+			LineY += P(16.0f);
 		}
 		const FString Effects = Owned < Perk.Ranks.Num()
 			? FString::Printf(TEXT("next: %s"), *MadFall::Perks::DescribeRank(Perk.Ranks[Owned]))
 			: FString::Printf(TEXT("now: %s"), *MadFall::Perks::DescribeRank(Perk.Ranks.Last()));
-		DrawText(Effects, FLinearColor(0.5f, 0.75f, 0.95f), X + 14.0f + Indent, LineY, Small);
+		DrawText(Effects, FLinearColor(0.5f, 0.75f, 0.95f), X + P(14.0f) + Indent, LineY, Small, Sc);
 
 		RowY += RowH;
 	}
@@ -890,35 +991,38 @@ void AMadHUD::DrawSkillsPanel(const AMadPlayerCharacter& Player, float X, float 
 	if (First > 0 || Below > 0)
 	{
 		DrawText(FString::Printf(TEXT("%d above, %d below - mouse wheel to scroll"), First, Below),
-			FLinearColor(0.55f, 0.55f, 0.55f), X + 14.0f, Y + Height - 20.0f, Small);
+			FLinearColor(0.55f, 0.55f, 0.55f), X + P(14.0f), Y + Height - P(20.0f), Small, Sc);
 	}
 }
 
 void AMadHUD::DrawCraftingPanel(const AMadPlayerCharacter& Player, float X, float Y, float Height)
 {
 	UFont* Small = GEngine->GetSmallFont();
+	const float Sc = Bag.Scale;
+	auto P = [Sc](float DesignPixels) { return DesignPixels * Sc; };
+	const float Width = Bag.Side.GetSize().X;
 	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
-	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.9f), X, Y, SkillsPanelWidth, Height);
+	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.9f), X, Y, Width, Height);
 
 	// Category tabs.
 	const int32 Categories = static_cast<int32>(EMadRecipeCategory::Num);
-	const float CatW = (SkillsPanelWidth - 20.0f) / Categories;
+	const float CatW = (Width - P(20.0f)) / Categories;
 	for (int32 Index = 0; Index < Categories; ++Index)
 	{
 		const EMadRecipeCategory Category = static_cast<EMadRecipeCategory>(Index);
 		const bool bActive = Player.GetCraftCategory() == Category;
-		const float CatX = X + 10.0f + Index * CatW;
-		DrawRect(bActive ? FLinearColor(0.35f, 0.3f, 0.12f, 0.95f) : FLinearColor(0.12f, 0.12f, 0.14f, 0.95f), CatX, Y + 8.0f, CatW - 3.0f, 20.0f);
-		DrawText(MadFall::Crafting::GetCategoryName(Category), bActive ? FLinearColor(0.95f, 0.85f, 0.4f) : FLinearColor(0.75f, 0.75f, 0.75f), CatX + 6.0f, Y + 10.0f, Small);
-		AddHitBox(FVector2D(CatX, Y + 8.0f), FVector2D(CatW - 3.0f, 20.0f), FName(*FString::Printf(TEXT("craft.cat.%d"), Index)), true);
+		const float CatX = X + P(10.0f) + Index * CatW;
+		DrawRect(bActive ? FLinearColor(0.35f, 0.3f, 0.12f, 0.95f) : FLinearColor(0.12f, 0.12f, 0.14f, 0.95f), CatX, Y + P(8.0f), CatW - P(3.0f), 20.0f);
+		DrawText(MadFall::Crafting::GetCategoryName(Category), bActive ? FLinearColor(0.95f, 0.85f, 0.4f) : FLinearColor(0.75f, 0.75f, 0.75f), CatX + P(6.0f), Y + P(10.0f), Small, Sc);
+		AddHitBox(FVector2D(CatX, Y + P(8.0f)), FVector2D(CatW - P(3.0f), 20.0f), FName(*FString::Printf(TEXT("craft.cat.%d"), Index)), true);
 	}
 
 	// Craftable-only toggle.
-	const float ToggleY = Y + 34.0f;
-	DrawRect(FLinearColor(0.6f, 0.6f, 0.6f), X + 12.0f, ToggleY + 2.0f, 12.0f, 12.0f);
-	DrawRect(Player.IsCraftableOnly() ? FLinearColor(0.5f, 0.85f, 0.4f) : FLinearColor(0.05f, 0.05f, 0.05f), X + 14.0f, ToggleY + 4.0f, 8.0f, 8.0f);
-	DrawText(TEXT("only what I can craft now"), FLinearColor(0.8f, 0.8f, 0.8f), X + 30.0f, ToggleY, Small);
-	AddHitBox(FVector2D(X + 10.0f, ToggleY), FVector2D(200.0f, 16.0f), FName(TEXT("craft.only")), true);
+	const float ToggleY = Y + P(34.0f);
+	DrawRect(FLinearColor(0.6f, 0.6f, 0.6f), X + P(12.0f), ToggleY + P(2.0f), 12.0f, 12.0f);
+	DrawRect(Player.IsCraftableOnly() ? FLinearColor(0.5f, 0.85f, 0.4f) : FLinearColor(0.05f, 0.05f, 0.05f), X + P(14.0f), ToggleY + P(4.0f), 8.0f, 8.0f);
+	DrawText(TEXT("only what I can craft now"), FLinearColor(0.8f, 0.8f, 0.8f), X + P(30.0f), ToggleY, Small, Sc);
+	AddHitBox(FVector2D(X + P(10.0f), ToggleY), FVector2D(200.0f, 16.0f), FName(TEXT("craft.only")), true);
 
 	TArray<FMadRecipeRow> Rows;
 	Player.GetRecipeRows(Rows);
@@ -927,8 +1031,8 @@ void AMadHUD::DrawCraftingPanel(const AMadPlayerCharacter& Player, float X, floa
 	// The detail pane has a fixed height at the bottom; the list takes the rest.
 	constexpr float DetailH = 190.0f;
 	constexpr float RowH = 20.0f;
-	const float ListY = ToggleY + 24.0f;
-	const float ListBottom = Y + Height - DetailH - 8.0f;
+	const float ListY = ToggleY + P(24.0f);
+	const float ListBottom = Y + Height - DetailH - P(8.0f);
 	const int32 Visible = FMath::Max(1, FMath::FloorToInt32((ListBottom - ListY) / RowH));
 	const int32 First = FMath::Clamp(Player.GetColumnScroll(), 0, FMath::Max(0, Rows.Num() - 1));
 	for (int32 Index = First; Index < Rows.Num() && Index < First + Visible; ++Index)
@@ -938,71 +1042,71 @@ void AMadHUD::DrawCraftingPanel(const AMadPlayerCharacter& Player, float X, floa
 		const bool bSelected = Row.Recipe->Id == Selected;
 		if (bSelected)
 		{
-			DrawRect(FLinearColor(0.9f, 0.8f, 0.3f, 0.22f), X + 6.0f, RowY - 1.0f, SkillsPanelWidth - 12.0f, RowH);
+			DrawRect(FLinearColor(0.9f, 0.8f, 0.3f, 0.22f), X + P(6.0f), RowY - P(1.0f), Width - P(12.0f), RowH);
 		}
 		const FString Label = FString::Printf(TEXT("%s%s"), *Definitions.GetItemName(Row.Recipe->Output.Item),
 			Row.Recipe->Output.Count > 1 ? *FString::Printf(TEXT("  x%d"), Row.Recipe->Output.Count) : TEXT(""));
-		const bool bIcon = DrawItemIcon(Row.Recipe->Output.Item, X + 12.0f, RowY, RowH - 2.0f, Row.CanCraftNow() ? 1.0f : 0.45f);
-		DrawText(Label, Row.CanCraftNow() ? FLinearColor::White : FLinearColor(0.5f, 0.5f, 0.5f), X + (bIcon ? 36.0f : 14.0f), RowY, Small);
+		const bool bIcon = DrawItemIcon(Row.Recipe->Output.Item, X + P(12.0f), RowY, RowH - P(2.0f), Row.CanCraftNow() ? 1.0f : 0.45f);
+		DrawText(Label, Row.CanCraftNow() ? FLinearColor::White : FLinearColor(0.5f, 0.5f, 0.5f), X + (bIcon ? 36.0f : 14.0f), RowY, Small, Sc);
 		if (Row.CanCraftNow())
 		{
-			DrawText(FString::Printf(TEXT("%d"), Row.Craftable), FLinearColor(0.5f, 0.85f, 0.4f), X + SkillsPanelWidth - 40.0f, RowY, Small);
+			DrawText(FString::Printf(TEXT("%d"), Row.Craftable), FLinearColor(0.5f, 0.85f, 0.4f), X + Width - P(40.0f), RowY, Small, Sc);
 		}
-		AddHitBox(FVector2D(X + 6.0f, RowY - 1.0f), FVector2D(SkillsPanelWidth - 12.0f, RowH), FName(*FString::Printf(TEXT("craft.row.%s"), *Row.Recipe->Id.ToString())), true);
+		AddHitBox(FVector2D(X + P(6.0f), RowY - P(1.0f)), FVector2D(Width - P(12.0f), RowH), FName(*FString::Printf(TEXT("craft.row.%s"), *Row.Recipe->Id.ToString())), true);
 	}
 	if (Rows.Num() == 0)
 	{
-		DrawText(TEXT("Nothing here yet."), FLinearColor(0.55f, 0.55f, 0.55f), X + 14.0f, ListY, Small);
+		DrawText(TEXT("Nothing here yet."), FLinearColor(0.55f, 0.55f, 0.55f), X + P(14.0f), ListY, Small, Sc);
 	}
 	else if (First > 0 || First + Visible < Rows.Num())
 	{
 		DrawText(FString::Printf(TEXT("%d above, %d below - mouse wheel to scroll"), First, FMath::Max(0, Rows.Num() - First - Visible)),
-			FLinearColor(0.55f, 0.55f, 0.55f), X + 14.0f, ListBottom - 4.0f, Small);
+			FLinearColor(0.55f, 0.55f, 0.55f), X + P(14.0f), ListBottom - P(4.0f), Small, Sc);
 	}
 
 	// Detail pane.
 	const float DetailY = Y + Height - DetailH;
-	DrawRect(FLinearColor(1.0f, 1.0f, 1.0f, 0.05f), X + 6.0f, DetailY, SkillsPanelWidth - 12.0f, DetailH - 6.0f);
+	DrawRect(FLinearColor(1.0f, 1.0f, 1.0f, 0.05f), X + P(6.0f), DetailY, Width - P(12.0f), DetailH - P(6.0f));
 	const FMadRecipeRow* Row = Rows.FindByPredicate([Selected](const FMadRecipeRow& R) { return R.Recipe->Id == Selected; });
 	if (Row == nullptr)
 	{
 		return;
 	}
 	const FMadRecipeDefinition& Recipe = *Row->Recipe;
-	float LineY = DetailY + 8.0f;
+	float LineY = DetailY + P(8.0f);
 	DrawText(FString::Printf(TEXT("%d x %s   (%.0f s)"), Recipe.Output.Count, *Definitions.GetItemName(Recipe.Output.Item), Recipe.CraftSeconds),
-		FLinearColor(0.95f, 0.85f, 0.4f), X + 14.0f, LineY, Small);
-	LineY += 20.0f;
+		FLinearColor(0.95f, 0.85f, 0.4f), X + P(14.0f), LineY, Small, Sc);
+	LineY += P(20.0f);
 	const FMadInventory& Backpack = Player.GetInventory()->GetInventory();
 	for (const FMadItemAmount& Ingredient : Recipe.Ingredients)
 	{
 		const int32 Have = Backpack.CountItem(Ingredient.Item);
 		DrawText(FString::Printf(TEXT("%d / %d  %s"), Have, Ingredient.Count, *Definitions.GetItemName(Ingredient.Item)),
-			Have >= Ingredient.Count ? FLinearColor(0.6f, 0.9f, 0.5f) : FLinearColor(1.0f, 0.45f, 0.35f), X + 20.0f, LineY, Small);
-		LineY += 16.0f;
+			Have >= Ingredient.Count ? FLinearColor(0.6f, 0.9f, 0.5f) : FLinearColor(1.0f, 0.45f, 0.35f), X + P(20.0f), LineY, Small, Sc);
+		LineY += P(16.0f);
 	}
 	if (!Row->bStation)
 	{
-		DrawText(FString::Printf(TEXT("needs a %s nearby"), *FMadGameplayDefinitions::GetBlockName(Recipe.Station)), FLinearColor(1.0f, 0.45f, 0.35f), X + 20.0f, LineY, Small);
-		LineY += 16.0f;
+		DrawText(FString::Printf(TEXT("needs a %s nearby"), *FMadGameplayDefinitions::GetBlockName(Recipe.Station)), FLinearColor(1.0f, 0.45f, 0.35f), X + P(20.0f), LineY, Small, Sc);
+		LineY += P(16.0f);
 	}
 	if (!Row->bLevel)
 	{
-		DrawText(FString::Printf(TEXT("needs level %d"), Recipe.RequiredLevel), FLinearColor(1.0f, 0.45f, 0.35f), X + 20.0f, LineY, Small);
+		DrawText(FString::Printf(TEXT("needs level %d"), Recipe.RequiredLevel), FLinearColor(1.0f, 0.45f, 0.35f), X + P(20.0f), LineY, Small, Sc);
 	}
 
 	// Craft buttons along the bottom.
-	const float ButtonY = DetailY + DetailH - 34.0f;
-	const float ButtonW = (SkillsPanelWidth - 36.0f) / 3.0f;
+	const float ButtonY = DetailY + DetailH - P(34.0f);
+	const float ButtonW = (Width - P(36.0f)) / 3.0f;
 	const TCHAR* Labels[] = { TEXT("Craft 1"), TEXT("Craft 5"), TEXT("Craft all") };
 	const TCHAR* Boxes[] = { TEXT("craft.make.1"), TEXT("craft.make.5"), TEXT("craft.make.max") };
 	const int32 Needed[] = { 1, 5, 1 };
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
 		const bool bEnabled = Row->CanCraftNow() && Row->Craftable >= Needed[Index];
-		const float ButtonX = X + 12.0f + Index * (ButtonW + 6.0f);
+		const float ButtonX = X + P(12.0f) + Index * (ButtonW + P(6.0f));
 		DrawRect(bEnabled ? FLinearColor(0.25f, 0.5f, 0.2f, 0.95f) : FLinearColor(0.2f, 0.2f, 0.2f, 0.9f), ButtonX, ButtonY, ButtonW, 24.0f);
-		DrawText(Labels[Index], bEnabled ? FLinearColor::White : FLinearColor(0.5f, 0.5f, 0.5f), ButtonX + 14.0f, ButtonY + 5.0f, Small);
+		DrawText(Labels[Index], bEnabled ? FLinearColor::White : FLinearColor(0.5f, 0.5f, 0.5f), ButtonX + P(14.0f), ButtonY + P(5.0f), Small, Sc);
 		if (bEnabled)
 		{
 			AddHitBox(FVector2D(ButtonX, ButtonY), FVector2D(ButtonW, 24.0f), FName(Boxes[Index]), true);
@@ -1013,6 +1117,8 @@ void AMadHUD::DrawCraftingPanel(const AMadPlayerCharacter& Player, float X, floa
 void AMadHUD::DrawTooltip(const FMadItemStack& Stack)
 {
 	UFont* Small = GEngine->GetSmallFont();
+	const float Sc = Bag.Scale;
+	auto P = [Sc](float DesignPixels) { return DesignPixels * Sc; };
 	TArray<FString> Lines;
 	MadFall::Items::DescribeStack(Stack, MadFall::GetGameplayDefinitions(), Lines);
 	if (Lines.Num() == 0)
@@ -1046,21 +1152,21 @@ void AMadHUD::DrawTooltip(const FMadItemStack& Stack)
 	{
 		float LineW = 0.0f;
 		float LineH = 0.0f;
-		GetTextSize(Line, LineW, LineH, Small);
+		GetTextSize(Line, LineW, LineH, Small, Sc);
 		Width = FMath::Max(Width, LineW);
 	}
-	Width += 20.0f;
+	Width += P(20.0f);
 	const float Height = 12.0f + Lines.Num() * 17.0f;
 
 	// Below and right of the cursor, kept on screen.
-	const float X = FMath::Clamp(static_cast<float>(Mouse.X) + 18.0f, 4.0f, Canvas->ClipX - Width - 4.0f);
-	const float Y = FMath::Clamp(static_cast<float>(Mouse.Y) + 18.0f, 4.0f, Canvas->ClipY - Height - 4.0f);
-	DrawRect(FLinearColor(0.9f, 0.8f, 0.3f, 0.9f), X - 1.0f, Y - 1.0f, Width + 2.0f, Height + 2.0f);
+	const float X = FMath::Clamp(static_cast<float>(Mouse.X) + P(18.0f), 4.0f, Canvas->ClipX - Width - P(4.0f));
+	const float Y = FMath::Clamp(static_cast<float>(Mouse.Y) + P(18.0f), 4.0f, Canvas->ClipY - Height - P(4.0f));
+	DrawRect(FLinearColor(0.9f, 0.8f, 0.3f, 0.9f), X - P(1.0f), Y - P(1.0f), Width + P(2.0f), Height + P(2.0f));
 	DrawRect(FLinearColor(0.04f, 0.04f, 0.05f, 0.97f), X, Y, Width, Height);
 	for (int32 Index = 0; Index < Lines.Num(); ++Index)
 	{
 		DrawText(Lines[Index], Index == 0 ? FLinearColor(0.95f, 0.85f, 0.4f) : FLinearColor(0.85f, 0.85f, 0.85f),
-			X + 10.0f, Y + 6.0f + Index * 17.0f, Small);
+			X + P(10.0f), Y + P(6.0f) + Index * 17.0f, Small, Sc);
 	}
 }
 
@@ -1732,6 +1838,40 @@ namespace
 				return;
 			}
 			Hud->ClickBox(FName(*Args[0]), Args.Contains(TEXT("shift")), Args.Contains(TEXT("right")), Args.Contains(TEXT("ctrl")));
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdHudLayout(
+		TEXT("mad.hud.layout"), TEXT("mad.hud.layout - where the HUD's panels are for this window, and whether the placement is valid."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+			const AMadHUD* Hud = Controller ? Cast<AMadHUD>(Controller->GetHUD()) : nullptr;
+			if (Hud == nullptr)
+			{
+				UE_LOG(LogMadFallGameplay, Warning, TEXT("mad.hud.layout needs the survival HUD"));
+				return;
+			}
+			// The layout the last frame drew, not a fresh one: what is reported is
+			// what is on screen, including the scale a small window forced down.
+			const FMadHudLayout& Layout = Hud->GetLayout();
+			FString Problem;
+			const bool bValid = MadFall::Hud::Validate(Layout, Problem);
+			UE_LOG(LogMadFallGameplay, Display, TEXT("HUD layout: %.0fx%.0f, scale %.2f (asked %.2f), %d journal line(s), %s%s"),
+				Layout.Width, Layout.Height, Layout.Scale, CVarUiScale.GetValueOnGameThread(), Layout.JournalLines,
+				bValid ? TEXT("valid") : TEXT("INVALID: "), bValid ? TEXT("") : *Problem);
+			auto Report = [](const TCHAR* Name, const FBox2D& Box)
+			{
+				UE_LOG(LogMadFallGameplay, Display, TEXT("  %s (%.0f,%.0f) %.0fx%.0f"), Name,
+					Box.Min.X, Box.Min.Y, Box.GetSize().X, Box.GetSize().Y);
+			};
+			Report(TEXT("clock"), Layout.Clock);
+			Report(TEXT("compass"), Layout.Compass);
+			Report(TEXT("journal"), Layout.Journal);
+			Report(TEXT("vitals"), Layout.Vitals);
+			Report(TEXT("hotbar"), Layout.Hotbar);
+			Report(TEXT("messages"), Layout.Messages);
+			Report(TEXT("queue"), Layout.Queue);
+			Report(TEXT("map"), Layout.Map);
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerBuried(

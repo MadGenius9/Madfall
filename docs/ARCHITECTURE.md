@@ -1886,6 +1886,38 @@ Console (used by the survival gate): `mad.player.store <item>`,
    hotbar, slots and crafting rows draw icons, counts are right-aligned and
    shadowed, and the selected hotbar item's name sits above the hotbar.
 
+   **The HUD is laid out for the window, not for one screen size**
+   (`FMadHudLayout`, `MadFallCore`). Every size is authored in design pixels at
+   1600x900 and multiplied by a scale: the smaller of the window's width and
+   height ratios against that (clamped 0.5 to 2), times the player's HUD size
+   setting (`mad.ui.Scale`, 0.5 to 2, in the options menu and saved with the
+   other settings). Before that the HUD was fixed pixels, so in a 900x500 window
+   the vitals ran under the hotbar, the crafting column covered the backpack and
+   the crafting queue was drawn through the quest journal; on a 4K screen it was
+   a postage stamp.
+   - The placement is a pure function of the window size, so it is *swept* by a
+     test rather than looked at in a screenshot: `MadFall.UI.Layout` builds the
+     HUD for thirteen window sizes (800x450 to 4K, an ultrawide, a screen turned
+     on its side, and two below the size we support) at three HUD sizes and
+     three journal lengths, and `MadFall::Hud::Validate` asserts every panel is
+     on screen and no two that are drawn together overlap.
+   - What gives when the room runs out is explicit: the vitals lift above the
+     hotbar when they would meet it, the compass shrinks to the space the clock
+     leaves and drops to its own row when there is none, the journal shows fewer
+     quest lines rather than writing over the crafting queue, and messages sit
+     in the gap between the vitals and the queue (or above both).
+   - Beyond that, **the player's HUD size is a wish, not a promise**: `Build`
+     steps their multiplier down 5% at a time until `Validate` passes, so a
+     small window at x2 gets the largest HUD that fits instead of panels sharing
+     pixels. `mad.hud.layout` prints what the last frame drew and whether it is
+     valid; the CI gate "HUD layout" runs the real game at 854x480 and at
+     1280x720 with the HUD doubled and fails if either says INVALID.
+   - The inventory screen scales the same way and has its own rule: its height
+     is its content (a bag, plus a container or a trader's shelves), so it
+     shrinks past the HUD's scale to fit the window, down to a floor of 16 px a
+     slot. Hit boxes are added while drawing, so clicks follow the scale for
+     free - the CI gate clicks a backpack slot at both sizes to prove it.
+
    **Crafting is a column of the inventory screen**, beside the backpack it
    draws from, with a Skills tab next to it (Tab opens it on Crafting, I on the
    last tab). It replaced a wheel-scrolled list of every recipe, which could not
@@ -1902,7 +1934,8 @@ Console (used by the survival gate): `mad.player.store <item>`,
 3. **Two worlds initialise in `-game`** (the startup world, then the map), so
    world subsystems log their startup twice. Harmless - the first is torn down
    before play - but it doubles registry-independent startup work.
-4. **Placeholder presentation.** The HUD is canvas text and surfaces are flat
+4. **Placeholder presentation.** The HUD is canvas drawing (scaled to the
+   window, see "The HUD is laid out for the window") and surfaces are flat
    vertex colours on one placeholder material (the Phase 2 grey-surface bug is
    fixed). Sound is synthesised (see "Sound" below) rather than recorded. Zombies were tinted cylinders; they are now
    `UMadHumanoidRigComponent` figures - six boxes on hip, shoulder and neck

@@ -49,6 +49,7 @@
 		"menu.invert_y": "Invert look",
 		"menu.field_of_view": "Field of view",
 		"menu.view_distance": "View distance (chunks)",
+		"menu.hud_scale": "HUD size",
 		"menu.quality": "Graphics quality",
 		"menu.quality_0": "Low",
 		"menu.quality_1": "Medium",

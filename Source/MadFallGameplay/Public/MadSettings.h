@@ -40,6 +40,13 @@ struct MADFALLGAMEPLAY_API FMadSettings
 	/** mad.audio.MusicVolume, 0..1; separate so a player can keep the effects and lose the music. */
 	float MusicVolume = 0.6f;
 
+	/**
+	 * mad.ui.Scale, 0.5 to 2: how big the HUD is on top of the size the window
+	 * already implies. A window with no room for the result gets the largest
+	 * size that fits, so this is a preference, not a promise.
+	 */
+	float UiScale = 1.0f;
+
 	/** mad.Language; empty follows the system. */
 	FString Language;
 

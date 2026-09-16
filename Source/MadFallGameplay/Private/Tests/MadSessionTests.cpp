@@ -132,6 +132,7 @@ bool FMadSettingsTest::RunTest(const FString& Parameters)
 	Custom.Language = TEXT("de");
 	Custom.Volume = 0.35f;
 	Custom.MusicVolume = 0.2f;
+	Custom.UiScale = 1.35f;
 	Custom.Quality = 1;
 	FString Error;
 	TestTrue(TEXT("settings save"), MadFall::Settings::Save(Custom, Path, Error));
@@ -143,15 +144,17 @@ bool FMadSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("language"), Loaded.Language, FString(TEXT("de")));
 	TestEqual(TEXT("volume"), Loaded.Volume, 0.35f);
 	TestEqual(TEXT("music volume"), Loaded.MusicVolume, 0.2f);
+	TestEqual(TEXT("HUD size"), Loaded.UiScale, 1.35f);
 	TestEqual(TEXT("quality"), Loaded.Quality, 1);
 
 	// A hand-edited file with nonsense is clamped, not trusted.
-	FFileHelper::SaveStringToFile(TEXT(R"({"schema":"madfall.settings/1","field_of_view":500,"view_distance":-3,"look_sensitivity":0,"quality":9})"), *Path);
+	FFileHelper::SaveStringToFile(TEXT(R"({"schema":"madfall.settings/1","field_of_view":500,"view_distance":-3,"look_sensitivity":0,"quality":9,"ui_scale":40})"), *Path);
 	const FMadSettings Clamped = MadFall::Settings::Load(Path);
 	TestEqual(TEXT("fov clamped"), Clamped.FieldOfView, 120.0f);
 	TestEqual(TEXT("view distance clamped"), Clamped.ViewDistance, 3);
 	TestEqual(TEXT("sensitivity clamped"), Clamped.LookSensitivity, 0.1f);
 	TestEqual(TEXT("quality clamped"), Clamped.Quality, 3);
+	TestEqual(TEXT("HUD size clamped"), Clamped.UiScale, 2.0f);
 
 	// Applying writes the console variables the game reads, and reading them back round-trips.
 	const FMadSettings Before = MadFall::Settings::FromConsoleVariables();
