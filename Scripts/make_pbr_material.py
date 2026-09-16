@@ -53,7 +53,7 @@ HELD_ASSET_NAME = "M_MadVoxelPBRHeld"
 ARRAY_ASSET_NAME = "M_MadVoxelPBRArray"
 ARRAY_HELD_ASSET_NAME = "M_MadVoxelPBRArrayHeld"
 VERSION_TAG = "MadFallPBRVersion"
-MATERIAL_VERSION = "9"
+MATERIAL_VERSION = "10"
 
 PBR_HLSL = """
 struct FMadPBR
@@ -135,7 +135,13 @@ if (Occ.y > 0.5)
 // Weather (MPC_MadWeather).
 float Up = saturate(NN.z);
 float Grain = F.H(float3(floor(UV * 256.0), 91.0));
-float SnowMask = saturate((saturate(Snow) * smoothstep(0.45, 0.85, Up) * 1.35 - Grain * 0.35) * 4.0);
+// Above the snow line the tops stay white whatever the weather is doing: the
+// mountains reach 116 voxels and the sea is at 12, so the line sits at 78 and
+// fades in over 30 voxels. It joins the weather's snow rather than replacing
+// it, so a blizzard still whitens the lowlands.
+float SnowLine = saturate((WP.z / 100.0 - 78.0) / 30.0);
+float SnowAmount = max(saturate(Snow), SnowLine);
+float SnowMask = saturate((SnowAmount * smoothstep(0.45, 0.85, Up) * 1.35 - Grain * 0.35) * 4.0);
 float WetAmt = saturate(Wet) * (1.0 - SnowMask);
 Col *= lerp(1.0, 0.62, WetAmt * (1.0 - Metallic));
 Rough = lerp(Rough, min(Rough, 0.2), WetAmt);

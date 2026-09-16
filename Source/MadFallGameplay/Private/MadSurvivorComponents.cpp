@@ -249,6 +249,17 @@ void UMadSurvivalComponent::UpdateAmbient()
 	{
 		Celsius += Weather->GetTemperatureOffset();
 	}
+
+	// Height bites on top of the biome's own climate. The generator cools its
+	// temperature field with altitude too, but that one also picks biomes, and
+	// it is deliberately capped (a stronger lapse there took a quarter of the
+	// world for tundra - measured, see "Climate"). This one is only what the
+	// survivor feels, so it can keep going where the other stops: about 8 C
+	// colder a hundred voxels up, which is what makes a coat the price of a
+	// summit now that summits are 116 voxels high.
+	const float AltitudeAboveSea = FMath::Max(0.0f, static_cast<float>(Location.Z) - static_cast<float>(VoxelWorld->GetWorldGenSettings().SeaLevel));
+	Celsius -= FMath::Min(AltitudeAboveSea, 160.0f) * 0.08f;
+
 	Environment.AmbientTemperature = Celsius;
 }
 

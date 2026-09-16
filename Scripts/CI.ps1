@@ -1294,6 +1294,59 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Altitude: a mountain is colder than the valley it stands in
+# ---------------------------------------------------------------------------
+#
+# The generator cools its temperature field with height, but that field also
+# picks biomes and is deliberately capped. What a survivor feels keeps going, so
+# a summit needs clothing. This gate stands in the highlands and then 70 voxels
+# above the same spot, and fails if the air did not get much colder.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: altitude (headless -game)'
+
+    $altitudeScript = @(
+        'mad.player.tpbiome madfall:highlands'
+        'wait 10'
+        'mad.player.status'
+        'mad.scene.anchor'
+        'mad.scene.tp 0 0 70'
+        'mad.player.status'
+        'quit'
+    ) -join '; '
+
+    $altitudeLog = Join-Path $LogDir 'altitude-acceptance.log'
+    $altitudeProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow `
+        -RedirectStandardOutput $altitudeLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-altitude', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn $altitudeScript`"")
+
+    if (-not $altitudeProcess.WaitForExit(180000)) {
+        $altitudeProcess | Stop-Process -Force
+        Write-Host 'FAILED: the game did not finish the altitude script within 180 s.' -ForegroundColor Red
+        $script:Failures += 'altitude-acceptance'
+    }
+    else {
+        $temperatures = @(Select-String -Path $altitudeLog -Pattern 'ambient (-?[0-9]+\.[0-9]) C' -AllMatches |
+            ForEach-Object { [double]$_.Matches[0].Groups[1].Value })
+        if ($temperatures.Count -lt 2) {
+            Write-Host "FAILED: the altitude script reported $($temperatures.Count) temperature(s), needed 2." -ForegroundColor Red
+            $script:Failures += 'altitude-acceptance'
+        }
+        else {
+            $drop = $temperatures[0] - $temperatures[-1]
+            if ($drop -ge 8.0) {
+                Write-Host ("OK: 70 voxels up is {0:N1} C colder" -f $drop) -ForegroundColor Green
+            }
+            else {
+                Write-Host ("FAILED: 70 voxels up was only {0:N1} C colder ({1} -> {2})" -f $drop, $temperatures[0], $temperatures[-1]) -ForegroundColor Red
+                $script:Failures += 'altitude-acceptance'
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Scripts: the Lua example mod in a real game
 # ---------------------------------------------------------------------------
 #

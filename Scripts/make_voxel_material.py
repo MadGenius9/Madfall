@@ -59,7 +59,7 @@ FOLIAGE_ASSET_NAME = "M_MadVoxelFoliage"   # leaves: the same, lit through from 
 WATER_ASSET_NAME = "M_MadVoxelWater"       # water: the same, but you can see through it and under it
 
 VERSION_TAG = "MadFallVoxelMaterialVersion"
-MATERIAL_VERSION = "11"
+MATERIAL_VERSION = "12"
 
 # Pattern index from vertex alpha: alpha = 255 - index * 16.
 PATTERN_ID = "int Id = (int)round((1.0 - VA) * 255.0 / 16.0);\n"
@@ -296,7 +296,13 @@ if (Fade < 1.0)
 float Up = saturate(NN.z);
 // Snow settles on whatever faces up, in a grainy edge as it thins out.
 float Grain = F.H(float3(T, Seed + 91.0));
-float SnowMask = saturate((saturate(Snow) * smoothstep(0.45, 0.85, Up) * 1.35 - Grain * 0.35) * 4.0);
+// Above the snow line the tops stay white whatever the weather is doing: the
+// mountains reach 116 voxels and the sea is at 12, so the line sits at 78 and
+// fades in over 30 voxels. It joins the weather's snow rather than replacing
+// it, so a blizzard still whitens the lowlands.
+float SnowLine = saturate((WP.z / 100.0 - 78.0) / 30.0);
+float SnowAmount = max(saturate(Snow), SnowLine);
+float SnowMask = saturate((SnowAmount * smoothstep(0.45, 0.85, Up) * 1.35 - Grain * 0.35) * 4.0);
 // Rain soaks porous surfaces darker and glossier; metal and water just get wet.
 float Porous = (Id == 10 || Id == 14) ? 0.35 : 1.0;
 float WetAmt = saturate(Wet) * (1.0 - SnowMask);

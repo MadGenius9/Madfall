@@ -61,11 +61,20 @@ namespace
 	/**
 	 * Game-thread milliseconds for publishing meshes and for launching jobs.
 	 * Together with the rest of the frame's MadFall work they have to fit the
-	 * 2 ms rule, so each gets about half of it.
+	 * 2 ms rule.
+	 *
+	 * Publishing is 0.4 ms, not the half of the rule it used to be. The budget
+	 * is checked *between* chunks, so a 1.0 ms budget let a frame take one
+	 * 0.9 ms apply and then start another: what looked like single heavy
+	 * mountain chunks was applies stacking. Measured over the frame-budget
+	 * session, mountains and all: 1.0 ms gave 0.29-0.49% of frames over 2 ms
+	 * with meshing spikes of 3.4-4.7 ms; 0.4 ms gives 0.23-0.30% with spikes of
+	 * 2.2-2.7 ms. The cost is a fraction of a second more before a distant chunk
+	 * appears, which no probe could see.
 	 */
 	TAutoConsoleVariable<float> CVarPublishBudgetMs(
 		TEXT("mad.mesh.PublishBudgetMs"),
-		1.0f,
+		0.4f,
 		TEXT("Game-thread milliseconds per frame for applying finished chunk meshes (at least one is applied)."),
 		ECVF_Default);
 
@@ -91,21 +100,15 @@ namespace
 	 * zombie or animal farther than that is not something the survivor stands
 	 * next to.
 	 */
-	// 4 and 9, not 5 and 11: mountains have far more surface per chunk than the
-	// rolling ground these were tuned against, and meshing was the largest
-	// system in 53 of 58 over-budget frames once the highlands grew. Coarsening
-	// at 128 m instead of 160 m took the frame-budget session from 0.45-0.51%
-	// of frames over 2 ms back to about 0.34%, against a gate of 0.5%, and
-	// removed the 4-5 ms outliers. Measured, both ways round; see "Mountains".
 	TAutoConsoleVariable<int32> CVarLodDistance(
 		TEXT("mad.mesh.LodDistance"),
-		4,
+		5,
 		TEXT("Chunks farther than this (horizontally) mesh their terrain at half resolution. 0 or less turns detail levels off."),
 		ECVF_Default);
 
 	TAutoConsoleVariable<int32> CVarLod2Distance(
 		TEXT("mad.mesh.Lod2Distance"),
-		9,
+		11,
 		TEXT("Chunks farther than this mesh their terrain at a quarter resolution."),
 		ECVF_Default);
 

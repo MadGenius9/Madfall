@@ -2451,13 +2451,32 @@ Console (used by the survival gate): `mad.player.store <item>`,
      metres away - also changed nothing measurable, and one run showed a 5.4 ms
      frame. Both were reverted. Tuning the peaks down from 150 to 116 barely
      moved it either, because what costs is the steep surface, not the height.
-   - *What worked:* coarsening sooner. `mad.mesh.LodDistance` 5 -> 4 and
-     `mad.mesh.Lod2Distance` 11 -> 9, so terrain halves resolution at 128 m
-     instead of 160 m and quarters it at 288 m instead of 352 m. The mountain
-     session came back to 0.29% and 0.40% - about a third of a percent, against
-     0.3% for flat ground - and the 4-5 ms outliers went away. The trade is
-     detail at middle distance, which a screenshot from the plains cannot
-     distinguish; the gain is a world with mountains in it.
+   - *A third attempt that half worked, and why it was wrong.* Coarsening sooner
+     (`LodDistance` 5 -> 4, `Lod2Distance` 11 -> 9) brought the session to 0.29%
+     and 0.40% in a probe - but the CI run of the same build measured 0.49%, one
+     frame inside a 0.5% gate. A fix whose result spans 0.29-0.49% is luck, not
+     a fix, and it was paid for with view distance.
+   - *What actually worked:* **the publish budget**. `mad.mesh.PublishBudgetMs`
+     is checked *between* chunks, so at 1.0 ms a frame could take a 0.9 ms apply
+     and then start another - what looked like single heavy mountain chunks was
+     applies stacking. At 0.4 ms the session runs at 0.23-0.30% of frames over
+     2 ms with meshing spikes of 2.2-2.7 ms, against 0.29-0.49% and 3.4-4.7 ms
+     at 1.0 ms. With that in place the LOD distances went **back** to 5 and 11:
+     full detail out to 160 m, mountains, and a lower over-budget rate than the
+     game had before any of this (0.28-0.30% on flat ground). The cost is a
+     fraction of a second more before a distant chunk appears.
+   - **A summit is worth the coat it costs.** The generator's temperature field
+     already cools with height, but that field also picks biomes and is capped
+     on purpose (a stronger lapse there took a quarter of the world for tundra).
+     What the survivor *feels* now keeps going where it stops: 0.08 C a voxel
+     above the sea, to 160 voxels. Measured in the highlands: 0.1 C at Z=39 and
+     -13.9 C at Z=109, so the peaks need clothing the valley does not. The CI
+     gate "altitude" stands in both places and fails under an 8 C drop.
+   - **And it looks cold.** Both surface materials whiten above a snow line at
+     Z=78, fading in over 30 voxels, joined with the weather's own snow by a max
+     so a blizzard still covers the lowlands. No new inputs: the shaders already
+     had world position, and the held and water variants get nothing because
+     their Z is a block in a hand or the sea.
    Generator revision 5 marks the change; a world saved before it keeps its
    old chunks, so a seam shows where old and new ground meet.
    - **Found by it: a lid over road edges.** The road-bank test found 24 walls
