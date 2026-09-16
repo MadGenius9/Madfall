@@ -28,6 +28,9 @@ struct MADFALLGAMEPLAY_API FMadSurvivalStats
 	/** 0-100. Grows once contracted, cured only by medicine. */
 	float Infection = 0.0f;
 
+	/** Air left with the head under water, 0-100. Refills in seconds at the surface. */
+	float Breath = 100.0f;
+
 	bool IsDead() const { return Health <= 0.0f; }
 };
 
@@ -44,6 +47,15 @@ struct MADFALLGAMEPLAY_API FMadSurvivalEnvironment
 	float HeatInsulation = 0.0f;
 
 	bool bSprinting = false;
+
+	/**
+	 * How much of the survivor is in water, 0 to 1, and whether their head is
+	 * under it. Water pulls heat out of a body far faster than air does and wet
+	 * clothing stops insulating, so a swim in a cold lake is dangerous in a way
+	 * standing in the same air is not.
+	 */
+	float SubmergedFraction = 0.0f;
+	bool bHeadUnderwater = false;
 
 	/** Swinging a tool or weapon. Stamina does not regenerate while exerting. */
 	bool bExerting = false;
@@ -96,6 +108,23 @@ struct MADFALLGAMEPLAY_API FMadSurvivalTuning
 	/** Heat stroke also dehydrates. */
 	float HyperthermiaWaterPerSecond = 0.05f;
 
+	/** Seconds of air: how long a full breath lasts with the head under. */
+	float BreathSeconds = 40.0f;
+
+	/** Breath refilled per second once the head is out; a gasp, not a slow recovery. */
+	float BreathRecoveryPerSecond = 35.0f;
+
+	/** Damage per second once the air is gone. */
+	float DrowningDamagePerSecond = 6.0f;
+
+	/**
+	 * How many degrees colder water feels than the air above it, at full
+	 * submersion, and how much of the survivor's cold protection wet clothing
+	 * loses. Both are why swimming in winter is a bad idea.
+	 */
+	float WaterChillDegrees = 14.0f;
+	float WetInsulationLoss = 0.8f;
+
 	/** Infection growth per second once above zero. */
 	float InfectionGrowthPerSecond = 0.02f;
 
@@ -111,8 +140,9 @@ struct MADFALLGAMEPLAY_API FMadSurvivalStepResult
 	float DehydrationDamage = 0.0f;
 	float ExposureDamage = 0.0f;
 	float InfectionDamage = 0.0f;
+	float DrowningDamage = 0.0f;
 
-	float TotalDamage() const { return StarvationDamage + DehydrationDamage + ExposureDamage + InfectionDamage; }
+	float TotalDamage() const { return StarvationDamage + DehydrationDamage + ExposureDamage + InfectionDamage + DrowningDamage; }
 };
 
 namespace MadFall::Survival

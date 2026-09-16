@@ -99,6 +99,25 @@ namespace MadFall::ChunkMesher
 			 * the chunk mesh gives them no faces, and they do not hide the faces of
 			 * the blocks around them (a barrel does not fill its voxel).
 			 */
+			/** Liquid: drawn, but a body swims through it rather than standing on it. */
+			bool IsLiquid(uint16 BlockId)
+			{
+				if (BlockId == MadFall::BlockTypeAir)
+				{
+					return false;
+				}
+				if (LiquidFlags.Num() == 0)
+				{
+					LiquidFlags.SetNumZeroed(MAX_uint16 + 1);
+				}
+				uint8& Flag = LiquidFlags[BlockId];
+				if (Flag == 0)
+				{
+					Flag = Registry.GetBlockView(BlockId).bLiquid ? 2 : 1;
+				}
+				return Flag == 2;
+			}
+
 			bool IsModel(uint16 BlockId)
 			{
 				if (BlockId == MadFall::BlockTypeAir)
@@ -124,6 +143,8 @@ namespace MadFall::ChunkMesher
 			TMap<uint16, FName> Cache;
 			/** 0 unknown, 1 not a model, 2 model. */
 			TArray<uint8> ModelFlags;
+			/** 0 unknown, 1 solid, 2 liquid. */
+			TArray<uint8> LiquidFlags;
 		};
 
 		/** Per-cell vertex data produced by the first Surface Nets pass. */
@@ -134,6 +155,8 @@ namespace MadFall::ChunkMesher
 			FName MaterialClass;
 			/** The worst damage of the solid corners around it, for the material's cracks. */
 			uint8 Damage = 0;
+			/** Water: its section is drawn without collision. */
+			bool bLiquid = false;
 			bool bValid = false;
 		};
 
@@ -144,6 +167,26 @@ namespace MadFall::ChunkMesher
 			{0,1}, {2,3}, {4,5}, {6,7},   // along X
 			{0,2}, {1,3}, {4,6}, {5,7},   // along Y
 			{0,4}, {1,5}, {2,6}, {3,7}    // along Z
+		};
+
+		/**
+		 * Which of the two isosurfaces a pass builds.
+		 *
+		 * WHY TWO: the mesher treated water as solid ground, so no surface was
+		 * generated between a lake's water and the sand under it - the seabed
+		 * had no collision at all. It never showed while water itself collided,
+		 * because nobody could get under the surface; the moment swimming
+		 * arrived, a diver fell through the sand and into the rock below.
+		 *
+		 * Ground treats liquid as air, so the seabed is a surface like any other
+		 * shoreline. Water treats solid ground as *inside* rather than as air,
+		 * so the water's own surface forms against air only and no hidden faces
+		 * are built where a lake meets its bed.
+		 */
+		enum class EIsoPass : uint8
+		{
+			Ground,
+			Water
 		};
 
 		// ===================================================================
@@ -166,7 +209,8 @@ namespace MadFall::ChunkMesher
 			int32 Points,
 			int32 Stride,
 			FMaterialResolver& Materials,
-			FMadChunkMesh& OutMesh)
+			FMadChunkMesh& OutMesh,
+			EIsoPass Pass = EIsoPass::Ground)
 		{
 			SCOPE_CYCLE_COUNTER(STAT_MadMeshIsosurface);
 
@@ -209,8 +253,23 @@ namespace MadFall::ChunkMesher
 							// it as empty here is what stops a placed concrete
 							// block from also bulging the isosurface around it.
 							const bool bIsCubic = Grid.IsCubic(X, Y, Z) || Materials.IsModel(Grid.GetBlockId(X, Y, Z));
+							const bool bCornerLiquid = Materials.IsLiquid(Grid.GetBlockId(X, Y, Z));
 
-							Densities[Corner] = bIsCubic ? 0.0f : static_cast<float>(Grid.GetDensity(X, Y, Z));
+							if (bIsCubic)
+							{
+								Densities[Corner] = 0.0f;
+							}
+							else if (Pass == EIsoPass::Ground)
+							{
+								// Water is air to the ground: the seabed is a surface.
+								Densities[Corner] = bCornerLiquid ? 0.0f : static_cast<float>(Grid.GetDensity(X, Y, Z));
+							}
+							else
+							{
+								// Rock is water's floor, not its edge: solid ground counts
+								// as inside, so the only surface is the one against air.
+								Densities[Corner] = static_cast<float>(Grid.GetDensity(X, Y, Z));
+							}
 							bInside[Corner] = Densities[Corner] >= IsoLevel;
 							BlockIds[Corner] = Grid.GetBlockId(X, Y, Z);
 
@@ -307,6 +366,13 @@ namespace MadFall::ChunkMesher
 						float BestDensity = -1.0f;
 						for (int32 Corner = 0; Corner < 8; ++Corner)
 						{
+							// The water pass counts the ground under a lake as inside,
+							// so only its liquid corners may name the material - or a
+							// lake's surface would be drawn in sand.
+							if (Pass == EIsoPass::Water && !Materials.IsLiquid(BlockIds[Corner]))
+							{
+								continue;
+							}
 							if (bInside[Corner] && Densities[Corner] > BestDensity)
 							{
 								BestDensity = Densities[Corner];
@@ -353,9 +419,16 @@ namespace MadFall::ChunkMesher
 								}
 							}
 						}
+						if (DominantBlock == MadFall::BlockTypeAir)
+						{
+							// The water pass over a cell with no water in it: the
+							// surface here belongs to the ground pass.
+							continue;
+						}
 						Cell.Normal = Normal;
 						Cell.MaterialClass = Materials.GetMaterialClass(DominantBlock);
 						Cell.Damage = CellDamage;
+						Cell.bLiquid = Materials.IsLiquid(DominantBlock);
 						Cell.bValid = true;
 					}
 				}
@@ -387,6 +460,9 @@ namespace MadFall::ChunkMesher
 				// rendered as bright zig-zag lines, along every material boundary.
 				FColor Color = ColorForMaterialClass(Vertex.MaterialClass);
 				Color.A = ColorForMaterialClass(Section.MaterialClass).A;
+				// A material class is one surface, so one liquid vertex in it means
+				// the whole section is that liquid.
+				Section.bCollides = Section.bCollides && !Vertex.bLiquid;
 				const int32 Index = Section.AddVertex(Vertex.Position, Vertex.Normal, UV, Color, /*Occlusion*/ 0, Vertex.Damage);
 
 				Cache.Add(Cell, Index);
@@ -692,6 +768,7 @@ namespace MadFall::ChunkMesher
 								const FColor Color = ColorForMaterialClass(MaterialClass);
 
 								FMadMeshSection& Section = OutMesh.FindOrAddSection(MaterialClass);
+								Section.bCollides = Section.bCollides && !Materials.IsLiquid(BlockId);
 								Section.Reserve(Section.NumVertices() + 4, Section.Indices.Num() + 6);
 
 								// UVs in voxel units so a merged quad tiles its
@@ -790,13 +867,33 @@ namespace MadFall::ChunkMesher
 		if (Settings.bIsosurface)
 		{
 			const double IsoStart = FPlatformTime::Seconds();
+			// Water is a second surface, and only chunks that hold any pay for it.
+			auto HasLiquid = [&Materials](const auto& Samples)
+			{
+				for (uint16 BlockId : Samples.BlockId)
+				{
+					if (Materials.IsLiquid(BlockId))
+					{
+						return true;
+					}
+				}
+				return false;
+			};
 			if (bCoarse)
 			{
-				BuildIsosurface(*LodGrid, LodGrid->Points, LodGrid->Stride, Materials, OutMesh);
+				BuildIsosurface(*LodGrid, LodGrid->Points, LodGrid->Stride, Materials, OutMesh, EIsoPass::Ground);
+				if (HasLiquid(*LodGrid))
+				{
+					BuildIsosurface(*LodGrid, LodGrid->Points, LodGrid->Stride, Materials, OutMesh, EIsoPass::Water);
+				}
 			}
 			else
 			{
-				BuildIsosurface(Grid, MadFall::ChunkSize, 1, Materials, OutMesh);
+				BuildIsosurface(Grid, MadFall::ChunkSize, 1, Materials, OutMesh, EIsoPass::Ground);
+				if (HasLiquid(Grid))
+				{
+					BuildIsosurface(Grid, MadFall::ChunkSize, 1, Materials, OutMesh, EIsoPass::Water);
+				}
 			}
 			OutMesh.IsosurfaceMilliseconds = (FPlatformTime::Seconds() - IsoStart) * 1000.0;
 		}

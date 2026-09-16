@@ -129,8 +129,10 @@ void AMadHUD::DrawHUD()
 	{
 		WantedJournalLines += 2 + Active[Index].Key->Objectives.Num();
 	}
+	// Breath is a fifth bar, and only while it is draining or refilling.
+	const bool bShowBreath = Player->GetSurvival()->GetStats().Breath < 99.9f;
 	Layout = MadFall::Hud::Build(W, H, CVarUiScale.GetValueOnGameThread(),
-		UMadInventoryComponent::HotbarSlots, WantedJournalLines);
+		UMadInventoryComponent::HotbarSlots, WantedJournalLines, bShowBreath ? 5 : 4);
 
 	if (Player->IsWaitingForWorld())
 	{
@@ -164,7 +166,16 @@ void AMadHUD::DrawHUD()
 	DrawBar(BarX, Y, BarWidth, BarHeight, S.Food / 100.0f, FLinearColor(0.6f, 0.36f, 0.12f), FString::Printf(TEXT("Food %.0f"), S.Food));
 	Y += BarStep;
 	DrawBar(BarX, Y, BarWidth, BarHeight, S.Water / 100.0f, FLinearColor(0.15f, 0.42f, 0.85f), FString::Printf(TEXT("Water %.0f"), S.Water));
-	Y += BarStep + Px(2.0f);
+	Y += BarStep;
+	if (bShowBreath)
+	{
+		// Pale blue, and it pulses like any vital below a quarter: a swimmer
+		// with ten seconds of air left should not have to read the number.
+		DrawBar(BarX, Y, BarWidth, BarHeight, S.Breath / 100.0f, FLinearColor(0.45f, 0.8f, 0.95f),
+			FString::Printf(TEXT("Breath %.0f"), S.Breath));
+		Y += BarStep;
+	}
+	Y += Px(2.0f);
 
 	const FLinearColor TempColour = S.CoreTemperature < 35.5f ? FLinearColor(0.5f, 0.7f, 1.0f)
 		: (S.CoreTemperature > 38.5f ? FLinearColor(1.0f, 0.5f, 0.2f) : FLinearColor::White);
@@ -1692,15 +1703,16 @@ namespace
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerWalk(
-		TEXT("mad.player.walk"), TEXT("mad.player.walk <seconds> [dx dy] - walks for a while along a world direction (default +X)."),
+		TEXT("mad.player.walk"), TEXT("mad.player.walk <seconds> [dx dy [dz]] - walks for a while along a world direction (default +X); dz dives while swimming."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
 		{
 			AMadPlayerCharacter* P = GetPlayer(World);
 			float Seconds = 0.0f;
 			if (!P || Args.Num() < 1 || !FDefaultValueHelper::ParseFloat(Args[0], Seconds)) { return; }
-			float DX = 1.0f, DY = 0.0f;
+			float DX = 1.0f, DY = 0.0f, DZ = 0.0f;
 			if (Args.Num() > 2) { FDefaultValueHelper::ParseFloat(Args[1], DX); FDefaultValueHelper::ParseFloat(Args[2], DY); }
-			P->WalkFor(Seconds, FVector(DX, DY, 0.0));
+			if (Args.Num() > 3) { FDefaultValueHelper::ParseFloat(Args[3], DZ); }
+			P->WalkFor(Seconds, FVector(DX, DY, DZ));
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerTeleportBiome(

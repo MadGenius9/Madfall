@@ -1214,6 +1214,86 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Water: swimming, drowning, and a fall into a lake
+# ---------------------------------------------------------------------------
+#
+# Water used to be a solid block a survivor stood on, and the seabed under it
+# had no surface at all. This gate swims in the ocean: the survivor floats at
+# the surface, dives and loses their breath, drowns when it runs out, and gets
+# it back at the top. It also drops one in from twenty voxels up: water breaks
+# a fall that ground would not.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: water (headless -game)'
+
+    $waterScript = @(
+        'mad.player.tpbiome madfall:ocean'
+        'wait 8'
+        # Floating: dropped in, the survivor comes up and stays up.
+        'mad.player.status'
+        # Diving: 60 seconds is past a full breath (40 s) and into drowning.
+        'mad.player.walk 60 0 0 -1'
+        'wait 12'
+        'mad.player.status'
+        'wait 25'
+        'mad.player.status'
+        'wait 20'
+        'mad.player.status'
+        # Back to the surface, where a breath comes back in seconds.
+        'mad.player.walk 8 0 0 1'
+        'wait 10'
+        'mad.player.status'
+        # A fall that would hurt on land.
+        'mad.player.tpbiome madfall:ocean'
+        'wait 4'
+        'mad.scene.anchor'
+        'mad.scene.tp 0 0 20'
+        'wait 8'
+        'mad.player.status'
+        'quit'
+    ) -join '; '
+
+    $waterLog = Join-Path $LogDir 'water-acceptance.log'
+    $waterProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow `
+        -RedirectStandardOutput $waterLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-water', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn $waterScript`"")
+
+    if (-not $waterProcess.WaitForExit(240000)) {
+        $waterProcess | Stop-Process -Force
+        Write-Host 'FAILED: the game did not finish the water script within 240 s.' -ForegroundColor Red
+        $script:Failures += 'water-acceptance'
+    }
+    else {
+        $checks = @(
+            @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath 100  swimming' -Quiet); Why = 'the survivor floated at the surface, breathing' },
+            @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath ([1-9][0-9]?)  underwater' -Quiet); Why = 'diving spent their breath' },
+            @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath 0  underwater' -Quiet); Why = 'and ran it out' },
+            @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'Player respawned|health [0-9]{1,2}\.[0-9]/100' -Quiet); Why = 'drowning cost health' },
+            @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath 100' -Quiet); Why = 'and a breath came back at the top' },
+            @{ Ok = [bool]((Select-String -Path $waterLog -Pattern 'submerged (100|[5-9][0-9])%' -Quiet)); Why = 'the survivor was measured as being in the water' }
+        )
+
+        $waterOk = $true
+        foreach ($check in $checks) {
+            if ($check.Ok) {
+                Write-Host "OK: $($check.Why)" -ForegroundColor Green
+            }
+            else {
+                Write-Host "FAILED: $($check.Why)" -ForegroundColor Red
+                $waterOk = $false
+            }
+        }
+        if (-not $waterOk) {
+            Select-String -Path $waterLog -Pattern 'breath|health ' |
+                Select-Object -Last 20 |
+                ForEach-Object { Write-Host "  $($_.Line)" -ForegroundColor DarkGray }
+            $script:Failures += 'water-acceptance'
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Scripts: the Lua example mod in a real game
 # ---------------------------------------------------------------------------
 #

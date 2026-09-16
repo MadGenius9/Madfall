@@ -12,6 +12,7 @@
 #include "MadProgression.h"
 #include "MadPrefabRegistry.h"
 #include "MadSurvivalModel.h"
+#include "MadSwim.h"
 #include "MadVoxelWorldSubsystem.h"
 #include "Math/RandomStream.h"
 #include "Serialization/JsonReader.h"
@@ -667,6 +668,118 @@ bool FMadHarvestTest::RunTest(const FString& Parameters)
 // ===========================================================================
 // Survival
 // ===========================================================================
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadSwimmingTest,
+	"MadFall.Survival.Swimming",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadSwimmingTest::RunTest(const FString& Parameters)
+{
+	const FMadSwimTuning Tuning;
+	const float Head = 180.0f;   // a survivor's capsule, in centimetres
+
+	// --- how much of a body is under the water ------------------------------
+	TestEqual(TEXT("dry land"), MadFall::Swim::SubmergedFraction(0.0f, Head, -50.0f), 0.0f);
+	TestEqual(TEXT("up to the waist"), MadFall::Swim::SubmergedFraction(0.0f, Head, 90.0f), 0.5f, 0.001f);
+	TestEqual(TEXT("under it"), MadFall::Swim::SubmergedFraction(0.0f, Head, 400.0f), 1.0f);
+
+	// --- buoyancy: a body rises to the surface and stays there ---------------
+	{
+		const float Deep = MadFall::Swim::Buoyancy(/*EyeZ*/ 100.0f, /*WaterTopZ*/ 1000.0f, 0.0f, Tuning);
+		TestEqual(TEXT("deep under, it rises as fast as it can"), Deep, Tuning.RiseSpeed, 0.01f);
+
+		const float AtRest = MadFall::Swim::Buoyancy(1000.0f + Tuning.FloatEyeOffset, 1000.0f, 0.0f, Tuning);
+		TestEqual(TEXT("floating, it holds"), AtRest, 0.0f, 0.01f);
+
+		const float TooHigh = MadFall::Swim::Buoyancy(1200.0f, 1000.0f, 0.0f, Tuning);
+		TestTrue(TEXT("thrown above the water, it comes back down"), TooHigh < 0.0f);
+
+		const float Diving = MadFall::Swim::Buoyancy(1000.0f, 1000.0f, -1.0f, Tuning);
+		TestTrue(TEXT("a swimmer can beat the float and dive"), Diving < 0.0f);
+	}
+
+	// --- wading, swimming, and the band between them --------------------------
+	{
+		const FMadSwimState Ankles = MadFall::Swim::Evaluate(0.2f, 100.0f, 20.0f, 0.0f, false, false, Tuning);
+		TestFalse(TEXT("ankle deep is walking"), Ankles.bSwimming);
+		TestTrue(TEXT("but slower than dry land"), Ankles.SpeedMultiplier < 1.0f);
+
+		const FMadSwimState Chest = MadFall::Swim::Evaluate(0.8f, 100.0f, 150.0f, 0.0f, false, false, Tuning);
+		TestTrue(TEXT("chest deep is swimming"), Chest.bSwimming);
+		TestTrue(TEXT("and slower again"), Chest.SpeedMultiplier <= Tuning.SpeedMultiplier);
+
+		// Hysteresis: the same depth keeps whichever state it was already in, so
+		// a survivor standing where the water is exactly that deep does not
+		// flicker between walking and swimming every frame.
+		const float Between = (Tuning.WadeFraction + Tuning.SwimFraction) * 0.5f;
+		TestFalse(TEXT("walking stays walking in the band"), MadFall::Swim::Evaluate(Between, 100.0f, 150.0f, 0.0f, false, false, Tuning).bSwimming);
+		TestTrue(TEXT("swimming stays swimming in the band"), MadFall::Swim::Evaluate(Between, 100.0f, 150.0f, 0.0f, true, false, Tuning).bSwimming);
+	}
+
+	// --- the head is what matters for breathing ------------------------------
+	{
+		const FMadSwimState Floating = MadFall::Swim::Evaluate(0.9f, 200.0f, 150.0f, 0.0f, true, false, Tuning);
+		TestFalse(TEXT("eyes above the water: breathing"), Floating.bHeadUnder);
+
+		const FMadSwimState Under = MadFall::Swim::Evaluate(1.0f, 100.0f, 400.0f, 0.0f, true, false, Tuning);
+		TestTrue(TEXT("eyes under it: not"), Under.bHeadUnder);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadBreathTest,
+	"MadFall.Survival.Breath",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadBreathTest::RunTest(const FString& Parameters)
+{
+	const FMadSurvivalTuning Tuning;
+
+	FMadSurvivalEnvironment Under;
+	Under.SubmergedFraction = 1.0f;
+	Under.bHeadUnderwater = true;
+
+	// A full breath lasts BreathSeconds, and then the survivor drowns.
+	{
+		FMadSurvivalStats S;
+		MadFall::Survival::Step(S, Under, Tuning, Tuning.BreathSeconds * 0.5f);
+		TestEqual(TEXT("half the air after half the time"), S.Breath, 50.0f, 1.0f);
+		TestEqual(TEXT("and no damage yet"), S.Health, 100.0f, 0.01f);
+
+		const FMadSurvivalStepResult R = MadFall::Survival::Step(S, Under, Tuning, Tuning.BreathSeconds * 0.5f + 10.0f);
+		TestEqual(TEXT("out of air"), S.Breath, 0.0f);
+		TestTrue(TEXT("drowning costs health"), R.DrowningDamage > 0.0f);
+		TestTrue(TEXT("and it is reported as drowning, not exposure"), R.DrowningDamage > R.ExposureDamage);
+	}
+
+	// Surfacing refills it in a few seconds - a gasp, not a rest.
+	{
+		FMadSurvivalStats S;
+		S.Breath = 0.0f;
+		MadFall::Survival::Step(S, FMadSurvivalEnvironment(), Tuning, 4.0f);
+		TestTrue(TEXT("a few seconds at the surface is most of a breath"), S.Breath > 80.0f);
+	}
+
+	// Cold water takes heat out of a survivor far faster than cold air, and wet
+	// clothing stops insulating.
+	{
+		FMadSurvivalEnvironment ColdAir;
+		ColdAir.AmbientTemperature = 2.0f;
+		ColdAir.ColdInsulation = 10.0f;
+
+		FMadSurvivalEnvironment ColdWater = ColdAir;
+		ColdWater.SubmergedFraction = 1.0f;
+
+		FMadSurvivalStats Dry, Wet;
+		MadFall::Survival::Step(Dry, ColdAir, Tuning, 300.0f);
+		MadFall::Survival::Step(Wet, ColdWater, Tuning, 300.0f);
+		TestTrue(TEXT("a coat keeps a survivor warm in cold air"), Dry.CoreTemperature > 36.5f);
+		TestTrue(TEXT("a soaked one does not"), Wet.CoreTemperature < Dry.CoreTemperature - 0.5f);
+	}
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMadSurvivalModelTest,

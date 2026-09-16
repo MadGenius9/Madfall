@@ -13,6 +13,7 @@ UMadSurvivalAttributeSet::UMadSurvivalAttributeSet()
 	InitWater(Defaults.Water);
 	InitCoreTemperature(Defaults.CoreTemperature);
 	InitInfection(Defaults.Infection);
+	InitBreath(Defaults.Breath);
 }
 
 void UMadSurvivalAttributeSet::Clamp(const FGameplayAttribute& Attribute, float& NewValue) const
@@ -23,7 +24,8 @@ void UMadSurvivalAttributeSet::Clamp(const FGameplayAttribute& Attribute, float&
 		|| Attribute == GetMaxStaminaAttribute())        { NewValue = FMath::Max(1.0f, NewValue); }
 	else if (Attribute == GetFoodAttribute()
 		|| Attribute == GetWaterAttribute()
-		|| Attribute == GetInfectionAttribute())         { NewValue = FMath::Clamp(NewValue, 0.0f, 100.0f); }
+		|| Attribute == GetInfectionAttribute()
+		|| Attribute == GetBreathAttribute())            { NewValue = FMath::Clamp(NewValue, 0.0f, 100.0f); }
 	else if (Attribute == GetCoreTemperatureAttribute()) { NewValue = FMath::Clamp(NewValue, 25.0f, 45.0f); }
 }
 
@@ -50,6 +52,7 @@ FMadSurvivalStats UMadSurvivalAttributeSet::ToStats() const
 	Stats.Water = GetWater();
 	Stats.CoreTemperature = GetCoreTemperature();
 	Stats.Infection = GetInfection();
+	Stats.Breath = GetBreath();
 	return Stats;
 }
 
@@ -61,4 +64,5 @@ void UMadSurvivalAttributeSet::WriteStats(UAbilitySystemComponent& AbilitySystem
 	AbilitySystem.SetNumericAttributeBase(GetWaterAttribute(), Stats.Water);
 	AbilitySystem.SetNumericAttributeBase(GetCoreTemperatureAttribute(), Stats.CoreTemperature);
 	AbilitySystem.SetNumericAttributeBase(GetInfectionAttribute(), Stats.Infection);
+	AbilitySystem.SetNumericAttributeBase(GetBreathAttribute(), Stats.Breath);
 }

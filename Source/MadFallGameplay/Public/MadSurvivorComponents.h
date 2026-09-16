@@ -112,9 +112,20 @@ public:
 	bool TrySpendStamina(float Amount);
 
 	void SetSprinting(bool bInSprinting) { Environment.bSprinting = bInSprinting; }
+	bool IsSprinting() const { return Environment.bSprinting; }
 
 	/** Perk multipliers on food and water loss. */
 	void SetDrainMultipliers(float Food, float Water) { Environment.FoodDrainMultiplier = Food; Environment.WaterDrainMultiplier = Water; }
+
+	/** How much of the survivor is in water, and whether their head is under it. */
+	void SetSubmersion(float Fraction, bool bHeadUnder)
+	{
+		Environment.SubmergedFraction = FMath::Clamp(Fraction, 0.0f, 1.0f);
+		Environment.bHeadUnderwater = bHeadUnder;
+	}
+
+	float GetSubmersion() const { return Environment.SubmergedFraction; }
+	bool IsHeadUnderwater() const { return Environment.bHeadUnderwater; }
 
 	/** Sets maximum health and stamina (perks), keeping current values within the new maxima. */
 	void SetMaxVitals(float MaxHealth, float MaxStamina);

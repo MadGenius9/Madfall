@@ -62,6 +62,11 @@ public:
 	FGameplayAttributeData Infection;
 	ATTRIBUTE_ACCESSORS_BASIC(UMadSurvivalAttributeSet, Infection)
 
+	/** Air left with the head under water, 0-100. */
+	UPROPERTY(BlueprintReadOnly, Category = "MadFall|Survival")
+	FGameplayAttributeData Breath;
+	ATTRIBUTE_ACCESSORS_BASIC(UMadSurvivalAttributeSet, Breath)
+
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
 

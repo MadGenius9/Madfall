@@ -25,17 +25,37 @@ namespace MadFall::Survival
 			}
 			S.Stamina = FMath::Clamp(S.Stamina, 0.0f, S.MaxStamina);
 
+			// --- breath ---------------------------------------------------------
+			// Only the head matters: a survivor up to the chin is breathing.
+			float Drowning = 0.0f;
+			if (Env.bHeadUnderwater)
+			{
+				S.Breath = FMath::Max(0.0f, S.Breath - 100.0f / FMath::Max(T.BreathSeconds, 1.0f) * Dt);
+				if (S.Breath <= 0.0f)
+				{
+					Drowning = T.DrowningDamagePerSecond * Dt;
+				}
+			}
+			else
+			{
+				S.Breath = FMath::Min(100.0f, S.Breath + T.BreathRecoveryPerSecond * Dt);
+			}
+
 			// --- temperature ----------------------------------------------------
-			const float ComfortMin = T.ComfortMin - Env.ColdInsulation;
+			// Water is the environment when the survivor is in it: colder than
+			// the air above it, and wet clothing has all but stopped insulating.
+			const float Wetness = FMath::Clamp(Env.SubmergedFraction, 0.0f, 1.0f);
+			const float Ambient = Env.AmbientTemperature - T.WaterChillDegrees * Wetness;
+			const float ComfortMin = T.ComfortMin - Env.ColdInsulation * (1.0f - T.WetInsulationLoss * Wetness);
 			const float ComfortMax = T.ComfortMax + Env.HeatInsulation;
 
-			if (Env.AmbientTemperature < ComfortMin)
+			if (Ambient < ComfortMin)
 			{
-				S.CoreTemperature -= (ComfortMin - Env.AmbientTemperature) * T.CoreDriftPerSecondPerDegree * Dt;
+				S.CoreTemperature -= (ComfortMin - Ambient) * T.CoreDriftPerSecondPerDegree * Dt;
 			}
-			else if (Env.AmbientTemperature > ComfortMax)
+			else if (Ambient > ComfortMax)
 			{
-				S.CoreTemperature += (Env.AmbientTemperature - ComfortMax) * T.CoreDriftPerSecondPerDegree * Dt;
+				S.CoreTemperature += (Ambient - ComfortMax) * T.CoreDriftPerSecondPerDegree * Dt;
 			}
 			else
 			{
@@ -74,8 +94,9 @@ namespace MadFall::Survival
 			Result.DehydrationDamage += Dehydration;
 			Result.ExposureDamage += Exposure;
 			Result.InfectionDamage += InfectionDamage;
+			Result.DrowningDamage += Drowning;
 
-			const float Damage = Starvation + Dehydration + Exposure + InfectionDamage;
+			const float Damage = Starvation + Dehydration + Exposure + InfectionDamage + Drowning;
 			const bool bWellFed = S.Food > T.WellFedThreshold && S.Water > T.WellFedThreshold;
 			const float Healing = (bWellFed && Damage <= 0.0f && S.Infection <= T.InfectionDamageAbove) ? T.HealthRegenPerSecond * Dt : 0.0f;
 

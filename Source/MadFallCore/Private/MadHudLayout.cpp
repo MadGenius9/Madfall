@@ -28,7 +28,7 @@ float MadFall::Hud::GetScale(float ViewportWidth, float ViewportHeight, float Us
 	return FMath::Clamp(Fit, MinScale, MaxScale) * FMath::Clamp(UserScale, 0.3f, 2.0f);
 }
 
-FMadHudLayout MadFall::Hud::Build(float ViewportWidth, float ViewportHeight, float UserScale, int32 HotbarSlots, int32 JournalLines)
+FMadHudLayout MadFall::Hud::Build(float ViewportWidth, float ViewportHeight, float UserScale, int32 HotbarSlots, int32 JournalLines, int32 VitalBars)
 {
 	// The player's multiplier is a wish, not a promise: a small window at x2
 	// has no room for the panels at that size whatever order they are placed
@@ -38,16 +38,16 @@ FMadHudLayout MadFall::Hud::Build(float ViewportWidth, float ViewportHeight, flo
 	FString Problem;
 	for (float Wish = FMath::Clamp(UserScale, 0.5f, 2.0f); Wish > 0.3f; Wish *= 0.95f)
 	{
-		const FMadHudLayout Candidate = BuildAt(ViewportWidth, ViewportHeight, Wish, HotbarSlots, JournalLines);
+		const FMadHudLayout Candidate = BuildAt(ViewportWidth, ViewportHeight, Wish, HotbarSlots, JournalLines, VitalBars);
 		if (Validate(Candidate, Problem))
 		{
 			return Candidate;
 		}
 	}
-	return BuildAt(ViewportWidth, ViewportHeight, 0.3f, HotbarSlots, JournalLines);
+	return BuildAt(ViewportWidth, ViewportHeight, 0.3f, HotbarSlots, JournalLines, VitalBars);
 }
 
-FMadHudLayout MadFall::Hud::BuildAt(float ViewportWidth, float ViewportHeight, float UserScale, int32 HotbarSlots, int32 JournalLines)
+FMadHudLayout MadFall::Hud::BuildAt(float ViewportWidth, float ViewportHeight, float UserScale, int32 HotbarSlots, int32 JournalLines, int32 VitalBars)
 {
 	FMadHudLayout Layout;
 	Layout.Width = FMath::Max(ViewportWidth, 1.0f);
@@ -67,8 +67,12 @@ FMadHudLayout MadFall::Hud::BuildAt(float ViewportWidth, float ViewportHeight, f
 	Layout.Hotbar = At(W * 0.5f - HotbarW * 0.5f, H - HotbarH - 20.0f * S, HotbarW, HotbarH);
 
 	// --- vitals, bottom left, lifted over the hotbar when they would meet ------
+	// The box grows by a bar when the survivor is under water: breath is only
+	// shown while it matters, and a bar that overlapped the temperature line
+	// would be worse than one that appears.
+	Layout.VitalBars = FMath::Clamp(VitalBars, 1, 8);
 	const float VitalsW = 236.0f * S;
-	const float VitalsH = 118.0f * S;
+	const float VitalsH = (118.0f + 22.0f * (Layout.VitalBars - 4)) * S;
 	float VitalsY = H - VitalsH - 20.0f * S;
 	Layout.Vitals = At(Margin, VitalsY, VitalsW, VitalsH);
 	if (Overlaps(Layout.Vitals, Layout.Hotbar))

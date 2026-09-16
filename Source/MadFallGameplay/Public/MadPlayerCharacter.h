@@ -118,6 +118,7 @@ public:
 
 	/** True while holding onto a ladder. */
 	bool IsClimbing() const { return bClimbing; }
+	bool IsSwimming() const { return bSwimming; }
 
 	/** Takes the ingredients now and queues the job; the output arrives after the recipe's craft time. */
 	EMadCraftResult CraftRecipe(FName RecipeId, int32 Times = 1);
@@ -237,7 +238,18 @@ public:
 	void TravelToVoxel(const FIntVector& Voxel);
 
 	/** Holds movement input along a world direction for Seconds (scripted runs). */
-	void WalkFor(float Seconds, const FVector& Direction) { ScriptedWalkSeconds = Seconds; ScriptedWalkDirection = Direction.GetSafeNormal2D(); }
+	/**
+	 * Walks (or swims) along a world direction for a while. A direction with a
+	 * Z component dives when the survivor is in water, which is how a scripted
+	 * scene or the CI gate holds someone under.
+	 */
+	void WalkFor(float Seconds, const FVector& Direction)
+	{
+		ScriptedWalkSeconds = Seconds;
+		const FVector Flat = Direction.GetSafeNormal2D();
+		ScriptedWalkDirection = Flat.IsNearlyZero() ? FVector(0.0, 0.0, 0.0) : Flat;
+		ScriptedDive = FMath::Clamp(static_cast<float>(Direction.GetSafeNormal().Z), -1.0f, 1.0f);
+	}
 
 	/** The voxel the survivor's feet are in. */
 	FIntVector GetFeetVoxel() const;
@@ -405,6 +417,26 @@ private:
 	float ClimbInput = 0.0f;
 	bool bClimbing = false;
 	void TickClimbing();
+
+	/**
+	 * Water: float, swim where you look, and drown if you stay under.
+	 * TickSwimming owns the movement mode while the survivor is in deep water,
+	 * so it runs before TickClimbing, which would otherwise treat the lake as a
+	 * ladder (water is climbable so a survivor can get out of one).
+	 */
+	void TickSwimming(float DeltaSeconds);
+
+	/**
+	 * How much of the capsule is under water, and the Z of the water's top and
+	 * of its floor (the bottom of the lowest water voxel around the body).
+	 */
+	float MeasureSubmersion(float& OutWaterTopZ, float& OutWaterBottomZ) const;
+
+	bool bSwimming = false;
+	/** Up (jump) or down (sprint) while swimming, consumed by TickSwimming. */
+	float DiveInput = 0.0f;
+	/** The Z of a scripted walk's direction, so a script can dive. */
+	float ScriptedDive = 0.0f;
 
 	TOptional<FIntVector> BedVoxel;
 

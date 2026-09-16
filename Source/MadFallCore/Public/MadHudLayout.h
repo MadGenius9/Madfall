@@ -32,6 +32,9 @@ struct MADFALLCORE_API FMadHudLayout
 	/** Design pixels to screen pixels. */
 	float Scale = 1.0f;
 
+	/** How many bars the vitals box was sized for (breath appears only under water). */
+	int32 VitalBars = 4;
+
 	/** Always-on elements. */
 	FBox2D Clock = FBox2D(ForceInit);
 	FBox2D Compass = FBox2D(ForceInit);
@@ -93,7 +96,7 @@ namespace MadFall::Hud
 	 * is how many text rows the quest journal needs (it grows with the quests).
 	 */
 	MADFALLCORE_API FMadHudLayout Build(float ViewportWidth, float ViewportHeight, float UserScale = 1.0f,
-		int32 HotbarSlots = 9, int32 JournalLines = 6);
+		int32 HotbarSlots = 9, int32 JournalLines = 6, int32 VitalBars = 4);
 
 	/**
 	 * One attempt at a layout, at exactly this multiplier. Build() calls it,
@@ -101,7 +104,7 @@ namespace MadFall::Hud
 	 * test uses to see an invalid layout on purpose.
 	 */
 	MADFALLCORE_API FMadHudLayout BuildAt(float ViewportWidth, float ViewportHeight, float UserScale,
-		int32 HotbarSlots = 9, int32 JournalLines = 6);
+		int32 HotbarSlots = 9, int32 JournalLines = 6, int32 VitalBars = 4);
 
 	/**
 	 * True when every box is on screen and no two boxes that are drawn at the

@@ -49,6 +49,14 @@ struct MADFALLMESHER_API FMadMeshSection
 
 	static constexpr uint8 CubicFaceFlag = 0x10;
 
+	/**
+	 * False for a section a body passes through: water, and anything else a
+	 * block flags as liquid. Water used to collide like rock, so a survivor
+	 * walked on lakes and a fall into one killed them; it is drawn, it is
+	 * mined, it fills a bottle, and nothing stands on it.
+	 */
+	bool bCollides = true;
+
 	TArray<uint32> Indices;
 
 	int32 NumVertices() const { return Positions.Num(); }

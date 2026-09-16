@@ -40,6 +40,7 @@
 #include "MadStructuralSubsystem.h"
 #include "MadSurvivalAttributeSet.h"
 #include "MadSurvivorComponents.h"
+#include "MadSwim.h"
 #include "MadVoxelWorldSubsystem.h"
 #include "MadWorldClockSubsystem.h"
 #include "MadViewModel.h"
@@ -50,6 +51,10 @@
 
 namespace
 {
+	TAutoConsoleVariable<bool> CVarSwimTrace(
+		TEXT("mad.player.SwimTrace"), false,
+		TEXT("Logs the swimming solver's numbers each frame."));
+
 	constexpr float BareHandsUseSeconds = 0.5f;
 	constexpr float BareHandsStamina = 1.0f;
 	constexpr float SprintSpeed = 720.0f;
@@ -416,7 +421,9 @@ void AMadPlayerCharacter::Tick(float DeltaSeconds)
 		ScriptedWalkSeconds -= DeltaSeconds;
 		AddMovementInput(ScriptedWalkDirection, 1.0f);
 		ClimbInput = 1.0f;
+		DiveInput = ScriptedDive;
 	}
+	TickSwimming(DeltaSeconds);
 	TickClimbing();
 	TickSounds(DeltaSeconds);
 
@@ -501,6 +508,179 @@ void AMadPlayerCharacter::TickClimbing()
 			Movement->Velocity.Z = FMath::Max(Movement->Velocity.Z, 0.0f) + (Input > 0.0f ? 200.0f : 0.0f);
 			Movement->SetMovementMode(MOVE_Falling);
 		}
+	}
+}
+
+float AMadPlayerCharacter::MeasureSubmersion(float& OutWaterTopZ, float& OutWaterBottomZ) const
+{
+	OutWaterTopZ = -FLT_MAX;
+	OutWaterBottomZ = -FLT_MAX;
+	const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld() ? GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (VoxelWorld == nullptr || Capsule == nullptr)
+	{
+		return 0.0f;
+	}
+
+	const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	const float FeetZ = static_cast<float>(GetActorLocation().Z) - HalfHeight;
+	const float HeadZ = FeetZ + 2.0f * HalfHeight;
+
+	const FIntVector Feet = GetFeetVoxel();
+	auto IsLiquid = [VoxelWorld](const FIntVector& V)
+	{
+		const FMadBlockDefinitionData* Def = UMadVoxelWorldSubsystem::GetBlockRegistry().FindDefinition(
+			VoxelWorld->GetVoxel(V.X, V.Y, V.Z).BlockTypeID);
+		return Def != nullptr && Def->bLiquid;
+	};
+
+	// Up from the first water at or above the feet: the top is the last liquid
+	// voxel of that unbroken column, so a survivor in a flooded cellar floats to
+	// its ceiling rather than to the lake's surface two chunks away.
+	//
+	// Starting at the feet is not enough: someone standing on the seabed has
+	// sand under their feet and ten voxels of water over their head, and a scan
+	// from the feet stopped at once and called that dry land.
+	// The lowest water anywhere the body spans, not just at the feet: standing
+	// on the seabed puts the feet in sand, and a capsule pressed into the sand
+	// puts the feet voxel below that again, which read as dry land one frame
+	// and ten voxels of water the next.
+	const int32 HeadVoxel = FMath::FloorToInt32(HeadZ / MadFall::VoxelSizeUU);
+	int32 Start = MAX_int32;
+	for (int32 Z = Feet.Z; Z <= HeadVoxel; ++Z)
+	{
+		if (IsLiquid(FIntVector(Feet.X, Feet.Y, Z)))
+		{
+			Start = Z;
+			break;
+		}
+	}
+	if (Start == MAX_int32)
+	{
+		return 0.0f;
+	}
+	int32 Top = Start;
+	for (int32 Z = Start; Z < Start + 32; ++Z)
+	{
+		if (!IsLiquid(FIntVector(Feet.X, Feet.Y, Z)))
+		{
+			break;
+		}
+		Top = Z;
+	}
+	OutWaterTopZ = static_cast<float>(Top + 1) * MadFall::VoxelSizeUU;
+	OutWaterBottomZ = static_cast<float>(Start) * MadFall::VoxelSizeUU;
+	return MadFall::Swim::SubmergedFraction(FeetZ, HeadZ, OutWaterTopZ);
+}
+
+void AMadPlayerCharacter::TickSwimming(float DeltaSeconds)
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (Movement == nullptr)
+	{
+		return;
+	}
+
+	const float Dive = DiveInput;
+	DiveInput = 0.0f;
+
+	float WaterTopZ = 0.0f;
+	float WaterBottomZ = 0.0f;
+	const float Fraction = MeasureSubmersion(WaterTopZ, WaterBottomZ);
+	const FMadSwimTuning Tuning;
+	const float EyeZ = static_cast<float>(GetActorLocation().Z) + BaseEyeHeight;
+	const bool bSprint = Survival->IsSprinting();
+	const FMadSwimState State = MadFall::Swim::Evaluate(Fraction, EyeZ, WaterTopZ, Dive, bSwimming, bSprint, Tuning);
+
+	Survival->SetSubmersion(Fraction, State.bSwimming && State.bHeadUnder);
+
+	// Under the surface the world goes blue and the edges close in. No asset and
+	// no depth fade - a post-process material would do it properly - but without
+	// something the only sign a survivor is underwater is the breath bar, and
+	// the water's own surface seen from beneath is a dark plane that reads as a
+	// bug rather than as a ceiling of water.
+	if (Camera != nullptr)
+	{
+		const bool bEyesUnder = State.bSwimming && State.bHeadUnder;
+		FPostProcessSettings& Post = Camera->PostProcessSettings;
+		Post.bOverride_ColorGain = bEyesUnder;
+		Post.bOverride_VignetteIntensity = bEyesUnder;
+		Post.bOverride_SceneFringeIntensity = bEyesUnder;
+		if (bEyesUnder)
+		{
+			Post.ColorGain = FVector4(0.34, 0.62, 0.95, 1.0);
+			Post.VignetteIntensity = 0.85f;
+			Post.SceneFringeIntensity = 2.0f;
+		}
+	}
+
+#if !UE_BUILD_SHIPPING
+	static const IConsoleVariable* Trace = IConsoleManager::Get().FindConsoleVariable(TEXT("mad.player.SwimTrace"));
+	if (Trace && Trace->GetBool())
+	{
+		UE_LOG(LogMadFallGameplay, Display, TEXT("MADSWIM frac=%.2f eye=%.0f top=%.0f dive=%.2f buoy=%.0f vz=%.0f mode=%d"),
+			Fraction, EyeZ, WaterTopZ, Dive, State.BuoyancyVelocity, Movement->Velocity.Z, static_cast<int32>(Movement->MovementMode));
+	}
+#endif
+
+	if (State.bSwimming)
+	{
+		if (!bSwimming)
+		{
+			// Entering: the fall stops in the water rather than in the mud at
+			// the bottom of it, which is also why a dive does no fall damage.
+			Movement->Velocity.Z = FMath::Max(Movement->Velocity.Z, -200.0f);
+			if (UMadAudioSubsystem* Audio = GetWorld()->GetSubsystem<UMadAudioSubsystem>())
+			{
+				Audio->PlayForMaterial(EMadSound::Step, FName(TEXT("madfall:water")), GetActorLocation());
+			}
+			PushMessage(TEXT("Swimming - watch your breath."));
+		}
+		bSwimming = true;
+		bClimbing = false;
+		ClimbInput = 0.0f;
+
+		// Flying, like the ladder: gravity is the water's job here, not the
+		// movement component's.
+		if (Movement->MovementMode != MOVE_Flying)
+		{
+			Movement->SetMovementMode(MOVE_Flying);
+		}
+		Movement->MaxFlySpeed = WalkSpeed * State.SpeedMultiplier;
+		Movement->BrakingDecelerationFlying = WalkSpeed * Tuning.Drag;
+		// Set, not eased: flying braking is stronger than any ramp toward the
+		// target would be, so an interpolated velocity was cancelled every frame
+		// and the survivor hung motionless at whatever depth they entered.
+		// Buoyancy is already a speed with the spring inside it.
+		float Vertical = State.BuoyancyVelocity;
+
+		// A swimmer stops at the bed rather than swimming into it. Terrain
+		// collision alone let a hard dive push the capsule a metre into the
+		// sand, where the body was no longer in water at all: the survivor read
+		// as standing on dry land at the bottom of the sea, and their breath
+		// came back while they were under it.
+		const float FeetZ = static_cast<float>(GetActorLocation().Z) - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+		if (Vertical < 0.0f && FeetZ <= WaterBottomZ + 4.0f)
+		{
+			Vertical = 0.0f;
+		}
+		Movement->Velocity.Z = Vertical;
+	}
+	else if (bSwimming)
+	{
+		bSwimming = false;
+		if (Movement->MovementMode == MOVE_Flying)
+		{
+			// A push out of the water, so climbing out onto the bank works.
+			Movement->Velocity.Z = FMath::Max(static_cast<float>(Movement->Velocity.Z), 120.0f);
+			Movement->SetMovementMode(MOVE_Falling);
+		}
+		Movement->MaxWalkSpeed = bSprint ? SprintSpeed : WalkSpeed;
+	}
+	else if (Fraction > 0.0f)
+	{
+		// Wading: slower, but still walking.
+		Movement->MaxWalkSpeed = (bSprint ? SprintSpeed : WalkSpeed) * State.SpeedMultiplier;
 	}
 }
 
@@ -1704,6 +1884,9 @@ FString AMadPlayerCharacter::DescribeStatus() const
 		Level, Experience, GetExperienceForNextLevel(), GetGameStage());
 	Out.Appendf(TEXT("  health %.1f/%.0f  stamina %.1f/%.0f  food %.1f  water %.1f  core %.2f C  infection %.1f  ambient %.1f C\n"),
 		S.Health, S.MaxHealth, S.Stamina, S.MaxStamina, S.Food, S.Water, S.CoreTemperature, S.Infection, Survival->GetAmbientTemperature());
+	Out.Appendf(TEXT("  breath %.0f  %s (submerged %.0f%%)\n"), S.Breath,
+		bSwimming ? (Survival->IsHeadUnderwater() ? TEXT("underwater") : TEXT("swimming")) : TEXT("on land"),
+		Survival->GetSubmersion() * 100.0f);
 	Out.Appendf(TEXT("  worn: armor %.0f%%  cold +%.0f C  heat +%.0f C\n"),
 		Survival->GetArmor() * 100.0f, Survival->GetColdInsulation(), Survival->GetHeatInsulation());
 	if (bHasTarget)
@@ -1879,6 +2062,17 @@ void AMadPlayerCharacter::OnMove(const FInputActionValue& Value)
 	}
 	const FVector2D Axis = Value.Get<FVector2D>();
 	ClimbInput = static_cast<float>(Axis.Y);
+	if (bSwimming)
+	{
+		// A swimmer goes where they look: pitch counts, so looking down and
+		// pushing forward dives. On land the walk stays on the ground plane.
+		const FVector Forward = FRotationMatrix(GetControlRotation()).GetUnitAxis(EAxis::X);
+		const FRotator Yaw(0.0, GetControlRotation().Yaw, 0.0);
+		AddMovementInput(Forward, Axis.Y);
+		AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y), Axis.X);
+		DiveInput = FMath::Clamp(DiveInput + static_cast<float>(Forward.Z) * static_cast<float>(Axis.Y), -1.0f, 1.0f);
+		return;
+	}
 	const FRotator Yaw(0.0, GetControlRotation().Yaw, 0.0);
 	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::X), Axis.Y);
 	AddMovementInput(FRotationMatrix(Yaw).GetUnitAxis(EAxis::Y), Axis.X);

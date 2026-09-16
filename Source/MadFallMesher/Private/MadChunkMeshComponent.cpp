@@ -39,7 +39,7 @@ void UMadChunkMeshComponent::Prepare(FMadChunkMesh& Mesh)
 	{
 		const FMadMeshSection& Source = Mesh.Sections[SectionIndex];
 		FProcMeshSection& Ready = Prepared->Sections[SectionIndex];
-		Ready.bEnableCollision = true;
+		Ready.bEnableCollision = Source.bCollides;
 		Ready.bSectionVisible = true;
 		Ready.ProcVertexBuffer.SetNum(Source.NumVertices());
 		for (int32 Index = 0; Index < Source.NumVertices(); ++Index)

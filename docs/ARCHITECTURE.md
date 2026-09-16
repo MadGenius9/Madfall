@@ -1514,6 +1514,61 @@ checks that natural spawning places a herd. The bow shot turns off grazing
 strolls first (`mad.animals.Stroll 0`): a stag that wandered two voxels between
 the aim and the arrow's arrival failed the gate on a correct shot.
 
+### Water
+
+Water was a block a survivor stood on. It is flagged climbable so a swimmer can
+get out of a lake, which meant the ladder code caught it and the survivor hung
+motionless inside the water; and because *every* mesh section carried collision,
+the surface of a lake was a floor. Under it, nothing: the isosurface mesher
+treated water as solid, so no surface was generated between a lake and its bed
+and the seabed had no collision at all. None of that showed while nobody could
+get under the surface.
+
+- **Two isosurfaces, not one** (`EIsoPass`, `MadChunkMesher.cpp`). The ground
+  pass treats liquid as air, so a seabed is a surface like any shoreline and a
+  diver can stand on it, mine it and build on it. The water pass treats solid
+  ground as *inside* rather than as air, so the water's own surface forms
+  against air only and no hidden faces are built where a lake meets its bed. The
+  second pass runs only for chunks that hold liquid, and its sections are marked
+  `bCollides = false` - water is drawn, mined and filled from, and nothing
+  stands on it.
+- **Swimming** (`MadFall::Swim`, pure and tested). How much of the capsule is
+  under the water's top decides wading from swimming, with two thresholds so a
+  survivor standing where the water is exactly that deep does not flicker
+  between them. Buoyancy is a spring toward the eyes floating a little above
+  the surface: from depth a body rises at `RiseSpeed`, at the top it holds, and
+  a swimmer driving down beats it. Movement is `MOVE_Flying` (as the ladder
+  does), speed 0.55 of walking, and a swimmer goes where they *look* - pitch
+  counts in water, so looking down and pushing forward dives.
+  - The buoyancy velocity is *set*, not eased toward: flying braking is stronger
+    than any ramp, so an interpolated velocity was cancelled every frame and the
+    survivor hung at whatever depth they entered.
+  - A swimmer stops at the bed rather than swimming into it. Terrain collision
+    alone let a hard dive push the capsule a metre into the sand, where the body
+    was not in water at all: the survivor read as standing on dry land at the
+    bottom of the sea and their breath came back while they were under it.
+- **Breath and drowning.** `FMadSurvivalStats::Breath` is 40 seconds of air with
+  the head under, refilled at the surface in about three (a gasp, not a rest);
+  at zero it costs 6 health a second. Only the head matters - a survivor up to
+  the chin is breathing. Breath is a GAS attribute like the other vitals: while
+  it was not, the model drained it and the attribute write put it back at 100
+  every tick.
+- **Cold water.** Submersion shifts the ambient temperature down by up to 14 C
+  and takes 80% of clothing's cold protection away, so a winter swim is a
+  hypothermia clock rather than a shortcut. The HUD shows breath as a fifth
+  vital bar, and only while it is not full; under the surface the view goes blue
+  with a heavy vignette.
+- Tested: `MadFall.Survival.Swimming` (submersion, buoyancy from depth, at rest
+  and diving, the wade/swim hysteresis band, and what counts as head-under),
+  `MadFall.Survival.Breath` (a full breath lasts its time, then drowning damage;
+  surfacing refills it; a soaked coat does not keep a survivor warm), and the CI
+  gate "water", which swims in the ocean, dives until it drowns, surfaces, and
+  drops a survivor twenty voxels into the sea to prove water breaks a fall.
+- Known gaps: the water surface seen from below is a dark plane (it is a
+  one-sided surface, and there is no underwater fog material), zombies and
+  animals walk along the bottom rather than swimming, and there is no current,
+  no waves and no swimming animation.
+
 ### Clothing
 
 The survival model always had a comfort band that insulation shifts. Clothing
