@@ -10,7 +10,7 @@
 			"continentalness": [0.42, 1.0],
 			"weight": 0.0
 		},
-		"terrain": { "base_height": 20.0, "height_variation": 8.0, "roughness": 0.0075, "ridging": 0.0 },
+		"terrain": { "base_height": 20.0, "height_variation": 10.0, "roughness": 0.0075, "ridging": 0.0 },
 		"blocks": {
 			"surface": "madfall:grass",
 			"subsurface": "madfall:dirt",
@@ -74,7 +74,7 @@
 			"continentalness": [0.44, 0.80],
 			"weight": 1.0
 		},
-		"terrain": { "base_height": 20.0, "height_variation": 5.0, "roughness": 0.0065, "ridging": 0.0 },
+		"terrain": { "base_height": 20.0, "height_variation": 6.5, "roughness": 0.0065, "ridging": 0.0 },
 		"scatter": [
 			{ "feature": "tree", "block": "madfall:oak_log", "leaves": "madfall:oak_leaves", "chance": 0.002, "height": [4, 6], "radius": [2.0, 2.5] },
 			{ "feature": "plant", "block": "madfall:berry_bush", "chance": 0.004 },
@@ -94,7 +94,7 @@
 			"continentalness": [0.44, 0.85],
 			"weight": 1.0
 		},
-		"terrain": { "base_height": 23.0, "height_variation": 9.0, "roughness": 0.0090, "ridging": 0.15 },
+		"terrain": { "base_height": 24.0, "height_variation": 13.0, "roughness": 0.0090, "ridging": 0.30 },
 		"scatter": [
 			{ "feature": "tree", "block": "madfall:oak_log", "leaves": "madfall:oak_leaves", "chance": 0.028, "height": [4, 7], "radius": [2.0, 3.0] },
 			{ "feature": "plant", "block": "madfall:berry_bush", "chance": 0.006 },

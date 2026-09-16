@@ -20,7 +20,7 @@ import unreal
 PROJECT = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
 SOURCE = os.path.join(PROJECT, "SourceArt", "animals", "prepared")
 DEST = "/Game/Animals"
-ANIMALS = ["Deer", "Wolf"]
+ANIMALS = ["Deer", "Wolf", "Fox", "Stag"]
 
 
 def main():

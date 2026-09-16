@@ -1474,10 +1474,10 @@ worse than zombies alone:
   collision lags a fresh edit and the voxel data never does. Shots are silent,
   so stalking works, and arrows that hit the world are sometimes recoverable.
 
-The "animals" CI gate clubs a boar that then gores the survivor, butchers it
-for meat and hide, watches a deer bolt, shoots a second boar with a bow, and
+The "animals" CI gate clubs a stag that then gores the survivor, butchers it
+for meat and hide, watches a deer bolt, shoots a second stag with a bow, and
 checks that natural spawning places a herd. The bow shot turns off grazing
-strolls first (`mad.animals.Stroll 0`): a boar that wandered two voxels between
+strolls first (`mad.animals.Stroll 0`): a stag that wandered two voxels between
 the aim and the arrow's arrival failed the gate on a correct shot.
 
 ### Clothing
@@ -1982,10 +1982,13 @@ Console (used by the survival gate): `mad.player.store <item>`,
    Tested: `MadFall.AI.CharacterAnim` (blend weights and rates, the reach
    direction through a swing, and the installed sequences when present).
 
-   **The deer and the wolf are animated models too** (Quaternius, Ultimate
-   Animated Animal Pack, CC0, via Poly Pizza; no CC0 animated rabbit or boar
-   was found that was not a cartoon character or a block toy, so those two keep
-   their proportioned figures). Definitions name the model and a clip per role
+   **Every animal is an animated model** (Quaternius, Ultimate Animated Animal
+   Pack, CC0, via Poly Pizza). The pack has no rabbit or boar - the only CC0
+   animated ones anywhere were a cartoon character and a block toy - so the
+   rabbit became a **fox** (small, skittish, in every land biome, which the
+   wildlife-coverage test needs) and the boar a **stag** (defensive, antlered,
+   in forest, plains and highlands), with their loot, names and quest text
+   renamed to match. Definitions name the model and a clip per role
    in `appearance.model` (`FMadAnimalModel`), and `UMadQuadrupedRigComponent`
    drives them with the same `UMadCharacterAnimInstance` as the mannequins,
    given the model's cycle speeds, a whole-body attack clip blended through
@@ -1998,6 +2001,15 @@ Console (used by the survival gate): `mad.player.store <item>`,
      its tail. The script bakes both into joint translations and rotations,
      their keys, vertices, normals and inverse bind matrices, and the import
      keeps one copy of each clip (every clip came in twice).
+     It also **skins rigid child meshes into the body**: the stag's antlers are
+     an unskinned mesh parented to the Head node, which the importer turns into
+     its own static mesh - the stag came in bald. A vertex of such a child lands
+     at `head * L * v` (L being the local chain down from the bone), and a
+     vertex weighted wholly to that bone lands at `head * IBM * p`, so writing
+     `p = IBM^-1 * L * v` into a new primitive of the skinned mesh, weight 1 to
+     that bone, makes the antlers part of the skin and follow the head. The
+     child mesh is then deleted from the file, because the importer walks the
+     mesh list and would otherwise still emit the stray static mesh.
    - `FitModel` scales the model uniformly to the figure's height and lifts its
      lowest point to the ground, so the capsule, sized from the same
      proportions, still matches.
@@ -2242,11 +2254,23 @@ Console (used by the survival gate): `mad.player.store <item>`,
    mild once the ground had photo textures. The shipped biomes now have more
    relief, all in data: highlands base 40 → 46, variation 30 → 40, ridging
    0.85 → 0.9; tundra variation 6 → 10 and ridging 0.1 → 0.25; desert variation
-   7 → 9. Plains, forest and base land were retuned too and put back: spawn is
-   in plains, and the gameplay, base, scripting and animal CI scenes are built
-   at fixed coordinates beside it - a voxel of new relief there put a placed
-   block where a scripted walk went, and six checks failed. Hillier lowlands
-   would first need those scenes to measure the ground rather than assume it.
+   7 → 9; forest variation 9 → 13 with ridging 0.15 → 0.3; plains 5 → 6.5 and
+   base land 8 → 10.
+   - **The CI scenes had to stop assuming the ground.** The lowland retune broke
+     six checks across four gates: the scenes wrote blocks at absolute voxels
+     beside spawn ("mad.voxel.set 2 -6 22 madfall:ladder"), so a voxel of new
+     relief put a placed block where a scripted walk went. A scene now calls
+     `mad.scene.anchor` (the survivor's spawn voxel), `mad.scene.pad` (a flat
+     square of stone with clear air above) and places everything with
+     `mad.scene.set`, `mad.scene.box`, `mad.scene.aim` and `mad.scene.tp`,
+     relative to that anchor - not to the survivor, who moves while a scene is
+     built. 33 placements, 7 aims and 5 teleports converted across seven scenes.
+     Two follow-ons the pad itself caused: collision for new ground cooks a few
+     frames behind it, so each scene waits two seconds after its pad before
+     spawning or interacting (a spitter spawn failed on ground that was not
+     there yet); and on flat ground a grazing stag drifts out of club reach, so
+     the animal scene keeps swinging and samples a startled deer a second after
+     it spawns, before it settles back to grazing.
    The span is now −9 … 72 over the terrain test's 4 km, peaks kept under the
    ~95 voxels the vertical streaming radius loads above a player at ground
    level (taller would need more chunk layers, a streaming and meshing cost).

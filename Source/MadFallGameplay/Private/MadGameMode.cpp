@@ -1424,6 +1424,146 @@ namespace
 			if (P && ParseVoxel(Args, 0, V)) { P->TeleportToVoxel(V); }
 		}));
 
+	/**
+	 * Scenes built around an anchor rather than at fixed world coordinates.
+	 *
+	 * WHY: the CI scenes used to write blocks at absolute voxels a few steps from
+	 * spawn ("mad.voxel.set 2 -6 22 madfall:ladder"), which assumed the ground
+	 * there stood at a particular height. Retuning the lowland biomes moved it by
+	 * a voxel and six checks failed - a placed block ended up where a scripted
+	 * walk went. A scene now anchors itself where the survivor spawned, flattens
+	 * a pad, and places everything relative to that anchor, so it reads the same
+	 * whatever the generator does. The anchor is deliberately not the survivor's
+	 * current position: scenes move them about while building.
+	 */
+	FIntVector GSceneAnchor = FIntVector::ZeroValue;
+	bool bGSceneAnchored = false;
+
+	FIntVector SceneAnchor(AMadPlayerCharacter* Player)
+	{
+		if (!bGSceneAnchored && Player != nullptr)
+		{
+			GSceneAnchor = Player->GetFeetVoxel();
+			bGSceneAnchored = true;
+		}
+		return GSceneAnchor;
+	}
+
+	FAutoConsoleCommandWithWorld CmdSceneAnchor(
+		TEXT("mad.scene.anchor"),
+		TEXT("Anchors scripted scenes at the voxel the survivor stands in; mad.scene.set and mad.scene.tp are relative to it."),
+		FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			if (P == nullptr)
+			{
+				return;
+			}
+			bGSceneAnchored = false;
+			const FIntVector Anchor = SceneAnchor(P);
+			UE_LOG(LogMadFallGameplay, Display, TEXT("Scene anchored at X=%d Y=%d Z=%d."), Anchor.X, Anchor.Y, Anchor.Z);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdSceneSet(
+		TEXT("mad.scene.set"),
+		TEXT("mad.scene.set <dx> <dy> <dz> <blockId> [density] [orientation] [variant] - mad.voxel.set, offset from the scene anchor."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			FIntVector Delta;
+			if (P == nullptr || !ParseVoxel(Args, 0, Delta) || Args.Num() < 4)
+			{
+				UE_LOG(LogMadFallGameplay, Error, TEXT("Usage: mad.scene.set <dx> <dy> <dz> <blockId> [density] [orientation] [variant]"));
+				return;
+			}
+			const FIntVector At = SceneAnchor(P) + Delta;
+			FString Command = FString::Printf(TEXT("mad.voxel.set %d %d %d"), At.X, At.Y, At.Z);
+			for (int32 Index = 3; Index < Args.Num(); ++Index)
+			{
+				Command += TEXT(" ") + Args[Index];
+			}
+			GEngine->Exec(World, *Command);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdSceneAim(
+		TEXT("mad.scene.aim"),
+		TEXT("mad.scene.aim <dx> <dy> <dz> - looks at a voxel offset from the scene anchor."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			FIntVector Delta;
+			if (P != nullptr && ParseVoxel(Args, 0, Delta))
+			{
+				const FIntVector At = SceneAnchor(P) + Delta;
+				GEngine->Exec(World, *FString::Printf(TEXT("mad.player.aim %d %d %d"), At.X, At.Y, At.Z));
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdSceneBox(
+		TEXT("mad.scene.box"),
+		TEXT("mad.scene.box <blockId> <dx0> <dy0> <dz0> <dx1> <dy1> <dz1> [hollow] - mad.voxel.box, offset from the scene anchor."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			FIntVector From, To;
+			if (P == nullptr || Args.Num() < 7 || !ParseVoxel(Args, 1, From) || !ParseVoxel(Args, 4, To))
+			{
+				UE_LOG(LogMadFallGameplay, Error, TEXT("Usage: mad.scene.box <blockId> <dx0> <dy0> <dz0> <dx1> <dy1> <dz1> [hollow]"));
+				return;
+			}
+			const FIntVector Anchor = SceneAnchor(P);
+			From += Anchor;
+			To += Anchor;
+			FString Command = FString::Printf(TEXT("mad.voxel.box %s %d %d %d %d %d %d"), *Args[0], From.X, From.Y, From.Z, To.X, To.Y, To.Z);
+			for (int32 Index = 7; Index < Args.Num(); ++Index)
+			{
+				Command += TEXT(" ") + Args[Index];
+			}
+			GEngine->Exec(World, *Command);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdSceneTeleport(
+		TEXT("mad.scene.tp"),
+		TEXT("mad.scene.tp <dx> <dy> <dz> - teleports that many voxels from the scene anchor."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			FIntVector Delta;
+			if (P != nullptr && ParseVoxel(Args, 0, Delta))
+			{
+				P->TeleportToVoxel(SceneAnchor(P) + Delta);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdScenePad(
+		TEXT("mad.scene.pad"),
+		TEXT("mad.scene.pad [radius=10] [headroom=8] - flattens a square of ground around the scene anchor: stone at the anchor's floor, air above."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			if (P == nullptr)
+			{
+				return;
+			}
+			int32 Radius = 10;
+			int32 Headroom = 8;
+			if (Args.Num() > 0) { FDefaultValueHelper::ParseInt(Args[0], Radius); }
+			if (Args.Num() > 1) { FDefaultValueHelper::ParseInt(Args[1], Headroom); }
+			Radius = FMath::Clamp(Radius, 1, 32);
+			Headroom = FMath::Clamp(Headroom, 1, 32);
+
+			// The floor goes one voxel below the anchor, so the survivor stands on
+			// the pad rather than in it, and the air above clears whatever hillside
+			// or tree was there.
+			const FIntVector Anchor = SceneAnchor(P);
+			GEngine->Exec(World, *FString::Printf(TEXT("mad.voxel.box madfall:air %d %d %d %d %d %d"),
+				Anchor.X - Radius, Anchor.Y - Radius, Anchor.Z, Anchor.X + Radius, Anchor.Y + Radius, Anchor.Z + Headroom - 1));
+			GEngine->Exec(World, *FString::Printf(TEXT("mad.voxel.box madfall:stone %d %d %d %d %d %d"),
+				Anchor.X - Radius, Anchor.Y - Radius, Anchor.Z - 1, Anchor.X + Radius, Anchor.Y + Radius, Anchor.Z - 1));
+			UE_LOG(LogMadFallGameplay, Display, TEXT("Scene pad of %d x %d voxels with its floor at Z=%d, %d clear above."),
+				Radius * 2 + 1, Radius * 2 + 1, Anchor.Z - 1, Headroom);
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerWalk(
 		TEXT("mad.player.walk"), TEXT("mad.player.walk <seconds> [dx dy] - walks for a while along a world direction (default +X)."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)

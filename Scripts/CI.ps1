@@ -470,6 +470,11 @@ else {
     }
 
     $playScript = @(
+        'mad.scene.anchor'
+        'mad.scene.pad 12'
+        # Collision for the new ground cooks a few frames behind it: spawning or
+        # interacting in the same frame fails on ground that is not there yet.
+        'wait 2'
         'mad.player.xp 300'
         'mad.player.perk madfall:miner'
         'mad.player.craft madfall:stone_pickaxe'
@@ -530,7 +535,7 @@ else {
         'mad.debris.RubbleKeepOneIn 3'
         # Back where they spawned: the death backpack must drop at the respawn
         # point, or the reload session never picks the pickaxe back up.
-        'mad.player.tp 0 0 22'
+        'mad.scene.tp 0 0 0'
         'wait 10'
         'wait 1'
         'mad.player.damage 1000'
@@ -770,7 +775,7 @@ else {
     # walls re-planning and never got in.
     $breachSpawns = ('10 0', '-10 0', '0 10', '0 -10', '10 6', '-10 -6', '6 10', '-6 -10', '9 9', '-9 9', '9 -9', '-9 -9' |
         ForEach-Object { "mad.ai.spawn madfall:zombie_civilian $_ 1" }) -join '; '
-    $breachScript = "mad.ai.Sleepers 0; wait 3; mad.voxel.box madfall:concrete_frame -6 -6 21 6 6 26 hollow; wait 2; $breachSpawns; wait 100; mad.ai.status; quit"
+    $breachScript = "mad.ai.Sleepers 0; mad.scene.anchor; mad.scene.pad 14; wait 3; mad.scene.box madfall:concrete_frame -6 -6 -1 6 6 4 hollow; wait 2; $breachSpawns; wait 100; mad.ai.status; quit"
     $breachLog = Join-Path $LogDir 'horde-breach.log'
     $breachProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $breachLog `
         -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes', '-MadWorld=CIBreach',
@@ -907,6 +912,11 @@ if (-not $SkipTests) {
     }
 
     $baseScript = @(
+        'mad.scene.anchor'
+        'mad.scene.pad 14'
+        # Collision for the new ground cooks a few frames behind it: spawning or
+        # interacting in the same frame fails on ground that is not there yet.
+        'wait 2'
         'mad.player.give madfall:fur_coat 1'
         'mad.player.hold madfall:fur_coat'
         'mad.player.place'
@@ -920,39 +930,39 @@ if (-not $SkipTests) {
         'mad.player.aimrel -3 -3 0'
         'mad.player.interact'
         'mad.player.interact'
-        'mad.voxel.set 0 2 23 madfall:water'
+        'mad.scene.set 0 2 1 madfall:water'
         'mad.player.give madfall:empty_bottle 1'
         'mad.player.hold madfall:empty_bottle'
-        'mad.player.aim 0 2 23'
+        'mad.scene.aim 0 2 1'
         'mad.player.place'
-        'mad.voxel.set -1 -2 22 madfall:campfire'
+        'mad.scene.set -1 -2 0 madfall:campfire'
         'wait 1'
         'mad.player.craft madfall:water_bottle_boiled'
         'wait 8'
         'mad.player.hold madfall:water_bottle'
         'mad.player.place'
         'mad.player.status'
-        'mad.voxel.set 3 -6 22 madfall:stone'
-        'mad.voxel.set 3 -6 23 madfall:stone'
-        'mad.voxel.set 3 -6 24 madfall:stone'
-        'mad.voxel.set 3 -6 25 madfall:stone'
-        'mad.voxel.set 3 -6 26 madfall:stone'
-        'mad.voxel.set 3 -6 27 madfall:stone'
-        'mad.voxel.set 2 -6 22 madfall:ladder'
-        'mad.voxel.set 2 -6 23 madfall:ladder'
-        'mad.voxel.set 2 -6 24 madfall:ladder'
-        'mad.voxel.set 2 -6 25 madfall:ladder'
-        'mad.voxel.set 2 -6 26 madfall:ladder'
+        'mad.scene.set 3 -6 0 madfall:stone'
+        'mad.scene.set 3 -6 1 madfall:stone'
+        'mad.scene.set 3 -6 2 madfall:stone'
+        'mad.scene.set 3 -6 3 madfall:stone'
+        'mad.scene.set 3 -6 4 madfall:stone'
+        'mad.scene.set 3 -6 5 madfall:stone'
+        'mad.scene.set 2 -6 0 madfall:ladder'
+        'mad.scene.set 2 -6 1 madfall:ladder'
+        'mad.scene.set 2 -6 2 madfall:ladder'
+        'mad.scene.set 2 -6 3 madfall:ladder'
+        'mad.scene.set 2 -6 4 madfall:ladder'
         'wait 3'
-        'mad.player.tp 2 -6 23'
+        'mad.scene.tp 2 -6 1'
         'wait 1'
         'mad.player.walk 2 1 0'
         'wait 2'
         'mad.player.status'
-        'mad.voxel.set -4 5 22 madfall:bedroll'
-        'mad.player.tp -4 3 23'
+        'mad.scene.set -4 5 0 madfall:bedroll'
+        'mad.scene.tp -4 3 1'
         'wait 1'
-        'mad.player.aim -4 5 22'
+        'mad.scene.aim -4 5 0'
         'mad.player.interact'
         'mad.player.damage 1000'
         'wait 6'
@@ -1025,28 +1035,33 @@ if (-not $SkipTests) {
     }
 
     $farmScript = @(
-        'mad.voxel.set 2 0 21 madfall:grass'
-        'mad.voxel.set 2 -1 21 madfall:stone'
-        'mad.voxel.set 1 0 22 madfall:air'
-        'mad.voxel.set 2 0 22 madfall:air'
-        'mad.voxel.set 1 0 23 madfall:air'
-        'mad.voxel.set 2 0 23 madfall:air'
-        'mad.voxel.set 1 -1 22 madfall:air'
-        'mad.voxel.set 2 -1 22 madfall:air'
-        'mad.voxel.set 1 -1 23 madfall:air'
-        'mad.voxel.set 2 -1 23 madfall:air'
+        'mad.scene.anchor'
+        'mad.scene.pad 12'
+        # Collision for the new ground cooks a few frames behind it: spawning or
+        # interacting in the same frame fails on ground that is not there yet.
         'wait 2'
-        'mad.player.tp 0 0 22'
+        'mad.scene.set 2 0 -1 madfall:grass'
+        'mad.scene.set 2 -1 -1 madfall:stone'
+        'mad.scene.set 1 0 0 madfall:air'
+        'mad.scene.set 2 0 0 madfall:air'
+        'mad.scene.set 1 0 1 madfall:air'
+        'mad.scene.set 2 0 1 madfall:air'
+        'mad.scene.set 1 -1 0 madfall:air'
+        'mad.scene.set 2 -1 0 madfall:air'
+        'mad.scene.set 1 -1 1 madfall:air'
+        'mad.scene.set 2 -1 1 madfall:air'
+        'wait 2'
+        'mad.scene.tp 0 0 0'
         'wait 1'
         'mad.player.give madfall:stone_hoe 1'
         'mad.player.hold madfall:stone_hoe'
-        'mad.player.aim 2 0 21'
+        'mad.scene.aim 2 0 -1'
         'mad.player.place'
         'mad.player.give madfall:corn_seed 3'
         'mad.player.hold madfall:corn_seed'
-        'mad.player.aim 2 0 21'
+        'mad.scene.aim 2 0 -1'
         'mad.player.place'
-        'mad.player.aim 2 -1 21'
+        'mad.scene.aim 2 -1 -1'
         'mad.player.place'
         'mad.farm.status'
         'mad.save'
@@ -1055,7 +1070,7 @@ if (-not $SkipTests) {
         'mad.farm.status'
         'mad.voxel.get 2 0 22'
         'mad.player.hold madfall:stone_hoe'
-        'mad.player.aim 2 0 22'
+        'mad.scene.aim 2 0 0'
         'mad.player.use 3'
         'mad.player.status'
         'mad.clock.set 15'
@@ -1130,11 +1145,16 @@ if (-not $SkipTests) {
 
     $killEvents = @(1..25 | ForEach-Object { 'mad.scripts.event zombie_killed zombie=madfall:zombie_civilian count=1' })
     $scriptScript = (@(
+        'mad.scene.anchor'
+        'mad.scene.pad 12'
+        # Collision for the new ground cooks a few frames behind it: spawning or
+        # interacting in the same frame fails on ground that is not there yet.
         'wait 2'
-        'mad.voxel.set 1 0 22 madfall:air'
-        'mad.voxel.set 1 0 23 madfall:air'
-        'mad.voxel.set 1 0 24 madfall:air'
-        'mad.player.tp 0 0 22'
+        'wait 2'
+        'mad.scene.set 1 0 0 madfall:air'
+        'mad.scene.set 1 0 1 madfall:air'
+        'mad.scene.set 1 0 2 madfall:air'
+        'mad.scene.tp 0 0 0'
         'wait 1'
         'mad.scripts'
         'mod.example_scripted.selftest'
@@ -1143,7 +1163,7 @@ if (-not $SkipTests) {
         'mad.voxel.get 2 0 26'
         'mad.player.give madfall:stone_axe 1'
         'mad.player.hold madfall:stone_axe'
-        'mad.player.aim 2 0 23'
+        'mad.scene.aim 2 0 1'
         'mad.player.use 40'
         'wait 1'
     ) + $killEvents + @(
@@ -1422,6 +1442,11 @@ if (-not $SkipTests) {
     }
 
     $varietyScript = @(
+        'mad.scene.anchor'
+        'mad.scene.pad 12'
+        # Collision for the new ground cooks a few frames behind it: spawning or
+        # interacting in the same frame fails on ground that is not there yet.
+        'wait 2'
         'mad.animals.SpawnSeconds 0'
         'mad.ai.Sleepers 0'
         'mad.clock.set 12'
@@ -1436,12 +1461,12 @@ if (-not $SkipTests) {
         'mad.ai.status'
         'mad.audio.stats'
         'mad.ai.killall'
-        'mad.voxel.set 3 -1 22 madfall:wood_spikes'
-        'mad.voxel.set 3 0 22 madfall:wood_spikes'
-        'mad.voxel.set 3 1 22 madfall:wood_spikes'
-        'mad.voxel.set 4 -1 22 madfall:wood_spikes'
-        'mad.voxel.set 4 0 22 madfall:wood_spikes'
-        'mad.voxel.set 4 1 22 madfall:wood_spikes'
+        'mad.scene.set 3 -1 0 madfall:wood_spikes'
+        'mad.scene.set 3 0 0 madfall:wood_spikes'
+        'mad.scene.set 3 1 0 madfall:wood_spikes'
+        'mad.scene.set 4 -1 0 madfall:wood_spikes'
+        'mad.scene.set 4 0 0 madfall:wood_spikes'
+        'mad.scene.set 4 1 0 madfall:wood_spikes'
         'wait 2'
         'mad.ai.spawn madfall:zombie_civilian 9 0'
         'wait 12'
@@ -1566,10 +1591,10 @@ if (-not $SkipTests) {
 # Animals: hunt, get gored, butcher; a deer bolts; herds appear by biome
 # ---------------------------------------------------------------------------
 #
-# A boar two voxels ahead is struck with a club (through the same swing trace
+# A stag two voxels ahead is struck with a club (through the same swing trace
 # that hits zombies), charges and gores the survivor, is killed and drops meat
 # and hide that the survivor picks up. A deer spawned in plain sight six voxels
-# away runs. A second boar nine voxels off takes an arrow from a bow. Natural spawning is then switched on and must place a herd of some
+# away runs. A second stag nine voxels off takes an arrow from a bow. Natural spawning is then switched on and must place a herd of some
 # species in the biome around the spawn.
 
 if (-not $SkipTests) {
@@ -1581,8 +1606,16 @@ if (-not $SkipTests) {
     }
 
     $animalScript = @(
+        'mad.scene.anchor'
+        'mad.scene.pad 14'
+        # Collision for the new ground cooks a few frames behind it: spawning or
+        # interacting in the same frame fails on ground that is not there yet.
+        'wait 2'
         'mad.animals.SpawnSeconds 0'
-        'mad.animals.spawn madfall:boar 1 2'
+        # Still: on the scene's flat pad a stag wanders out of arm's reach between
+        # swings, where it used to fetch up against the natural ground.
+        'mad.animals.Stroll 0'
+        'mad.animals.spawn madfall:stag 1 2'
         'wait 3'
         'mad.player.give madfall:wooden_club 1'
         'mad.player.hold madfall:wooden_club'
@@ -1590,27 +1623,23 @@ if (-not $SkipTests) {
         'mad.player.use 1'
         'wait 3'
         'mad.animals.status'
-        'mad.player.aimanimal'
-        'mad.player.use 1'
-        'wait 1'
-        'mad.player.aimanimal'
-        'mad.player.use 1'
-        'wait 1'
-        'mad.player.aimanimal'
-        'mad.player.use 1'
-        'wait 1'
-        'mad.player.aimanimal'
-        'mad.player.use 1'
-        'wait 3'
+        # A grazing stag drifts a voxel or two between swings and a club only
+        # reaches so far, so keep swinging: the check is that it dies, not that
+        # every swing lands.
+        $(1..10 | ForEach-Object { 'mad.player.aimanimal'; 'mad.player.use 1'; 'wait 1' })
         'mad.animals.status'
         'mad.player.status'
         'mad.animals.spawn madfall:deer 1 6'
+        # Straight away: a startled deer bolts, then settles to graze once it is
+        # far enough off, and a status three seconds later has missed the bolt.
+        'wait 1'
+        'mad.animals.status'
         'wait 3'
         'mad.animals.status'
         'mad.animals.killall'
         # Standing still: a stroll between aiming and the arrow's arrival was a miss.
         'mad.animals.Stroll 0'
-        'mad.animals.spawn madfall:boar 1 9'
+        'mad.animals.spawn madfall:stag 1 9'
         'wait 3'
         'mad.player.give madfall:wooden_bow 1'
         'mad.player.give madfall:arrow 10'
@@ -1639,13 +1668,13 @@ if (-not $SkipTests) {
     }
     else {
         $checks = @(
-            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:boar at .*: (chase|attack)' -Quiet); Why = 'a struck boar turned on the survivor' },
+            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:stag at .*: (chase|attack)' -Quiet); Why = 'a struck stag turned on the survivor' },
             @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'Animals: .* [1-9]\d* hit\(s\) on the survivor' -Quiet); Why = 'and gored them' },
-            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'Animal madfall:boar died' -Quiet); Why = 'the club killed it' },
-            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:raw_meat x[3-4]' -Quiet); Why = 'its meat was picked up' },
+            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'Animal madfall:stag died' -Quiet); Why = 'the club killed it' },
+            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:raw_meat x[4-6]' -Quiet); Why = 'its meat was picked up' },
             @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:animal_hide x[1-2]' -Quiet); Why = 'and its hide' },
             @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:deer at .*: flee' -Quiet); Why = 'a deer in plain sight bolted' },
-            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'Arrow hit MadAnimal\w* for 40' -Quiet); Why = 'an arrow hit a boar nine voxels away' },
+            @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'Arrow hit MadAnimal\w* for 40' -Quiet); Why = 'an arrow hit a stag nine voxels away' },
             @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'madfall:arrow x9' -Quiet); Why = 'and used up one arrow' },
             @{ Ok = [bool](Select-String -Path $animalLog -Pattern 'Spawned \d+ madfall:\w+ in madfall:\w+ at' -Quiet); Why = 'a herd spawned naturally by biome' }
         )
@@ -1694,7 +1723,7 @@ else {
 
     $spawns = (1..15 | ForEach-Object { "mad.ai.spawn madfall:zombie_civilian $((($_ % 5) - 2) * 4) $(6 + ($_ % 3) * 2) 1" }) -join '; '
     $steps = (1..16 | ForEach-Object { "mad.player.tp $($_ * 16) 0 45; wait 1.5" }) -join '; '
-    $budgetScript = "mad.ai.Sleepers 0; mad.weather.set storm; wait 3; mad.perf.reset; $spawns; wait 15; mad.ai.status; mad.ai.killall; $steps; wait 3; mad.player.overhead madfall:concrete_frame 12 4; wait 8; mad.debris.status; mad.weather.status; mad.far.status; mad.perf; quit"
+    $budgetScript = "mad.ai.Sleepers 0; mad.scene.anchor; mad.weather.set storm; wait 3; mad.perf.reset; $spawns; wait 15; mad.ai.status; mad.ai.killall; $steps; wait 3; mad.player.overhead madfall:concrete_frame 12 4; wait 8; mad.debris.status; mad.weather.status; mad.far.status; mad.perf; quit"
     $budgetLog = Join-Path $LogDir 'frame-budget.log'
     $budgetProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $budgetLog `
         -ArgumentList @("`"$ProjectFile`"", '-game', '-RenderOffScreen', '-ResX=1280', '-ResY=720', '-windowed', '-unattended',

@@ -59,7 +59,7 @@ namespace MadFall::Animals
 }
 
 /**
- * A wild animal: deer to hunt, a boar that fights back, wolves that hunt you.
+ * A wild animal: deer to hunt, a stag that fights back, wolves that hunt you.
  *
  * One class for every species, driven by madfall.animal/1. Thinks a few times a
  * second in its own tick, like a zombie, and uses the same voxel pathfinder,

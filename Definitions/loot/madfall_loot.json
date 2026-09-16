@@ -218,9 +218,9 @@
 	},
 	{
 		"schema": "madfall.loot/1",
-		"id": "madfall:loot/rabbit",
+		"id": "madfall:loot/fox",
 		"entries": [
-			{ "item": "madfall:raw_meat", "always": true },
+			{ "item": "madfall:raw_meat", "count": [1, 2], "always": true },
 			{ "item": "madfall:animal_hide", "weight": 1 },
 			{ "item": "madfall:plant_fiber", "weight": 2 }
 		]
@@ -235,9 +235,9 @@
 	},
 	{
 		"schema": "madfall.loot/1",
-		"id": "madfall:loot/boar",
+		"id": "madfall:loot/stag",
 		"entries": [
-			{ "item": "madfall:raw_meat", "count": [3, 4], "always": true },
+			{ "item": "madfall:raw_meat", "count": [4, 6], "always": true },
 			{ "item": "madfall:animal_hide", "count": [1, 2], "always": true }
 		]
 	},

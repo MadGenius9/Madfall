@@ -638,8 +638,8 @@ Folder: `definitions/animals/`. Wildlife to hunt, and wildlife that hunts back.
 - Animals never dig. Killing one drops `rewards.loot_table` where it falls; use
   `"always": true` entries so a carcass always yields meat.
 
-Shipped: `madfall:rabbit` and `madfall:deer` (skittish), `madfall:boar`
-(defensive), `madfall:wolf` (aggressive, at night). Try yours with
+Shipped: `madfall:fox` and `madfall:deer` (skittish), `madfall:stag`
+(defensive), `madfall:wolf` (aggressive, at night), each with an animated model. Try yours with
 `mad.animals.spawn <id> [count] [distance]`, and see what they are doing with
 `mad.animals.status`.
 

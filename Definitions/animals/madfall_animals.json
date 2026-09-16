@@ -1,8 +1,8 @@
 [
 	{
 		"schema": "madfall.animal/1",
-		"id": "madfall:rabbit",
-		"display_name": "@animals.rabbit",
+		"id": "madfall:fox",
+		"display_name": "@animals.fox",
 		"tags": ["animal.game", "animal.small"],
 		"behaviour": "skittish",
 		"spawn": {
@@ -11,10 +11,13 @@
 			"herd": [1, 2],
 			"active": "always"
 		},
-		"stats": { "health": 12, "walk_speed": 0.9, "run_speed": 5.5 },
+		"stats": { "health": 22, "walk_speed": 1.0, "run_speed": 6.2 },
 		"senses": { "sight": 14, "hearing": 16, "flee": 7 },
-		"rewards": { "experience": 5, "loot_table": "madfall:loot/rabbit" },
-		"appearance": { "body": [34, 18, 20], "legs": 10, "neck": 4, "tint": [0.56, 0.49, 0.40] }
+		"rewards": { "experience": 8, "loot_table": "madfall:loot/fox" },
+		"appearance": {
+			"body": [58, 18, 24], "legs": 20, "neck": 12, "tint": [0.62, 0.30, 0.12],
+			"model": { "mesh": "/Game/Animals/Fox/Fox/SkeletalMeshes/Fox.Fox", "idle": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxIdle.FoxIdle", "walk": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxWalk.FoxWalk", "run": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxGallop.FoxGallop", "attack": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxAttack.FoxAttack", "hit": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxIdle_HitReact_Left.FoxIdle_HitReact_Left", "death": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxDeath.FoxDeath", "graze": "/Game/Animals/Fox/Fox/SkeletalMeshes/FoxEating.FoxEating", "walk_cycle_speed": 1.2, "run_cycle_speed": 6.5, "yaw": 90 }
+		}
 	},
 	{
 		"schema": "madfall.animal/1",
@@ -33,15 +36,18 @@
 	},
 	{
 		"schema": "madfall.animal/1",
-		"id": "madfall:boar",
-		"display_name": "@animals.boar",
+		"id": "madfall:stag",
+		"display_name": "@animals.stag",
 		"tags": ["animal.game", "animal.dangerous"],
 		"behaviour": "defensive",
 		"spawn": { "biomes": ["madfall:forest", "madfall:plains", "madfall:highlands"], "weight": 1.5, "herd": [1, 2], "active": "always" },
-		"stats": { "health": 90, "walk_speed": 0.9, "run_speed": 4.5, "attack_damage": 12, "attack_seconds": 1.4, "damage_type": "madfall:pierce" },
+		"stats": { "health": 110, "walk_speed": 1.0, "run_speed": 6.0, "attack_damage": 14, "attack_seconds": 1.5, "damage_type": "madfall:pierce" },
 		"senses": { "sight": 16, "hearing": 20, "flee": 5 },
-		"rewards": { "experience": 25, "loot_table": "madfall:loot/boar" },
-		"appearance": { "body": [92, 40, 48], "legs": 32, "neck": 12, "tint": [0.32, 0.25, 0.19] }
+		"rewards": { "experience": 30, "loot_table": "madfall:loot/stag" },
+		"appearance": {
+			"body": [112, 34, 48], "legs": 68, "neck": 46, "tint": [0.42, 0.29, 0.18],
+			"model": { "mesh": "/Game/Animals/Stag/Stag/SkeletalMeshes/Stag.Stag", "idle": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagIdle.StagIdle", "walk": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagWalk.StagWalk", "run": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagGallop.StagGallop", "attack": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagAttack_Headbutt.StagAttack_Headbutt", "hit": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagIdle_HitReact_Left.StagIdle_HitReact_Left", "death": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagDeath.StagDeath", "graze": "/Game/Animals/Stag/Stag/SkeletalMeshes/StagEating.StagEating", "walk_cycle_speed": 1.3, "run_cycle_speed": 7.0, "yaw": 90 }
+		}
 	},
 	{
 		"schema": "madfall.animal/1",

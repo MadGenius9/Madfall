@@ -184,11 +184,11 @@ bool FMadAnimalBehaviourTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("hurt: runs even from far"), Decide(Deer, See(30.0f, false, false, 2.0f)), EMadAnimalState::Flee);
 	TestEqual(TEXT("hurt long ago: calm"), Decide(Deer, See(30.0f, false, false, 60.0f)), EMadAnimalState::Graze);
 
-	const FMadAnimalDefinition Boar = Make(EMadAnimalBehaviour::Defensive, 12.0f);
-	TestEqual(TEXT("boar ignores a survivor it sees"), Decide(Boar, See(4.0f)), EMadAnimalState::Graze);
-	TestEqual(TEXT("hurt boar charges"), Decide(Boar, See(6.0f, true, false, 1.0f)), EMadAnimalState::Chase);
-	TestEqual(TEXT("and gores within reach"), Decide(Boar, See(1.0f, true, false, 1.0f)), EMadAnimalState::Attack);
-	TestEqual(TEXT("gives up once the survivor is far away"), Decide(Boar, See(40.0f, false, false, 1.0f)), EMadAnimalState::Graze);
+	const FMadAnimalDefinition Stag = Make(EMadAnimalBehaviour::Defensive, 12.0f);
+	TestEqual(TEXT("a stag ignores a survivor it sees"), Decide(Stag, See(4.0f)), EMadAnimalState::Graze);
+	TestEqual(TEXT("a hurt stag charges"), Decide(Stag, See(6.0f, true, false, 1.0f)), EMadAnimalState::Chase);
+	TestEqual(TEXT("and gores within reach"), Decide(Stag, See(1.0f, true, false, 1.0f)), EMadAnimalState::Attack);
+	TestEqual(TEXT("gives up once the survivor is far away"), Decide(Stag, See(40.0f, false, false, 1.0f)), EMadAnimalState::Graze);
 
 	const FMadAnimalDefinition Wolf = Make(EMadAnimalBehaviour::Aggressive, 9.0f);
 	TestEqual(TEXT("wolf hunts a survivor it sees"), Decide(Wolf, See(15.0f)), EMadAnimalState::Chase);

@@ -46,7 +46,7 @@ bool FMadProjectileTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(TEXT("the bow is ranged"), Bow->bHasTool && Bow->Tool.IsRanged());
 		TestNotNull(TEXT("its ammo exists"), Defs.FindItem(Bow->Tool.Ammo));
-		TestTrue(TEXT("an arrow kills a rabbit"), Bow->Tool.Damage.FindRef(FName(TEXT("madfall:pierce"))) >= 12.0f);
+		TestTrue(TEXT("an arrow wounds a fox badly"), Bow->Tool.Damage.FindRef(FName(TEXT("madfall:pierce"))) >= 12.0f);
 		TestNotNull(TEXT("arrows are craftable"), Defs.FindRecipe(FName(TEXT("madfall:arrow"))));
 	}
 	const FMadItemDefinition* Club = Defs.FindItem(FName(TEXT("madfall:wooden_club")));

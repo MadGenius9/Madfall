@@ -46,7 +46,7 @@ namespace MadFall::Quadruped
  * capsule does not read as a deer).
  *
  * Proportions come from the animal definition - body length, width and height,
- * leg and neck length - so a rabbit, a deer and a boar are one rig. Built lazily
+ * leg and neck length - so a fox, a deer and a stag are one rig. Built lazily
  * on tick (at most two per frame, shared with nothing else) and posed only when
  * recently rendered. The origin is the feet; attach it at the bottom of the capsule.
  */
