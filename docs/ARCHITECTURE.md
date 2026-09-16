@@ -2414,9 +2414,26 @@ Console (used by the survival gate): `mad.player.store <item>`,
      there yet); and on flat ground a grazing stag drifts out of club reach, so
      the animal scene keeps swinging and samples a startled deer a second after
      it spawns, before it settles back to grazing.
-   The span is now −9 … 72 over the terrain test's 4 km, peaks kept under the
-   ~95 voxels the vertical streaming radius loads above a player at ground
-   level (taller would need more chunk layers, a streaming and meshing cost).
+   The span was −9 … 72 over the terrain test's 4 km, with peaks kept under the
+   ~95 voxels the vertical streaming radius loaded above a player at ground
+   level.
+
+   **Then the ceiling was removed and the highlands became mountains**
+   (base 74, variation 78, ridging 0.95: peaks around 150 voxels, 140 m of
+   relief above the sea). What had capped them was streaming, not the world -
+   the world spans 512 voxels - because the streamer loaded a cylinder of fixed
+   height around the player, so ground more than two chunk layers above them
+   never arrived. **Each chunk column now loads the layers its own ground
+   reaches** (`UMadChunkStreamingSubsystem::GroundLayerOf`, the tallest of a
+   column's four corners and its centre, cached because a generated column's
+   height never changes), opened up to four layers past the player's own window,
+   and the unload rule keeps the same two windows or a peak's chunks would be
+   dropped the moment they arrived. Flat ground costs exactly what it did;
+   standing in the mountains holds about 30% more chunks (1137 -> 1481 at the
+   same radius), most of them solid rock or empty air, which the mesher skips
+   without building anything. Generation revision 6. The frame-budget session
+   now teleports into the highlands and walks there, so the cost is measured
+   rather than assumed.
    Generator revision 5 marks the change; a world saved before it keeps its
    old chunks, so a seam shows where old and new ground meet.
    - **Found by it: a lid over road edges.** The road-bank test found 24 walls

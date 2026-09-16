@@ -213,9 +213,33 @@ void UMadChunkStreamingSubsystem::RebuildQueues(const TArray<FSource>& Sources, 
 	// and sorted by distance once and reused for every rebuild.
 	LoadQueue.Reset();
 	LoadCursor = 0;
+	TArray<FIntVector> Offsets;
 	for (const FSource& Source : Sources)
 	{
-		const TArray<FIntVector>& Offsets = GetSortedOffsets(Source.Radius, Vertical);
+		Offsets.Reset();
+		for (const FIntPoint& Column : GetSortedColumns(Source.Radius))
+		{
+			// The layers to load in this column: the player's own window, opened
+			// upward or downward as far as the ground in that column reaches. A
+			// mountain is loaded from the valley floor; flat ground costs what it
+			// always did.
+			const int32 GroundLayer = GroundLayerOf(Source.Centre.X + Column.X, Source.Centre.Y + Column.Y);
+			const int32 Relative = GroundLayer - Source.Centre.Z;
+			const int32 MinDZ = FMath::Max(FMath::Min(-Vertical, Relative - 1), -(Vertical + ExtraTerrainLayers));
+			const int32 MaxDZ = FMath::Min(FMath::Max(Vertical, Relative + 1), Vertical + ExtraTerrainLayers);
+			for (int32 DZ = MinDZ; DZ <= MaxDZ; ++DZ)
+			{
+				Offsets.Emplace(Column.X, Column.Y, DZ);
+			}
+		}
+
+		// Nearest first, with vertical distance weighted up: the layer the player
+		// stands in matters far more than the one 30 m below them.
+		Offsets.Sort([](const FIntVector& A, const FIntVector& B)
+		{
+			return A.X * A.X + A.Y * A.Y + A.Z * A.Z * 4 < B.X * B.X + B.Y * B.Y + B.Z * B.Z * 4;
+		});
+
 		for (const FIntVector& Offset : Offsets)
 		{
 			const FMadChunkCoord Coord(Source.Centre.X + Offset.X, Source.Centre.Y + Offset.Y, Source.Centre.Z + Offset.Z);
@@ -236,8 +260,18 @@ void UMadChunkStreamingSubsystem::RebuildQueues(const TArray<FSource>& Sources, 
 		for (const FSource& Source : Sources)
 		{
 			const int32 Keep = Source.Radius + UnloadHysteresis;
-			if (FMath::Abs(Coord.X - Source.Centre.X) <= Keep && FMath::Abs(Coord.Y - Source.Centre.Y) <= Keep
-				&& FMath::Abs(Coord.Z - Source.Centre.Z) <= Vertical + UnloadHysteresis)
+			if (FMath::Abs(Coord.X - Source.Centre.X) > Keep || FMath::Abs(Coord.Y - Source.Centre.Y) > Keep)
+			{
+				continue;
+			}
+			// Kept if it is in the player's window or in the ground's, the same
+			// two the load queue uses, plus the hysteresis margin - or a chunk
+			// loaded for a peak would be unloaded the moment it arrived.
+			const int32 GroundLayer = GroundLayerOf(Coord.X, Coord.Y);
+			const int32 Distance = FMath::Abs(Coord.Z - Source.Centre.Z);
+			const int32 ToGround = FMath::Abs(Coord.Z - GroundLayer);
+			if (Distance <= Vertical + UnloadHysteresis
+				|| (ToGround <= 1 + UnloadHysteresis && Distance <= Vertical + ExtraTerrainLayers + UnloadHysteresis))
 			{
 				bKeep = true;
 				break;
@@ -250,38 +284,57 @@ void UMadChunkStreamingSubsystem::RebuildQueues(const TArray<FSource>& Sources, 
 	}
 }
 
-const TArray<FIntVector>& UMadChunkStreamingSubsystem::GetSortedOffsets(int32 Radius, int32 Vertical)
+const TArray<FIntPoint>& UMadChunkStreamingSubsystem::GetSortedColumns(int32 Radius)
 {
-	const FIntPoint Key(Radius, Vertical);
-	if (const TArray<FIntVector>* Cached = OffsetCache.Find(Key))
+	if (const TArray<FIntPoint>* Cached = ColumnCache.Find(Radius))
 	{
 		return *Cached;
 	}
 
-	TArray<FIntVector> Offsets;
-	for (int32 DZ = -Vertical; DZ <= Vertical; ++DZ)
+	TArray<FIntPoint> Columns;
+	for (int32 DY = -Radius; DY <= Radius; ++DY)
 	{
-		for (int32 DY = -Radius; DY <= Radius; ++DY)
+		for (int32 DX = -Radius; DX <= Radius; ++DX)
 		{
-			for (int32 DX = -Radius; DX <= Radius; ++DX)
+			// Circular footprint: the corners of the square are the chunks
+			// least likely to be seen and most expensive to keep.
+			if (DX * DX + DY * DY <= Radius * Radius + Radius)
 			{
-				// Circular footprint: the corners of the square are the chunks
-				// least likely to be seen and most expensive to keep.
-				if (DX * DX + DY * DY <= Radius * Radius + Radius)
-				{
-					Offsets.Emplace(DX, DY, DZ);
-				}
+				Columns.Emplace(DX, DY);
 			}
 		}
 	}
-
-	// Nearest first, with vertical distance weighted up: the layer the player
-	// stands in matters far more than the one 30 m below them.
-	Offsets.Sort([](const FIntVector& A, const FIntVector& B)
+	Columns.Sort([](const FIntPoint& A, const FIntPoint& B)
 	{
-		return A.X * A.X + A.Y * A.Y + A.Z * A.Z * 4 < B.X * B.X + B.Y * B.Y + B.Z * B.Z * 4;
+		return A.X * A.X + A.Y * A.Y < B.X * B.X + B.Y * B.Y;
 	});
-	return OffsetCache.Add(Key, MoveTemp(Offsets));
+	return ColumnCache.Add(Radius, MoveTemp(Columns));
+}
+
+int32 UMadChunkStreamingSubsystem::GroundLayerOf(int32 ChunkX, int32 ChunkY)
+{
+	const FIntPoint Key(ChunkX, ChunkY);
+	if (const int32* Cached = GroundLayers.Find(Key))
+	{
+		return *Cached;
+	}
+
+	int32 Layer = 0;
+	if (const FMadWorldGenerator* Generator = VoxelWorld ? VoxelWorld->GetWorldGenerator() : nullptr)
+	{
+		// The tallest of the column's four corners and its centre: one sample at
+		// the centre of a 32 m chunk misses the peak that pokes through a corner.
+		float Highest = -FLT_MAX;
+		for (const FIntPoint& At : { FIntPoint(0, 0), FIntPoint(0, MadFall::ChunkSize - 1), FIntPoint(MadFall::ChunkSize - 1, 0),
+			FIntPoint(MadFall::ChunkSize - 1, MadFall::ChunkSize - 1), FIntPoint(MadFall::ChunkSize / 2, MadFall::ChunkSize / 2) })
+		{
+			const float X = static_cast<float>(ChunkX * MadFall::ChunkSize + At.X);
+			const float Y = static_cast<float>(ChunkY * MadFall::ChunkSize + At.Y);
+			Highest = FMath::Max(Highest, Generator->GetSurfaceHeight(X, Y));
+		}
+		Layer = FMath::FloorToInt32(Highest / static_cast<float>(MadFall::ChunkSize));
+	}
+	return GroundLayers.Add(Key, Layer);
 }
 
 bool UMadChunkStreamingSubsystem::IsAreaLoaded(const FVector& WorldLocation, int32 RadiusChunks) const

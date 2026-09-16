@@ -1891,7 +1891,10 @@ else {
 
     $spawns = (1..15 | ForEach-Object { "mad.ai.spawn madfall:zombie_civilian $((($_ % 5) - 2) * 4) $(6 + ($_ % 3) * 2) 1" }) -join '; '
     $steps = (1..16 | ForEach-Object { "mad.player.tp $($_ * 16) 0 45; wait 1.5" }) -join '; '
-    $budgetScript = "mad.ai.Sleepers 0; mad.scene.anchor; mad.weather.set storm; wait 3; mad.perf.reset; $spawns; wait 15; mad.ai.status; mad.ai.killall; $steps; wait 3; mad.player.overhead madfall:concrete_frame 12 4; wait 8; mad.debris.status; mad.weather.status; mad.far.status; mad.perf; quit"
+    # The mountains are the most expensive ground in the world: a chunk column
+    # there loads the layers its peak reaches, not just the ones around the
+    # player, so the budget session has to stand in one.
+    $budgetScript = "mad.ai.Sleepers 0; mad.scene.anchor; mad.weather.set storm; wait 3; mad.perf.reset; $spawns; wait 15; mad.ai.status; mad.ai.killall; $steps; wait 3; mad.player.overhead madfall:concrete_frame 12 4; wait 8; mad.player.tpbiome madfall:highlands; wait 12; mad.player.walk 8 1 0; wait 10; mad.debris.status; mad.weather.status; mad.far.status; mad.stream.status; mad.perf; quit"
     $budgetLog = Join-Path $LogDir 'frame-budget.log'
     $budgetProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $budgetLog `
         -ArgumentList @("`"$ProjectFile`"", '-game', '-RenderOffScreen', '-ResX=1280', '-ResY=720', '-windowed', '-unattended',

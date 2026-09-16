@@ -56,7 +56,24 @@ private:
 
 	void GatherSources(TArray<FSource>& OutSources) const;
 	void RebuildQueues(const TArray<FSource>& Sources, int32 Vertical);
-	const TArray<FIntVector>& GetSortedOffsets(int32 Radius, int32 Vertical);
+	const TArray<FIntPoint>& GetSortedColumns(int32 Radius);
+
+	/**
+	 * The chunk layer the generated ground reaches in a chunk column, cached.
+	 *
+	 * WHY: the streaming window was a cylinder of fixed height around the
+	 * player, so ground more than VerticalRadius layers above them was never
+	 * loaded and a mountain was cut off at about 95 voxels - which is why the
+	 * shipped terrain was tuned to stay under that. Loading the layers the
+	 * terrain actually occupies costs chunks only where the ground is tall, and
+	 * those are mostly solid or air, which the mesher skips outright.
+	 *
+	 * The generator's height for a column never changes (edits move voxels, not
+	 * the field), so it is worth keeping.
+	 */
+	int32 GroundLayerOf(int32 ChunkX, int32 ChunkY);
+
+	TMap<FIntPoint, int32> GroundLayers;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMadVoxelWorldSubsystem> VoxelWorld;
@@ -74,7 +91,10 @@ private:
 	int32 LastVertical = -1;
 	double NextRescanSeconds = 0.0;
 	int64 TotalRescans = 0;
-	TMap<FIntPoint, TArray<FIntVector>> OffsetCache;
+	TMap<int32, TArray<FIntPoint>> ColumnCache;
+
+	/** How many layers past the player's own window the ground may pull in. */
+	static constexpr int32 ExtraTerrainLayers = 4;
 	int64 TotalRequested = 0;
 	int64 TotalUnloaded = 0;
 };

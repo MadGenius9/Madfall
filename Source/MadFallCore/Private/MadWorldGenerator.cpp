@@ -75,7 +75,10 @@ uint64 FMadWorldGenSettings::GetGenerationVersion() const
 	// 5: shipped biomes retuned for relief (taller, more ridged highlands; hillier
 	//    forest and tundra). Biome data does not feed this hash, as with mods, so
 	//    a retune of the shipped set bumps it by hand.
-	Mix(5u);
+	// 6: highlands became mountains (base 74, variation 78, ridging 0.95), which
+	//    streaming can now follow: chunk columns load the layers their ground
+	//    reaches instead of a fixed window around the player.
+	Mix(6u);
 
 	return (static_cast<uint64>(Hash) << 32) | MadFall::Noise::HashInt(Hash);
 }
