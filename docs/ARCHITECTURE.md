@@ -2238,10 +2238,26 @@ Console (used by the survival gate): `mad.player.store <item>`,
 5. **The prefab set does not feed the generation version.** Adding a prefab mod
    changes where POIs appear in *ungenerated* chunks, exactly as adding a biome
    mod does; it cannot corrupt chunks already on disk.
-6. **Terrain is gentle at scale.** Height spans −9 … 62 over hundreds of
-   voxels, which is geologically reasonable but visually mild. Making it
-   dramatic is art direction (biome `roughness`, `ridging`, `height_variation`
-   are all data), not engineering, and is better tuned against real materials.
+6. **RETUNED: terrain was gentle at scale.** Height spanned −9 … 62, visually
+   mild once the ground had photo textures. The shipped biomes now have more
+   relief, all in data: highlands base 40 → 46, variation 30 → 40, ridging
+   0.85 → 0.9; tundra variation 6 → 10 and ridging 0.1 → 0.25; desert variation
+   7 → 9. Plains, forest and base land were retuned too and put back: spawn is
+   in plains, and the gameplay, base, scripting and animal CI scenes are built
+   at fixed coordinates beside it - a voxel of new relief there put a placed
+   block where a scripted walk went, and six checks failed. Hillier lowlands
+   would first need those scenes to measure the ground rather than assume it.
+   The span is now −9 … 72 over the terrain test's 4 km, peaks kept under the
+   ~95 voxels the vertical streaming radius loads above a player at ground
+   level (taller would need more chunk layers, a streaming and meshing cost).
+   Generator revision 5 marks the change; a world saved before it keeps its
+   old chunks, so a seam shows where old and new ground meet.
+   - **Found by it: a lid over road edges.** The road-bank test found 24 walls
+     beside roads (it allows 2%). Each was one voxel of rock hanging over air
+     at the road's edge: on the road, the bank pass carved only earth more than
+     a voxel above the clearance, and the body carved the four clearance voxels
+     under ground that ended within that voxel. The bank now carves from the top
+     of the clearance and removes even a sliver: 0 walls in 940 edges.
 7. **`ClimateContrast` saturates.** Values beyond the range become plateaus.
    That is the right shape for deep ocean and high plateau, but it does mean
    the tails of the climate distribution are flattened rather than rare.

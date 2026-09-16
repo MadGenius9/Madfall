@@ -72,7 +72,10 @@ uint64 FMadWorldGenSettings::GetGenerationVersion() const
 	// 2: POIs and roads.
 	// 3: biome scatter (trees, boulders, plants).
 	// 4: road banks (cuttings and embankments eased to the terrain).
-	Mix(4u);
+	// 5: shipped biomes retuned for relief (taller, more ridged highlands; hillier
+	//    forest and tundra). Biome data does not feed this hash, as with mods, so
+	//    a retune of the shipped set bumps it by hand.
+	Mix(5u);
 
 	return (static_cast<uint64>(Hash) << 32) | MadFall::Noise::HashInt(Hash);
 }

@@ -114,7 +114,7 @@
 			"continentalness": [0.44, 1.0],
 			"weight": 1.0
 		},
-		"terrain": { "base_height": 18.0, "height_variation": 7.0, "roughness": 0.0050, "ridging": 0.0 },
+		"terrain": { "base_height": 18.0, "height_variation": 9.0, "roughness": 0.0050, "ridging": 0.0 },
 		"blocks": { "surface": "madfall:sand", "subsurface": "madfall:sand", "subsurface_depth": 7 },
 		"scatter": [
 			{ "feature": "tree", "block": "madfall:cactus", "chance": 0.003, "height": [2, 3] },
@@ -137,7 +137,7 @@
 			"continentalness": [0.44, 1.0],
 			"weight": 1.0
 		},
-		"terrain": { "base_height": 21.0, "height_variation": 6.0, "roughness": 0.0070, "ridging": 0.10 },
+		"terrain": { "base_height": 21.0, "height_variation": 10.0, "roughness": 0.0070, "ridging": 0.25 },
 		"blocks": { "surface": "madfall:dirt", "subsurface": "madfall:dirt", "subsurface_depth": 3 },
 		"scatter": [
 			{ "feature": "tree", "block": "madfall:pine_log", "leaves": "madfall:pine_leaves", "chance": 0.008, "height": [5, 8], "radius": [1.5, 2.0] },
@@ -157,7 +157,7 @@
 			"continentalness": [0.78, 1.0],
 			"weight": 1.3
 		},
-		"terrain": { "base_height": 40.0, "height_variation": 30.0, "roughness": 0.0045, "ridging": 0.85 },
+		"terrain": { "base_height": 46.0, "height_variation": 40.0, "roughness": 0.0050, "ridging": 0.90 },
 		"blocks": {
 			"surface": "madfall:stone",
 			"subsurface": "madfall:stone",

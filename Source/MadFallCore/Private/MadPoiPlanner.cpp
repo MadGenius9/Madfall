@@ -1205,9 +1205,13 @@ void FMadPoiPlanner::StampRoadBanks(const FMadWorldGenerator& Generator, const F
 
 			// On the road itself only what the body leaves alone - earth above its
 			// clearance, which would otherwise roof the road over in a deep cutting.
+			// From the top of the clearance, and even a sliver of earth: the body
+			// clears RoadClearance voxels above the road, so ground that ended within a
+			// voxel over that line was left as a one-voxel lid hanging over the road's
+			// edge - walls in the road-bank test once the highlands grew taller.
 			const bool bOnRoad = Beyond <= 0.0f;
-			const float CarveFrom = bOnRoad ? Target + static_cast<float>(RoadClearance) + 1.0f : Target;
-			const bool bCut = Terrain > CarveFrom + 0.25f;
+			const float CarveFrom = bOnRoad ? Target + static_cast<float>(RoadClearance) : Target;
+			const bool bCut = Terrain > CarveFrom + (bOnRoad ? 0.0f : 0.25f);
 			const bool bFill = !bOnRoad && Terrain < Target - 0.25f;
 			if (!bCut && !bFill)
 			{
