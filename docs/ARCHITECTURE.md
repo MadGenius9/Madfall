@@ -2479,6 +2479,21 @@ Console (used by the survival gate): `mad.player.store <item>`,
      frame has since reached 4.70 ms of that 5 ms, all of it meshing on arrival
      in fresh mountain terrain. The mean is flat, so it is a burst rather than a
      creeping cost - but it is the number to chase next.
+   - *Chased, and it did not pay.* The slow applies name their own cost: 2.0 to
+     3.4 ms each, of which 0.4 to 0.7 ms was **merging the sections that share a
+     material on the game thread** - nearly every chunk, since most shipped
+     surfaces draw with the one array material - and the rest
+     `SetProcMeshSection`, which copies the result again. Moving that merge onto
+     the meshing worker (a class -> group id map snapshotted into each job, so no
+     worker touches a UObject) did exactly what it promised to the applies: they
+     dropped to 2.0-2.3 ms with no merge left in them. The frame did not
+     improve. Four sessions each way, same script: the tail ran 0.38-0.76% with
+     the change against 0.45-0.68% without, indistinguishable - but the worst
+     frame went over the 5 ms gate twice in four runs (6.54 and 5.14 ms) and
+     never once without it. Cheaper applies, worse frames; reverted. Whatever
+     the remaining spike is, it is not the merge, and the next attempt should
+     start by measuring which call inside `SetProcMeshSection` grows - collision
+     cooking on one large merged section is the first suspect.
 
    - *What actually worked:* **the publish budget**. `mad.mesh.PublishBudgetMs`
      is checked *between* chunks, so at 1.0 ms a frame could take a 0.9 ms apply
