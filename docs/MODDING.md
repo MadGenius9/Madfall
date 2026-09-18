@@ -394,7 +394,8 @@ like `Scripts/make_sample_prefabs.ps1`.
   "size": [15, 11, 6],
   "placement": { "rarity": 1.0, "conform": "base", "embed_depth": 1, "max_slope": 6,
                  "foundation": "madfall:concrete_frame", "max_foundation_depth": 10,
-                 "biomes": ["madfall:plains"], "underwater": false },
+                 "biomes": ["madfall:plains"], "underwater": false,
+                 "min_ground_height": -128, "max_ground_height": 383 },
   "palette": [ { "block": "*" }, { "block": "madfall:air" }, { "block": "madfall:concrete_frame", "orientation": 0, "variant": 0 } ],
   "voxels": [ 165, 2, 825, 1 ],
   "markers": [
@@ -404,6 +405,11 @@ like `Scripts/make_sample_prefabs.ps1`.
   ]
 }
 ```
+
+`min_ground_height` and `max_ground_height` accept or reject a site by the
+height of the ground it stands on, which is how a prefab asks to be somewhere
+in particular now that a world has mountains: the shipped mountain cache is
+highlands only, above 70. Leave them out for anywhere.
 
 - `voxels` is run-length encoded pairs `[count, palette_index, ...]`, X fastest,
   then Y, then Z. `*` leaves the terrain alone; `madfall:air` carves it.

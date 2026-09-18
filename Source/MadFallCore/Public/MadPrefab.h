@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "MadBlockDefinitionJson.h"
+#include "MadFallVoxelTypes.h"
 
 namespace MadFall
 {
@@ -112,6 +113,19 @@ struct MADFALLCORE_API FMadPrefabPlacement
 
 	/** Allow placement below sea level. */
 	bool bUnderwater = false;
+
+	/**
+	 * The band of ground heights this prefab accepts, in world voxels.
+	 *
+	 * For places that belong at a height: a lookout on a ridge, a cache on the
+	 * upper slopes. Before the highlands became mountains every site was within
+	 * a few voxels of the same altitude and the field would have meant nothing;
+	 * now a world has ground from the sea bed to 116 and "high up" is a place.
+	 * The default band covers the whole world, so a prefab that says nothing is
+	 * placed exactly as it was.
+	 */
+	int32 MinGroundHeight = MadFall::WorldMinZ;
+	int32 MaxGroundHeight = MadFall::WorldMaxZ;
 
 	/**
 	 * Placed exactly once per world, in the nearest cell around the spawn that

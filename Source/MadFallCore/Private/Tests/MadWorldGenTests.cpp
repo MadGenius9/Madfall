@@ -548,6 +548,64 @@ bool FMadWorldGenOreTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("ore is rare relative to stone (%d voxels in 48 chunks)"), IronCount),
 		IronCount < 48 * MadFall::ChunkVoxelCount / 100);
 
+	// --- the mountains carry their own iron ---------------------------------
+	// The sweep above covers world Z -64..31, which is where ore has always
+	// been. Since the highlands became mountains their upper slopes are a place
+	// a player can reach without digging, and they have a band of their own:
+	// without it the top half of every mountain was bare rock and climbing one
+	// bought nothing.
+	{
+		// The tallest columns of a 4 km square, rather than a line through it:
+		// mountains are massifs a few hundred voxels across, and a diagonal
+		// sample walked straight past them.
+		TArray<TPair<float, FIntPoint>> Tallest;
+		for (int32 Y = -2000; Y <= 2000; Y += 64)
+		{
+			for (int32 X = -2000; X <= 2000; X += 64)
+			{
+				Tallest.Emplace(Generator.GetSurfaceHeight(static_cast<float>(X), static_cast<float>(Y)), FIntPoint(X, Y));
+			}
+		}
+		Tallest.Sort([](const TPair<float, FIntPoint>& A, const TPair<float, FIntPoint>& B) { return A.Key > B.Key; });
+
+		int32 ColumnsChecked = 0;
+		int32 ColumnsWithIron = 0;
+		int32 HighIron = 0;
+		for (int32 Index = 0; Index < Tallest.Num() && ColumnsChecked < 6; ++Index)
+		{
+			const float Height = Tallest[Index].Key;
+			if (Height < 85.0f)
+			{
+				break;
+			}
+
+			++ColumnsChecked;
+			const FMadChunkCoord Coord(
+				FMath::FloorToInt32(static_cast<float>(Tallest[Index].Value.X) / MadFall::ChunkSize),
+				FMath::FloorToInt32(static_cast<float>(Tallest[Index].Value.Y) / MadFall::ChunkSize),
+				FMath::FloorToInt32(Height / MadFall::ChunkSize));
+
+			FMadChunkStorage Chunk;
+			Generator.GenerateChunk(Coord, Chunk);
+
+			int32 InThisChunk = 0;
+			for (int32 Voxel = 0; Voxel < MadFall::ChunkVoxelCount; ++Voxel)
+			{
+				if (Chunk.GetVoxel(Voxel).BlockTypeID == IronId)
+				{
+					++InThisChunk;
+				}
+			}
+			HighIron += InThisChunk;
+			ColumnsWithIron += InThisChunk > 0 ? 1 : 0;
+		}
+
+		AddInfo(FString::Printf(TEXT("%d of %d summit chunks held iron (%d voxels); tallest column %.0f"),
+			ColumnsWithIron, ColumnsChecked, HighIron, Tallest.Num() > 0 ? Tallest[0].Key : 0.0f));
+		TestTrue(TEXT("the test found mountains to look at"), ColumnsChecked >= 3);
+		TestTrue(TEXT("their chunks carry iron, so a climb is worth something"), ColumnsWithIron >= ColumnsChecked / 2);
+	}
+
 	return true;
 }
 

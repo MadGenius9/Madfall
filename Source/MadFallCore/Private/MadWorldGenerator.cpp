@@ -80,7 +80,10 @@ uint64 FMadWorldGenSettings::GetGenerationVersion() const
 	//    reaches instead of a fixed window around the player.
 	// 7: mountains settled at base 62, variation 54, ridging 0.92 (peaks around
 	//    116) after measuring what the taller ones cost to mesh.
-	Mix(7u);
+	// 8: iron outcrops on the upper slopes of the highlands (a second, richer
+	//    band from z 61 up), so a mountain is worth climbing rather than only
+	//    worth looking at.
+	Mix(8u);
 
 	return (static_cast<uint64>(Hash) << 32) | MadFall::Noise::HashInt(Hash);
 }

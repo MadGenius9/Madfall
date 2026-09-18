@@ -128,6 +128,22 @@
 	},
 	{
 		"schema": "madfall.loot/1",
+		"id": "madfall:loot/mountain_cache",
+		"rolls": [3, 5],
+		"rolls_per_tier": 0.5,
+		"entries": [
+			{ "item": "madfall:scrap_iron", "count": [4, 9], "weight": 4 },
+			{ "table": "madfall:loot/tools", "weight": 3 },
+			{ "item": "madfall:fur_coat", "weight": 2 },
+			{ "item": "madfall:fur_hat", "weight": 2 },
+			{ "item": "madfall:coin", "count": [10, 30], "weight": 2 },
+			{ "table": "madfall:loot/food", "weight": 2 },
+			{ "item": "madfall:bandage", "count": [1, 2], "weight": 2 }
+		]
+	},
+
+	{
+		"schema": "madfall.loot/1",
 		"id": "madfall:loot/cabin_supplies",
 		"rolls": [2, 4],
 		"rolls_per_tier": 0.5,

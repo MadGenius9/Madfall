@@ -2472,6 +2472,24 @@ Console (used by the survival gate): `mad.player.store <item>`,
      above the sea, to 160 voxels. Measured in the highlands: 0.1 C at Z=39 and
      -13.9 C at Z=109, so the peaks need clothing the valley does not. The CI
      gate "altitude" stands in both places and fails under an 8 C drop.
+   - **And it is worth climbing.** A mountain that is only scenery is a wall.
+     The highlands' iron band stopped at Z=60, so the top half of every peak was
+     bare rock; a second, richer band now runs from 61 to 140, which puts
+     exposed veins on the upper slopes - iron without digging a mine, in the one
+     place that costs a coat to reach. Generation revision 8, and
+     `MadFall.WorldGen.Ores` now takes the six tallest columns of a 4 km square
+     and fails if their chunks are empty (6 of 6 hold iron, 427 voxels, tallest
+     column 103).
+   - **Prefabs can ask for a height.** `min_ground_height` and
+     `max_ground_height` in a prefab's `placement` accept or reject a site by
+     the ground it stands on. The field would have meant nothing when every site
+     was within a few voxels of the same altitude; with ground from the sea bed
+     to 116, "high up" is a place. The shipped `madfall:mountain_cache` uses it:
+     a stone wind-break with a loot crate and a torch, highlands only, above
+     Z=70, `max_slope` 12 because a cache that demanded flat ground would never
+     be placed on a mountainside. It was built in the world with the same
+     commands a player uses and captured with `mad.prefab.capture`, which is
+     what that command is for.
    - **And it looks cold.** Both surface materials whiten above a snow line at
      Z=78, fading in over 30 voxels, joined with the weather's own snow by a max
      so a blizzard still covers the lowlands. No new inputs: the shaders already

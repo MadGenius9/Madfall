@@ -169,7 +169,8 @@
 			{ "feature": "boulder", "block": "madfall:granite", "chance": 0.004, "radius": [1.5, 3.0] }
 		],
 		"ores": [
-			{ "block": "madfall:iron_ore", "attempts_per_chunk": 10, "cluster_size": 9, "min_z": -128, "max_z": 60, "probability": 0.7 }
+			{ "block": "madfall:iron_ore", "attempts_per_chunk": 10, "cluster_size": 9, "min_z": -128, "max_z": 60, "probability": 0.7 },
+			{ "block": "madfall:iron_ore", "attempts_per_chunk": 14, "cluster_size": 12, "min_z": 61, "max_z": 140, "probability": 0.8 }
 		]
 	}
 ]

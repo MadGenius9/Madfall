@@ -463,6 +463,15 @@ bool FMadPoiPlanner::PlacePrefabInCell(const FMadWorldGenerator& Generator, int3
 			continue;
 		}
 
+		// The height band, measured on the ground the prefab sits on rather than
+		// its own base, so an embedded foundation does not shift what counts as
+		// high ground.
+		const int32 GroundHeight = FMath::FloorToInt(Median);
+		if (GroundHeight < Prefab.Placement.MinGroundHeight || GroundHeight > Prefab.Placement.MaxGroundHeight)
+		{
+			continue;
+		}
+
 		if (BaseZ - Prefab.Placement.MaxFoundationDepth <= Settings->BedrockTop
 			|| BaseZ + RotatedSize.Z > MadFall::WorldMaxZ)
 		{

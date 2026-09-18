@@ -83,6 +83,8 @@ namespace MadFall::PrefabJson
 			R.ReadNameArray(Obj, TEXT("biomes"), TEXT("/placement/biomes"), Out.Biomes);
 			R.ReadBool(Obj, TEXT("underwater"), TEXT("/placement/underwater"), Out.bUnderwater);
 			R.ReadBool(Obj, TEXT("near_spawn"), TEXT("/placement/near_spawn"), Out.bNearSpawn);
+			R.ReadInt(Obj, TEXT("min_ground_height"), TEXT("/placement/min_ground_height"), Out.MinGroundHeight);
+			R.ReadInt(Obj, TEXT("max_ground_height"), TEXT("/placement/max_ground_height"), Out.MaxGroundHeight);
 
 			FString Conform;
 			if (R.ReadString(Obj, TEXT("conform"), TEXT("/placement/conform"), Conform))
@@ -100,6 +102,8 @@ namespace MadFall::PrefabJson
 			Out.EmbedDepth = FMath::Clamp(Out.EmbedDepth, 0, 16);
 			Out.MaxSlope = FMath::Max(Out.MaxSlope, 0);
 			Out.MaxFoundationDepth = FMath::Clamp(Out.MaxFoundationDepth, 0, 64);
+			Out.MinGroundHeight = FMath::Clamp(Out.MinGroundHeight, MadFall::WorldMinZ, MadFall::WorldMaxZ);
+			Out.MaxGroundHeight = FMath::Clamp(Out.MaxGroundHeight, Out.MinGroundHeight, MadFall::WorldMaxZ);
 		}
 
 		FString Escape(const FString& Text)
@@ -444,7 +448,15 @@ namespace MadFall::PrefabJson
 			Out.Appendf(TEXT("%s\"%s\""), Index ? TEXT(", ") : TEXT(""), *P.Biomes[Index].ToString());
 		}
 		Out.Append(TEXT("],\n"));
-		Out.Appendf(TEXT("\t\t\"underwater\": %s\n"), P.bUnderwater ? TEXT("true") : TEXT("false"));
+		Out.Appendf(TEXT("\t\t\"underwater\": %s"), P.bUnderwater ? TEXT("true") : TEXT("false"));
+		// Only written when it says something: a prefab that accepts any height
+		// should not carry the whole world's range in its file.
+		if (P.MinGroundHeight > MadFall::WorldMinZ || P.MaxGroundHeight < MadFall::WorldMaxZ)
+		{
+			Out.Appendf(TEXT(",\n\t\t\"min_ground_height\": %d,\n\t\t\"max_ground_height\": %d"),
+				P.MinGroundHeight, P.MaxGroundHeight);
+		}
+		Out.Append(TEXT("\n"));
 		Out.Append(TEXT("\t},\n"));
 
 		// --- palette ---
