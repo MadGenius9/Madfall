@@ -1589,6 +1589,30 @@ get under the surface.
 - Known gaps: zombies and animals walk along the bottom rather than swimming,
   and there is no current, no waves and no swimming animation.
 
+### Dying, and being hurt
+
+A survivor who was hit saw a number move in the corner of the screen, and a
+survivor who died got a line of text among the pickup messages. Both are the
+moments a survival game cannot afford to be quiet about.
+
+- **The screen reddens at its edges** when the survivor is hit, for half a
+  second, scaled by the size of the hit (`GetHurtFlash`): a scratch and a
+  mauling should not look the same. An edge rather than a wash, because the
+  middle of the screen is where the thing hitting them is.
+- **A death screen** over a darkened world: what killed them, the day and level
+  they reached, where their backpack is - the walk back to it is the cost of
+  dying, and a survivor who cannot find it has lost everything instead - and the
+  respawn countdown. The headline draws at three times the HUD's scale; this is
+  the one moment the game has the whole screen.
+- **What killed them is one function.** `MadFall::Survival::WorstCause` picks
+  the worst of the step's damages and names it, and both the log line and the
+  screen use it. It exists because the two disagreed: drowning was added to the
+  model without being added to the list the death message chose from, so a
+  survivor who drowned was told they died of their wounds. Tested by
+  `MadFall.Survival.DeathCause` (every cause has a word, and the worst wins);
+  the CI water gate now drowns a survivor and fails unless the game says
+  drowning.
+
 ### Clothing
 
 The survival model always had a comfort band that insulation shifts. Clothing

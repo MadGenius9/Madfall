@@ -782,6 +782,43 @@ bool FMadBreathTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadDeathCauseTest,
+	"MadFall.Survival.DeathCause",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadDeathCauseTest::RunTest(const FString& Parameters)
+{
+	// Every cause the model can record has a word, and the worst one wins. This
+	// exists because drowning was added to the model without being added to the
+	// list the death message chose from, so drowning a survivor told them they
+	// had died of their wounds.
+	FMadSurvivalStepResult Empty;
+	TestEqual(TEXT("killed by nothing in particular"), MadFall::Survival::WorstCause(Empty), FString(TEXT("your wounds")));
+
+	const TArray<TPair<float FMadSurvivalStepResult::*, FString>> Causes = {
+		{ &FMadSurvivalStepResult::StarvationDamage, TEXT("starvation") },
+		{ &FMadSurvivalStepResult::DehydrationDamage, TEXT("dehydration") },
+		{ &FMadSurvivalStepResult::ExposureDamage, TEXT("exposure") },
+		{ &FMadSurvivalStepResult::InfectionDamage, TEXT("infection") },
+		{ &FMadSurvivalStepResult::DrowningDamage, TEXT("drowning") },
+	};
+	for (const TPair<float FMadSurvivalStepResult::*, FString>& Cause : Causes)
+	{
+		FMadSurvivalStepResult Only;
+		Only.*(Cause.Key) = 5.0f;
+		TestEqual(*FString::Printf(TEXT("dying of %s says so"), *Cause.Value), MadFall::Survival::WorstCause(Only), Cause.Value);
+	}
+
+	// The worst wins, not the last one checked.
+	FMadSurvivalStepResult Mixed;
+	Mixed.StarvationDamage = 1.0f;
+	Mixed.DrowningDamage = 9.0f;
+	Mixed.ExposureDamage = 4.0f;
+	TestEqual(TEXT("the worst cause is the one reported"), MadFall::Survival::WorstCause(Mixed), FString(TEXT("drowning")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMadSurvivalModelTest,
 	"MadFall.Survival.Model",
 	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)

@@ -1270,6 +1270,7 @@ if (-not $SkipTests) {
             @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath ([1-9][0-9]?)  underwater' -Quiet); Why = 'diving spent their breath' },
             @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath 0  underwater' -Quiet); Why = 'and ran it out' },
             @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'Player respawned|health [0-9]{1,2}\.[0-9]/100' -Quiet); Why = 'drowning cost health' },
+            @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'Player died of drowning' -Quiet); Why = 'and the death screen named drowning, not "your wounds"' },
             @{ Ok = [bool](Select-String -Path $waterLog -Pattern 'breath 100' -Quiet); Why = 'and a breath came back at the top' },
             @{ Ok = [bool]((Select-String -Path $waterLog -Pattern 'submerged (100|[5-9][0-9])%' -Quiet)); Why = 'the survivor was measured as being in the water' }
         )

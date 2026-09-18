@@ -172,12 +172,36 @@ bool AMadPlayerCharacter::ReceiveHit(float Amount, FName DamageType, AActor* Att
 		return false;
 	}
 	Survival->ApplyAttackDamage(Amount);
+	// The edge of the screen reddens with the size of the hit, so a scratch and
+	// a mauling do not look the same.
+	HurtAtSeconds = GetWorld()->GetTimeSeconds();
+	HurtAmount = FMath::Max(HurtAmount * 0.5f, FMath::Clamp(Amount / 25.0f, 0.15f, 1.0f));
 	// Zombie acid is infectious, like a bite.
 	if (Cast<AMadZombie>(Attacker) != nullptr)
 	{
 		Survival->ApplyEffects({ { FName(TEXT("infection")), 2.0f } });
 	}
 	return Survival->IsDead();
+}
+
+float AMadPlayerCharacter::GetRespawnCountdown() const
+{
+	if (RespawnAt < 0.0f || GetWorld() == nullptr)
+	{
+		return 0.0f;
+	}
+	return FMath::Max(0.0f, static_cast<float>(RespawnAt - GetWorld()->GetTimeSeconds()));
+}
+
+float AMadPlayerCharacter::GetHurtFlash() const
+{
+	if (HurtAmount <= 0.0f || GetWorld() == nullptr)
+	{
+		return 0.0f;
+	}
+	constexpr float FadeSeconds = 0.5f;
+	const float Age = static_cast<float>(GetWorld()->GetTimeSeconds() - HurtAtSeconds);
+	return HurtAmount * FMath::Clamp(1.0f - Age / FadeSeconds, 0.0f, 1.0f);
 }
 
 void AMadPlayerCharacter::NotifyQuest(EMadQuestObjectiveType Type, FName Id, const TArray<FName>& ThingTags, int32 Amount, const TOptional<FIntVector>& Where)
@@ -883,13 +907,10 @@ void AMadPlayerCharacter::TravelToVoxel(const FIntVector& Voxel)
 
 void AMadPlayerCharacter::HandleDied(const FMadSurvivalStepResult& Causes)
 {
-	FString Cause = TEXT("your wounds");
-	float Worst = 0.0f;
-	auto Consider = [&](float Amount, const TCHAR* Name) { if (Amount > Worst) { Worst = Amount; Cause = Name; } };
-	Consider(Causes.StarvationDamage, TEXT("starvation"));
-	Consider(Causes.DehydrationDamage, TEXT("dehydration"));
-	Consider(Causes.ExposureDamage, TEXT("exposure"));
-	Consider(Causes.InfectionDamage, TEXT("infection"));
+	const FString Cause = MadFall::Survival::WorstCause(Causes);
+	DeathCause = Cause;
+	DiedAtSeconds = GetWorld()->GetTimeSeconds();
+	DeathPlace = GetFeetVoxel();
 
 	UE_LOG(LogMadFallGameplay, Display, TEXT("Player died of %s."), *Cause);
 	PushMessage(FString::Printf(TEXT("You died of %s."), *Cause), 4.0f);

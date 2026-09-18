@@ -148,6 +148,16 @@ struct MADFALLGAMEPLAY_API FMadSurvivalStepResult
 namespace MadFall::Survival
 {
 	/**
+	 * The worst cause in a step's damage, as a word for "You died of ...".
+	 *
+	 * Pure, and shared by the death message and the death screen, because they
+	 * disagreed once already: drowning was added to the model without being
+	 * added to the list the message chose from, so a survivor who drowned was
+	 * told they died of their wounds.
+	 */
+	MADFALLGAMEPLAY_API FString WorstCause(const FMadSurvivalStepResult& Causes);
+
+	/**
 	 * Advances the vitals by DeltaSeconds. Pure and frame-rate independent for
 	 * any dt up to a second (larger steps are subdivided), so the same code
 	 * serves the live component and a fast-forward when a save is loaded.

@@ -104,6 +104,26 @@ namespace MadFall::Survival
 		}
 	}
 
+	FString WorstCause(const FMadSurvivalStepResult& Causes)
+	{
+		FString Cause = TEXT("your wounds");
+		float Worst = 0.0f;
+		auto Consider = [&Cause, &Worst](float Amount, const TCHAR* Name)
+		{
+			if (Amount > Worst)
+			{
+				Worst = Amount;
+				Cause = Name;
+			}
+		};
+		Consider(Causes.StarvationDamage, TEXT("starvation"));
+		Consider(Causes.DehydrationDamage, TEXT("dehydration"));
+		Consider(Causes.ExposureDamage, TEXT("exposure"));
+		Consider(Causes.InfectionDamage, TEXT("infection"));
+		Consider(Causes.DrowningDamage, TEXT("drowning"));
+		return Cause;
+	}
+
 	FMadSurvivalStepResult Step(FMadSurvivalStats& Stats, const FMadSurvivalEnvironment& Environment,
 		const FMadSurvivalTuning& Tuning, float DeltaSeconds)
 	{

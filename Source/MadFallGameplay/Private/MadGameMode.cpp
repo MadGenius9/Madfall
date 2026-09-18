@@ -142,6 +142,53 @@ void AMadHUD::DrawHUD()
 		return;
 	}
 
+	// --- being hurt, and dying -------------------------------------------------
+	// Drawn before everything else so the vitals and the hotbar stay readable
+	// through the red, and the death screen sits over the lot.
+	if (const float Hurt = Player->GetHurtFlash(); Hurt > 0.0f)
+	{
+		// An edge, not a full-screen wash: the middle of the screen is where the
+		// survivor is looking, and a red film over it hides what is hitting them.
+		const float Band = FMath::Min(W, H) * 0.22f;
+		const FLinearColor Red(0.55f, 0.03f, 0.02f, 0.55f * Hurt);
+		DrawRect(Red, 0.0f, 0.0f, W, Band);
+		DrawRect(Red, 0.0f, H - Band, W, Band);
+		DrawRect(Red, 0.0f, Band, Band, H - 2.0f * Band);
+		DrawRect(Red, W - Band, Band, Band, H - 2.0f * Band);
+	}
+
+	if (Player->IsDown())
+	{
+		DrawRect(FLinearColor(0.02f, 0.0f, 0.0f, 0.72f), 0.0f, 0.0f, W, H);
+
+		// The headline is drawn at three times the HUD's scale: this is the one
+		// moment the game has the whole screen, and a line of the same 11-pixel
+		// font it uses for stack counts does not read as one.
+		const FString Died = FString::Printf(TEXT("You died of %s"), *Player->GetDeathCause());
+		const float HeadlineScale = Layout.FontScale() * 3.0f;
+		float HeadlineWidth = 0.0f;
+		float HeadlineHeight = 0.0f;
+		GetTextSize(Died, HeadlineWidth, HeadlineHeight, Font, HeadlineScale);
+		DrawText(Died, FLinearColor(0.85f, 0.15f, 0.12f), W * 0.5f - HeadlineWidth * 0.5f, H * 0.34f, Font, HeadlineScale);
+
+		const UMadWorldClockSubsystem* DeathClock = GetWorld()->GetSubsystem<UMadWorldClockSubsystem>();
+		const FString Survived = FString::Printf(TEXT("Day %d   level %d"), DeathClock ? DeathClock->GetDay() : 1, Player->GetLevel());
+		DrawScaled(Survived, FLinearColor(0.8f, 0.8f, 0.8f), W * 0.5f - ScaledTextWidth(Survived, Font) * 0.5f, H * 0.34f + HeadlineHeight + Px(16.0f), Font);
+
+		// Where the backpack is, because the walk back to it is the cost of
+		// dying and a survivor who cannot find it has lost everything instead.
+		const FIntVector Where = Player->GetDeathPlace();
+		const FString Pack = FString::Printf(TEXT("Your backpack is at %d, %d, %d"), Where.X, Where.Y, Where.Z);
+		DrawScaled(Pack, FLinearColor(0.75f, 0.7f, 0.45f), W * 0.5f - ScaledTextWidth(Pack, Font) * 0.5f, H * 0.34f + HeadlineHeight + Px(42.0f), Font);
+
+		const float Countdown = Player->GetRespawnCountdown();
+		const FString Wait = Countdown > 0.0f
+			? FString::Printf(TEXT("Respawning in %.0f..."), FMath::CeilToFloat(Countdown))
+			: FString(TEXT("Respawning..."));
+		DrawScaled(Wait, FLinearColor(0.6f, 0.6f, 0.6f), W * 0.5f - ScaledTextWidth(Wait, Font) * 0.5f, H * 0.34f + HeadlineHeight + Px(74.0f), Font);
+		return;
+	}
+
 	// --- crosshair ------------------------------------------------------------
 	const float Cross = Px(8.0f);
 	const float CrossThickness = FMath::Max(2.0f, Px(2.0f));

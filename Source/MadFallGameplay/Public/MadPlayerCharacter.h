@@ -118,6 +118,20 @@ public:
 
 	/** True while holding onto a ladder. */
 	bool IsClimbing() const { return bClimbing; }
+
+	/** What killed the survivor, where, and when - the death screen's contents. */
+	const FString& GetDeathCause() const { return DeathCause; }
+	const FIntVector& GetDeathPlace() const { return DeathPlace; }
+	double GetDiedAtSeconds() const { return DiedAtSeconds; }
+	/** Seconds until the respawn, 0 when not dead. */
+	float GetRespawnCountdown() const;
+
+	/**
+	 * How hard the survivor was hit lately, 1 falling to 0 over half a second:
+	 * the HUD's red edge. Being hurt with no feedback but a number moving in the
+	 * corner is the one thing a survival game cannot afford to be quiet about.
+	 */
+	float GetHurtFlash() const;
 	bool IsSwimming() const { return bSwimming; }
 
 	/** Takes the ingredients now and queues the job; the output arrives after the recipe's craft time. */
@@ -433,6 +447,15 @@ private:
 	float MeasureSubmersion(float& OutWaterTopZ, float& OutWaterBottomZ) const;
 
 	bool bSwimming = false;
+
+	/** Death, for the screen that reports it. */
+	FString DeathCause;
+	FIntVector DeathPlace = FIntVector::ZeroValue;
+	double DiedAtSeconds = 0.0;
+
+	/** When the survivor was last hurt, and how badly, for the HUD's red edge. */
+	double HurtAtSeconds = 0.0;
+	float HurtAmount = 0.0f;
 	/** Up (jump) or down (sprint) while swimming, consumed by TickSwimming. */
 	float DiveInput = 0.0f;
 	/** The Z of a scripted walk's direction, so a script can dive. */
