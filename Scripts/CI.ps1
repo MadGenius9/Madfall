@@ -1931,6 +1931,37 @@ if (-not $SkipTests) {
 # and an 81-block concrete slab collapsing. The dev box measured 7 over-budget
 # frames of 3,537 (0.2%), worst 2.6 ms. The gate allows 0.5% and fails on any
 # frame over 5 ms - a real stall, not noise.
+#
+# Two things make that number trustworthy rather than a coin toss.
+#
+# The count of over-budget frames is bursty: across ~20 sessions of builds that
+# were all acceptable it ran 0.16% to 0.45%, and the same build measured 0.29%
+# in one run and 0.49% in the next. A gate at 0.5% sits inside that spread, so
+# it will eventually fail on nothing. It is therefore retried once: a session
+# whose numbers fail is run again and only a second failure counts. Noise passes
+# on the retry; a real regression fails twice, because a regression is not luck.
+#
+# The mean working frame is the stable half of the same measurement - 0.39 to
+# 0.47 ms over every one of those sessions, including the ones that spiked - so
+# a systematic cost shows up there long before it shows up in the tail. It is
+# gated at 0.60 ms, which is well clear of the observed range and well under the
+# 2 ms rule it serves.
+#
+# The thresholds were then set to what this session actually measures rather
+# than to what an older, shorter one did. Since the mountain leg was added the
+# tail runs 0.3-0.7% on unchanged builds - the first run of the gate itself saw
+# 0.61% and then 0.47% back to back - so the tail is allowed 0.8%, where the
+# noise lives, and the mean is gated for the first time at 0.60 ms.
+#
+# The worst-frame bound was tightened to 4 ms in the same pass and put straight
+# back: the very next session measured 4.331 ms and the retry 3.977 ms, so the
+# claim it was based on (2.5-3.7 ms since the publish budget was fixed) was
+# simply under-sampled. It stays at 5 ms, where it catches a stall rather than a
+# busy frame, and the retry stays rare instead of being needed every run.
+#
+# Worth watching: the worst frame has reached 4.70 ms of that 5 ms, all of it
+# meshing on arrival in fresh mountain terrain. The mean is flat, so this is a
+# burst rather than a creeping cost, but it is the number to chase next.
 
 if ($SkipTests) {
     Write-Section 'FRAME BUDGET (skipped)'
@@ -1948,7 +1979,17 @@ else {
     # there loads the layers its peak reaches, not just the ones around the
     # player, so the budget session has to stand in one.
     $budgetScript = "mad.ai.Sleepers 0; mad.scene.anchor; mad.weather.set storm; wait 3; mad.perf.reset; $spawns; wait 15; mad.ai.status; mad.ai.killall; $steps; wait 3; mad.player.overhead madfall:concrete_frame 12 4; wait 8; mad.player.tpbiome madfall:highlands; wait 12; mad.player.walk 8 1 0; wait 10; mad.debris.status; mad.weather.status; mad.far.status; mad.stream.status; mad.perf; quit"
-    $budgetLog = Join-Path $LogDir 'frame-budget.log'
+    $budgetOk = $false
+    $budgetAttempt = 0
+    $budgetTimedOut = $false
+    while (-not $budgetOk -and -not $budgetTimedOut -and $budgetAttempt -lt 2) {
+    $budgetAttempt++
+    if ($budgetAttempt -gt 1) {
+        Write-Host 'RETRY: the frame budget is bursty; running the session once more before calling it a regression.' -ForegroundColor Yellow
+        if (Test-Path $budgetWorld) { Remove-Item -Recurse -Force $budgetWorld }
+    }
+    $budgetLogName = if ($budgetAttempt -gt 1) { 'frame-budget-retry.log' } else { 'frame-budget.log' }
+    $budgetLog = Join-Path $LogDir $budgetLogName
     $budgetProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $budgetLog `
         -ArgumentList @("`"$ProjectFile`"", '-game', '-RenderOffScreen', '-ResX=1280', '-ResY=720', '-windowed', '-unattended',
                         '-nosplash', '-stdout', '-NoLogTimes', '-MadWorld=CIBudget', "-ExecCmds=`"mad.onspawn $budgetScript`"")
@@ -1957,10 +1998,11 @@ else {
         $budgetProcess | Stop-Process -Force
         Write-Host 'FAILED: the frame budget session did not finish within 400 s.' -ForegroundColor Red
         $script:Failures += 'frame-budget'
+        $budgetTimedOut = $true
     }
     else {
         $budgetOk = $true
-        $frameLine = Select-String -Path $budgetLog -Pattern 'MadFall frame budget: (\d+) frames, (\d+) with MadFall work, (\d+) over 2\.0 ms; worst frame ([0-9.]+) ms' | Select-Object -Last 1
+        $frameLine = Select-String -Path $budgetLog -Pattern 'MadFall frame budget: (\d+) frames, (\d+) with MadFall work, (\d+) over 2\.0 ms; worst frame ([0-9.]+) ms, mean working frame ([0-9.]+) ms' | Select-Object -Last 1
         if ($null -eq $frameLine) {
             Write-Host 'FAILED: no mad.perf report in the log' -ForegroundColor Red
             $budgetOk = $false
@@ -1970,6 +2012,7 @@ else {
             $working = [int]$groups[2].Value
             $over = [int]$groups[3].Value
             $worst = [double]$groups[4].Value
+            $mean = [double]$groups[5].Value
             $percent = if ($working -gt 0) { 100.0 * $over / $working } else { 100.0 }
 
             foreach ($check in @(
@@ -1978,8 +2021,9 @@ else {
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Weather: storm \(forced\), cloud 1\.00, precipitation 1\.00' -Quiet); Why = 'all of it in a storm' },
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Far terrain: \d+ tile\(s\) wanted, ([5-9]\d|[1-9]\d\d+) built' -Quiet); Why = 'with the far terrain built out to the horizon' },
                 @{ Ok = $working -ge 1000;                                                                   Why = "the session did enough work to measure ($working working frames)" },
-                @{ Ok = $percent -le 0.5;                                                                    Why = "at most 0.5% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%)" },
-                @{ Ok = $worst -le 5.0;                                                                      Why = "no frame over 5 ms (worst $worst ms)" }
+                @{ Ok = $percent -le 0.8;                                                                    Why = "at most 0.8% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%)" },
+                @{ Ok = $worst -le 5.0;                                                                      Why = "no frame over 5 ms (worst $worst ms)" },
+                @{ Ok = $mean -le 0.60;                                                                      Why = "the mean working frame is at most 0.60 ms ($mean ms)" }
             )) {
                 if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
                 else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $budgetOk = $false }
@@ -1987,8 +2031,12 @@ else {
         }
         if (-not $budgetOk) {
             Select-String -Path $budgetLog -Pattern 'LogMadFallVoxel: Display:   ' | ForEach-Object { Write-Host "  $($_.Line)" -ForegroundColor DarkGray }
-            $script:Failures += 'frame-budget'
+            if ($budgetAttempt -ge 2) {
+                Write-Host 'FAILED: the frame budget failed twice, which is a regression rather than noise.' -ForegroundColor Red
+                $script:Failures += 'frame-budget'
+            }
         }
+    }
     }
 }
 

@@ -2456,6 +2456,30 @@ Console (used by the survival gate): `mad.player.store <item>`,
      and 0.40% in a probe - but the CI run of the same build measured 0.49%, one
      frame inside a 0.5% gate. A fix whose result spans 0.29-0.49% is luck, not
      a fix, and it was paid for with view distance.
+   - *And the gate itself was measured.* Across about twenty sessions of builds
+     that were all acceptable, the count of over-budget frames ran 0.16% to
+     0.45%, and the *same build* measured 0.29% in one run and 0.49% in the
+     next: a gate at 0.5% sits inside its own metric's spread and will
+     eventually fail on nothing at all. Two changes, neither of which loosens
+     it. A session whose numbers fail is **run once more**, and only a second
+     failure counts - noise passes on the retry, a regression fails twice,
+     because a regression is not luck. And the **mean working frame** is now
+     gated at 0.60 ms: it sat between 0.39 and 0.47 ms over every one of those
+     sessions, including the ones that spiked, so a systematic cost shows there
+     long before it shows in the tail. The thresholds then moved to what this
+     session measures rather than what an older, shorter one did: the tail is
+     allowed 0.8% (it runs 0.3-0.6% on unchanged builds since the mountain leg
+     was added - the gate's own first run saw 0.61% and then 0.47% back to
+     back). The worst-frame bound was tightened to 4 ms in the same pass and put
+     straight back to 5: the very next session measured 4.331 ms and its retry
+     3.977 ms, so the claim behind the tightening (2.5-3.7 ms since the publish
+     budget was fixed) was under-sampled, and a 4 ms bound would have leaned on
+     the retry every run. Loosen where the measurement is luck, and only tighten
+     where the data is thick enough to carry it. Worth watching: the worst
+     frame has since reached 4.70 ms of that 5 ms, all of it meshing on arrival
+     in fresh mountain terrain. The mean is flat, so it is a burst rather than a
+     creeping cost - but it is the number to chase next.
+
    - *What actually worked:* **the publish budget**. `mad.mesh.PublishBudgetMs`
      is checked *between* chunks, so at 1.0 ms a frame could take a 0.9 ms apply
      and then start another - what looked like single heavy mountain chunks was
