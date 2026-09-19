@@ -72,6 +72,8 @@ namespace MadFall::FrameBudget
 		int64 FramesOverBudget = 0;
 		double WorstFrameMs = 0.0;
 		double TotalMs = 0.0;
+		/** Wall clock since the last Reset, so the report can say how hard the work was packed. */
+		double SessionSeconds = 0.0;
 		double WorstMs[static_cast<int32>(EMadFrameSystem::Num)] = {};
 		double SumMs[static_cast<int32>(EMadFrameSystem::Num)] = {};
 		/** In frames over budget, how often each system was the largest cost. */

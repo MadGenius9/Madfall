@@ -199,9 +199,9 @@ float AMadPlayerCharacter::GetHurtFlash() const
 	{
 		return 0.0f;
 	}
-	constexpr float FadeSeconds = 0.5f;
+	constexpr float HurtFadeSeconds = 0.5f;
 	const float Age = static_cast<float>(GetWorld()->GetTimeSeconds() - HurtAtSeconds);
-	return HurtAmount * FMath::Clamp(1.0f - Age / FadeSeconds, 0.0f, 1.0f);
+	return HurtAmount * FMath::Clamp(1.0f - Age / HurtFadeSeconds, 0.0f, 1.0f);
 }
 
 void AMadPlayerCharacter::NotifyQuest(EMadQuestObjectiveType Type, FName Id, const TArray<FName>& ThingTags, int32 Amount, const TOptional<FIntVector>& Where)

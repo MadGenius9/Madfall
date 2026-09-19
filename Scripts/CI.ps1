@@ -1949,10 +1949,28 @@ if (-not $SkipTests) {
 # 2 ms rule it serves.
 #
 # The thresholds were then set to what this session actually measures rather
-# than to what an older, shorter one did. Since the mountain leg was added the
-# tail runs 0.3-0.7% on unchanged builds - the first run of the gate itself saw
-# 0.61% and then 0.47% back to back - so the tail is allowed 0.8%, where the
-# noise lives, and the mean is gated for the first time at 0.60 ms.
+# than to what an older, shorter one did, and then set again once the report
+# started printing the totals.
+#
+# Which number is worth gating took two goes and some arithmetic.
+#
+# Two attempts of the SAME build, back to back, ran at 110.9 and 119.2 frames a
+# second and their tails were 0.99% and 0.56%: the tail is a measure of the
+# machine as much as of the game, because a fixed amount of bursty work lands in
+# fewer, fatter frames when the box is busy. It is therefore a coarse backstop,
+# at 1.2%, and not the first thing read.
+#
+# Work per session second looked like the stable answer and is not: a third
+# session at 73.5 fps reported 37.3 ms/s against 56 ms/s at 111-119 fps.
+# Meshing is budgeted per frame, so fewer frames is less work done in the same
+# wall clock - and on a FASTER machine the same game would report a higher rate
+# and fail a gate set from these numbers.
+#
+# The one that holds still is the mean working frame: 37.3/73.5, 56.4/110.9 and
+# 56.3/119.2 are 0.507, 0.509 and 0.472 ms. Work per frame does not care how
+# many frames there are, which is exactly the property a regression gate needs,
+# so that is what is gated, at 0.60 ms. The rate and the frame rate are printed
+# beside it because they are what tells a slow session from a fat one.
 #
 # The worst-frame bound was tightened to 4 ms in the same pass and put straight
 # back: the very next session measured 4.331 ms and the retry 3.977 ms, so the
@@ -2004,6 +2022,7 @@ else {
     else {
         $budgetOk = $true
         $frameLine = Select-String -Path $budgetLog -Pattern 'MadFall frame budget: (\d+) frames, (\d+) with MadFall work, (\d+) over 2\.0 ms; worst frame ([0-9.]+) ms, mean working frame ([0-9.]+) ms' | Select-Object -Last 1
+        $rateLine = Select-String -Path $budgetLog -Pattern 'over ([0-9.]+) s of session: ([0-9.]+) ms of MadFall work, ([0-9.]+) ms a second, ([0-9.]+) frames a second' | Select-Object -Last 1
         if ($null -eq $frameLine) {
             Write-Host 'FAILED: no mad.perf report in the log' -ForegroundColor Red
             $budgetOk = $false
@@ -2015,6 +2034,8 @@ else {
             $worst = [double]$groups[4].Value
             $mean = [double]$groups[5].Value
             $percent = if ($working -gt 0) { 100.0 * $over / $working } else { 100.0 }
+            $workRate = if ($rateLine) { [double]$rateLine.Matches[0].Groups[3].Value } else { -1.0 }
+            $framesPerSecond = if ($rateLine) { [double]$rateLine.Matches[0].Groups[4].Value } else { -1.0 }
 
             foreach ($check in @(
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Zombies: (1[0-9]|[2-9][0-9]) alive' -Quiet); Why = 'the horde spawned (at least 10 zombies alive)' },
@@ -2022,9 +2043,9 @@ else {
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Weather: storm \(forced\), cloud 1\.00, precipitation 1\.00' -Quiet); Why = 'all of it in a storm' },
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Far terrain: \d+ tile\(s\) wanted, ([5-9]\d|[1-9]\d\d+) built' -Quiet); Why = 'with the far terrain built out to the horizon' },
                 @{ Ok = $working -ge 1000;                                                                   Why = "the session did enough work to measure ($working working frames)" },
-                @{ Ok = $percent -le 0.8;                                                                    Why = "at most 0.8% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%)" },
+                @{ Ok = $percent -le 1.2;                                                                    Why = "at most 1.2% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%)" },
                 @{ Ok = $worst -le 5.0;                                                                      Why = "no frame over 5 ms (worst $worst ms)" },
-                @{ Ok = $mean -le 0.60;                                                                      Why = "the mean working frame is at most 0.60 ms ($mean ms)" }
+                @{ Ok = $mean -le 0.60;                                                                      Why = "the mean working frame is at most 0.60 ms ($mean ms, at $framesPerSecond fps and $workRate ms/s)" }
             )) {
                 if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
                 else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $budgetOk = $false }

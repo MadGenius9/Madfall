@@ -2490,7 +2490,33 @@ Console (used by the survival gate): `mad.player.store <item>`,
      because a regression is not luck. And the **mean working frame** is now
      gated at 0.60 ms: it sat between 0.39 and 0.47 ms over every one of those
      sessions, including the ones that spiked, so a systematic cost shows there
-     long before it shows in the tail. The thresholds then moved to what this
+     long before it shows in the tail - but read it with the line under it. A
+     mean per frame is not a measure of cost on its own: the same work spread
+     over a session that ran at half the frame rate doubles it, so a busy
+     machine reads as a regression. `mad.perf` now prints the raw pair beside
+     it - "over 36.9 s of session: 1988 ms of MadFall work, 53.8 ms a second,
+     117.3 frames a second" - so whoever chases one of these numbers can tell
+     more work from fewer frames before touching any code. That distinction is
+     what made the apparent creep in mean meshing (0.10 to 0.19 ms a frame
+     across the mountain work) worth measuring rather than assuming: the
+     sessions that reported the higher means were also the ones that ran fewest
+     frames.
+   - *And then the arithmetic settled which number to gate.* Two attempts of the
+     same build, back to back, ran at 110.9 and 119.2 frames a second with tails
+     of 0.99% and 0.56%: the tail measures the machine as much as the game,
+     because a fixed amount of bursty work lands in fewer, fatter frames when
+     the box is busy. It is now a coarse backstop at 1.2%.
+     **Work per session second looked like the stable answer and was not.** A
+     third session at 73.5 fps reported 37.3 ms/s against 56 ms/s at 111-119
+     fps: meshing is budgeted per frame, so fewer frames is less work done in
+     the same wall clock, and on a *faster* machine the same game would report a
+     higher rate and fail a gate set from those numbers. It was gated for one
+     CI run and taken straight back out.
+     What holds still is the **mean working frame**: 37.3/73.5, 56.4/110.9 and
+     56.3/119.2 are 0.507, 0.509 and 0.472 ms. Work per frame does not care how
+     many frames there are, which is the property a regression gate needs, so
+     that is the one gated, at 0.60 ms. The rate and the frame rate are printed
+     beside it because they are what tells a slow session from a fat one. The thresholds then moved to what this
      session measures rather than what an older, shorter one did: the tail is
      allowed 0.8% (it runs 0.3-0.6% on unchanged builds since the mountain leg
      was added - the gate's own first run saw 0.61% and then 0.47% back to

@@ -122,9 +122,13 @@ namespace MadFall::FrameBudget
 		}
 	}
 
+	/** When Reset was last called, for the session's wall clock. */
+	double GResetSeconds = 0.0;
+
 	void Reset()
 	{
 		GReport = FReport();
+		GResetSeconds = FPlatformTime::Seconds();
 		for (double& Seconds : GCurrent)
 		{
 			Seconds = 0.0;
@@ -144,6 +148,16 @@ namespace MadFall::FrameBudget
 		Out.Appendf(TEXT("MadFall frame budget: %lld frames, %lld with MadFall work, %lld over %.1f ms; worst frame %.3f ms, mean working frame %.3f ms\n"),
 			R.Frames, R.FramesWithWork, R.FramesOverBudget, BudgetMs, R.WorstFrameMs,
 			R.FramesWithWork > 0 ? R.TotalMs / R.FramesWithWork : 0.0);
+		// The totals as well as the means. A mean per frame is not a measure
+		// of cost on its own: the same work spread over a session that ran at
+		// half the frame rate doubles it, so a slow machine reads as a
+		// regression. Whoever chases one of these numbers needs the raw pair
+		// to tell those apart.
+		const double Seconds = GResetSeconds > 0.0 ? FPlatformTime::Seconds() - GResetSeconds : 0.0;
+		Out.Appendf(TEXT("  over %.1f s of session: %.0f ms of MadFall work, %.1f ms a second, %.1f frames a second\n"),
+			Seconds, R.TotalMs,
+			Seconds > 0.0 ? R.TotalMs / Seconds : 0.0,
+			Seconds > 0.0 ? R.Frames / Seconds : 0.0);
 		Out.Append(TEXT("  system        worst ms   mean ms/frame   largest in over-budget frames\n"));
 		for (int32 Index = 0; Index < NumSystems; ++Index)
 		{
