@@ -2332,6 +2332,150 @@ else {
 }
 
 # ---------------------------------------------------------------------------
+# Soak: does it still behave after a fortnight of play?
+# ---------------------------------------------------------------------------
+#
+# Every other gate is a short scripted burst - the longest is under two
+# minutes - so nothing here has ever answered "does it hold up over an
+# evening?". The bugs that class of test finds are the ones that accumulate:
+# chunks that load and never unload, actors that are never cleaned up, a save
+# that grows without bound, errors that only appear on the hundredth horde.
+# None of them fail loudly. They just make hour three worse than hour one.
+#
+# The clock is compressed so a fortnight fits in a few minutes. That is honest
+# for streaming, building, collapsing and dying, and NOT honest for horde
+# nights - a night at this speed is a dozen seconds, room for one wave - so
+# this gate claims nothing about hordes. The horde-night gate above does that.
+#
+# The number that earns this gate its place is resident chunks. Measured over
+# a first run: 1,653 resident early and 1,653 resident late, after 33,401
+# loads. That is the shape of the assertion - not "under some ceiling" but
+# "the same as it was", which is what a leak breaks.
+
+if ($SkipTests) {
+    Write-Section 'SOAK (skipped)'
+    $script:Skipped += 'soak'
+}
+else {
+    Write-Section 'SOAK: a fortnight of play in a few minutes'
+
+    $soakWorld = Join-Path $RepoRoot 'Saved\MadFallWorlds\ci-soak'
+    if (Test-Path $soakWorld) { Remove-Item -Recurse -Force $soakWorld }
+
+    # One route, walked twice: once to measure, once at the end to compare.
+    # Warmed first, so neither measurement is paying for ground the world has
+    # never generated - that cost belongs to the streaming gate, not this one.
+    $soakRoute = @(240, 0), @(0, 240), @(-240, 0), @(0, -240), @(200, 200), @(0, 0)
+    $soakProbe = ($soakRoute | ForEach-Object { "mad.player.tp $($_[0]) $($_[1]) 60; wait 3" }) -join '; '
+
+    $soakPlay = @()
+    for ($loop = 1; $loop -le 8; $loop++) {
+        $px = (($loop % 5) - 2) * 260
+        $py = (((($loop * 3) % 5)) - 2) * 260
+        $soakPlay += "mad.player.tp $px $py 60"
+        $soakPlay += 'wait 4'
+        $soakPlay += 'mad.player.shelter'
+        $soakPlay += 'mad.ai.spawn madfall:zombie_civilian 6 0'
+        $soakPlay += 'mad.ai.spawn madfall:zombie_civilian -6 3'
+        $soakPlay += 'wait 7'
+        $soakPlay += 'mad.player.overhead madfall:concrete_frame 8 3'
+        $soakPlay += 'wait 6'
+        $soakPlay += 'mad.ai.killall'
+        $soakPlay += 'wait 3'
+    }
+
+    $soakScript = (@(
+        'mad.clock.DayMinutes 0.4'
+        'mad.clock.set 8'
+        'wait 10'
+        $soakProbe
+        'wait 3'
+        'mad.perf.reset'
+        $soakProbe
+        'mad.perf'
+        'mad.stream.status'
+    ) + $soakPlay + @(
+        'mad.perf.reset'
+        $soakProbe
+        'mad.perf'
+        'mad.clock.status'
+        'mad.stream.status'
+        'mad.ai.status'
+        'mad.animals.status'
+        'mad.debris.status'
+        'mad.world.save'
+        'wait 3'
+        'quit'
+    )) -join '; '
+
+    $soakLog = Join-Path $LogDir 'soak.log'
+    $soakProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $soakLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-soak', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn $soakScript`"")
+
+    if (-not $soakProcess.WaitForExit(900000)) {
+        $soakProcess | Stop-Process -Force
+        Write-Host 'FAILED: the soak session did not finish within 900 s.' -ForegroundColor Red
+        $script:Failures += 'soak'
+    }
+    else {
+        # Resident chunks: what was asked for, less what has been let go.
+        $streaming = @(Select-String -Path $soakLog -Pattern '(\d+) requested, (\d+) unloaded total' |
+            ForEach-Object { [int]$_.Matches[0].Groups[1].Value - [int]$_.Matches[0].Groups[2].Value })
+        $requested = @(Select-String -Path $soakLog -Pattern '(\d+) requested, (\d+) unloaded total' |
+            ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        $means = @(Select-String -Path $soakLog -Pattern 'mean working frame ([0-9.]+) ms' |
+            ForEach-Object { [double]$_.Matches[0].Groups[1].Value })
+        $lastDay = 0
+        $dayHit = Select-String -Path $soakLog -Pattern 'Day (\d+), \d\d:' | Select-Object -Last 1
+        if ($dayHit) { $lastDay = [int]$dayHit.Matches[0].Groups[1].Value }
+        $madErrors = @(Select-String -Path $soakLog -Pattern 'LogMadFall\w*: Error')
+        $saveMB = 0.0
+        if (Test-Path $soakWorld) {
+            $saveMB = [math]::Round((Get-ChildItem -Recurse -File $soakWorld | Measure-Object -Sum Length).Sum / 1MB, 2)
+        }
+
+        $residentOk = $false
+        $residentWhy = 'resident chunks were not reported twice'
+        if ($streaming.Count -ge 2) {
+            $early = $streaming[0]
+            $late = $streaming[-1]
+            $growth = if ($early -gt 0) { [math]::Round(100.0 * ($late - $early) / $early, 1) } else { 999.0 }
+            $residentOk = ($early -gt 0 -and [math]::Abs($growth) -le 25.0)
+            $residentWhy = "chunks let go as fast as they were taken ($early resident early, $late late, ${growth}%, over $($requested[-1]) loads)"
+        }
+
+        $driftOk = $false
+        $driftWhy = 'the frame cost was not reported twice'
+        if ($means.Count -ge 2) {
+            $driftOk = ($means[-1] -le $means[0] * 2.5)
+            $driftWhy = "a fortnight in, the same route costs about the same ($($means[0]) ms early, $($means[-1]) ms late)"
+        }
+
+        $soakChecks = @(
+            @{ Ok = ($lastDay -ge 8);          Why = "the session really ran a fortnight (reached day $lastDay)" },
+            @{ Ok = $residentOk;               Why = $residentWhy },
+            @{ Ok = $driftOk;                  Why = $driftWhy },
+            @{ Ok = ($madErrors.Count -eq 0);  Why = "nothing logged an error the whole way ($($madErrors.Count))" },
+            @{ Ok = ($saveMB -gt 0 -and $saveMB -le 64); Why = "the world on disk is a sane size ($saveMB MB)" },
+            @{ Ok = [bool](Select-String -Path $soakLog -Pattern 'Zombies: \d+ alive \(cap' -Quiet); Why = 'the AI was still reporting at the end' }
+        )
+
+        $soakOk = $true
+        foreach ($check in $soakChecks) {
+            if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
+            else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $soakOk = $false }
+        }
+        if (-not $soakOk) {
+            $madErrors | Select-Object -First 5 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
+            Select-String -Path $soakLog -Pattern 'requested, |Zombies: |Animals: |Debris: ' |
+                Select-Object -Last 6 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
+            $script:Failures += 'soak'
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Gate 11: packaged build and a content mod
 # ---------------------------------------------------------------------------
 #

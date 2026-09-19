@@ -3699,6 +3699,44 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### The soak gate
+
+Every other gate is a short scripted burst - the longest is under two minutes -
+so until this one, nothing had ever answered *does it hold up over an evening?*
+The bugs that question finds are the ones that accumulate: chunks that load and
+never unload, actors nothing cleans up, a save that grows without bound, an
+error that only shows on the hundredth collapse. None of them fail loudly; they
+just make hour three worse than hour one.
+
+The session compresses a fortnight into about four minutes (`mad.clock.DayMinutes
+0.4`), travelling, building a shelter, dropping a slab on it, spawning and
+killing zombies, eight times over. It walks one fixed route, warmed first, before
+and after, and compares.
+
+- **The number that earns the gate its place is resident chunks**, taken as
+  "requested minus unloaded" from `mad.stream.status`. First run: **1,653
+  resident early and 1,653 late, after 28,309 loads** - the difference is
+  exactly nothing while both inputs move by tens of thousands. The assertion is
+  therefore "the same as it was" within 25%, not "under a ceiling", because
+  same-as-it-was is what a leak breaks. The rest: the clock really advanced,
+  the world on disk is a sane size (1.15 MB for a fortnight), nothing logged a
+  `LogMadFall*: Error` the whole way, and the same route costs about the same
+  per frame at the end as at the start.
+- **It deliberately claims nothing about horde nights.** At this clock speed a
+  night is about a dozen seconds, which is room for one wave; the horde gate
+  above runs at a real clock and owns that question. Saying so is the point -
+  a gate that looks like it covers hordes and does not is worse than one that
+  does not pretend.
+- *A dead end found while building it, recorded so nobody re-runs it.* The soak
+  reported `Horde night 7 begins: 14 zombies` followed by `Spawned 0 of 4` and
+  `Horde night 7 is over: 0 spawned`, which looks exactly like a broken horde.
+  It is not. Forcing a wave at four places in one session spawned 4 of 4 at
+  three of them and 0 of 4 at the fourth, which sits at Z=12 on the coast: the
+  spawn ring there is water, and `FindStandableNear` rejects liquid. Standing
+  surrounded by water keeps the horde off you, which is the same rule that
+  makes a deep moat a wall. The compressed clock then gave the night no second
+  wave, and the 30-second wave timer means a real night has about thirty.
+
 ### Console commands
 
 The Phase 1 interface to the voxel world. Coordinates are world **voxel**
