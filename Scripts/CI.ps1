@@ -1343,7 +1343,27 @@ if (-not $SkipTests) {
         'mad.player.hold madfall:wooden_bow'
         $jobShots
         'mad.ai.status'
+        # Cleared, but not paid: the job is waiting to be reported.
         'mad.quests'
+        'mad.player.status'
+        # The walk home, and the hand-in.
+        'mad.trader.goto'
+        # Long enough for the outpost to stream in and the trader to take their
+        # post. The survivor is arriving from a building 900 voxels away, not
+        # walking over from spawn as the traders gate does, and Interact traces
+        # against the actor: at six seconds it reported "found nothing to use"
+        # while standing three metres from the marker.
+        'wait 22'
+        'mad.trader.status'
+        'mad.trader.aim'
+        # Interact traces from where the camera is looking, and the turn takes a
+        # frame: without this the trace ran before the survivor had turned and
+        # reported "found nothing to use" three metres from the trader.
+        'wait 1'
+        'mad.player.interact'
+        'wait 3'
+        'mad.quests'
+        'mad.player.status'
         'quit'
     ) -join '; '
 
@@ -1355,9 +1375,9 @@ if (-not $SkipTests) {
         -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
                         '-MadWorld=ci-jobs', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn wait 8; $jobScript`"")
 
-    if (-not $jobProcess.WaitForExit(400000)) {
+    if (-not $jobProcess.WaitForExit(500000)) {
         $jobProcess | Stop-Process -Force
-        Write-Host 'FAILED: the clearing-job script did not finish within 400 s.' -ForegroundColor Red
+        Write-Host 'FAILED: the clearing-job script did not finish within 500 s.' -ForegroundColor Red
         $script:Failures += 'jobs-acceptance'
     }
     else {
@@ -1367,12 +1387,25 @@ if (-not $SkipTests) {
         $progress = @(Select-String -Path $jobLog -Pattern 'Clear Hunting Cabin: (\d+)/1' |
             ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
 
+        # Where things happened in the log, so "paid only after reaching the
+        # trader" can be asserted as an order rather than hoped for.
+        $lineOf = {
+            param($pattern)
+            $hit = Select-String -Path $jobLog -Pattern $pattern | Select-Object -First 1
+            if ($hit) { $hit.LineNumber } else { -1 }
+        }
+        $clearedAt = & $lineOf 'waiting to hand in'
+        $tradeAt = & $lineOf 'Trade opened with'
+        $paidAt = & $lineOf 'Quest complete: madfall:quest/job_cabin'
+
         $checks = @(
             @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Quest started: madfall:quest/job_cabin' -Quiet); Why = 'finishing with the trader handed out a clearing job' },
             @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Job: Hunting Cabin' -Quiet);                     Why = 'and the compass points at a building that matches it' },
             @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Travelled to the job at' -Quiet);                Why = 'the survivor walked to it' },
             @{ Ok = ($progress.Count -ge 2 -and $progress[1] -eq 0);                                             Why = "a wanderer killed on the way did not count toward it ($($progress -join ' -> '))" },
-            @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Quest complete: madfall:quest/job_cabin' -Quiet); Why = 'killing what the building woke did' },
+            @{ Ok = ($clearedAt -gt 0);                                                                          Why = 'clearing the building finished the job but did not pay it' },
+            @{ Ok = ($tradeAt -gt 0 -and $clearedAt -gt 0 -and $tradeAt -gt $clearedAt);                          Why = 'the survivor walked back to the trader' },
+            @{ Ok = ($paidAt -gt 0 -and $tradeAt -gt 0 -and $paidAt -gt $tradeAt);                                Why = "and was paid there, not in the field (cleared line $clearedAt, trader line $tradeAt, paid line $paidAt)" },
             @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Quest started: madfall:quest/job_camp' -Quiet);   Why = 'and the trader had the next job ready' }
         )
 
@@ -1382,8 +1415,8 @@ if (-not $SkipTests) {
             else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $jobOk = $false }
         }
         if (-not $jobOk) {
-            Select-String -Path $jobLog -Pattern 'Clear Hunting Cabin|Quest |Job: |Zombies: ' |
-                Select-Object -Last 10 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
+            Select-String -Path $jobLog -Pattern 'Clear Hunting Cabin|Quest |Job: |Zombies: |Trade opened|waiting to hand in' |
+                Select-Object -Last 12 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
             $script:Failures += 'jobs-acceptance'
         }
     }

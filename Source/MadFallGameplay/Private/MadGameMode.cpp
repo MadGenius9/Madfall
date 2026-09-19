@@ -400,6 +400,15 @@ void AMadHUD::DrawHUD()
 					bDone ? FLinearColor(0.5f, 0.9f, 0.4f) : FLinearColor(0.9f, 0.9f, 0.9f), QuestX + Px(6.0f), QuestY, Small);
 				QuestY += QuestLine;
 			}
+
+			// A finished hand-in quest looks identical to an unfinished one
+			// otherwise - every line ticked, still sitting in the journal - so
+			// it has to say what it is waiting for.
+			if (Quest.bHandIn && Player->GetQuestLog().IsWaitingToHandIn(Quest.Id, Journal))
+			{
+				DrawScaled(TEXT("> Report to the trader"), FLinearColor(0.95f, 0.8f, 0.35f), QuestX + Px(6.0f), QuestY, Small);
+				QuestY += QuestLine;
+			}
 			QuestY += Px(12.0f);
 		}
 		if (Active.Num() > 2 && QuestY + QuestLine <= JournalBottom + 0.5f)
@@ -2160,6 +2169,10 @@ namespace
 				{
 					UE_LOG(LogMadFallGameplay, Display, TEXT("    %s: %d/%d"), *MadFall::Quests::DescribeObjective(Entry.Key->Objectives[Index], Definitions),
 						Entry.Value->Counts.IsValidIndex(Index) ? Entry.Value->Counts[Index] : 0, Entry.Key->Objectives[Index].Count);
+				}
+				if (P->GetQuestLog().IsWaitingToHandIn(Entry.Key->Id, Definitions))
+				{
+					UE_LOG(LogMadFallGameplay, Display, TEXT("    waiting to hand in: report to the trader"));
 				}
 			}
 		}));

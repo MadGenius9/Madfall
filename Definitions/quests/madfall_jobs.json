@@ -4,91 +4,162 @@
 		"id": "madfall:quest/job_cabin",
 		"display_name": "@quests.job_cabin",
 		"description": "@quests.job_cabin.description",
-		"requires": ["madfall:quest/trader"],
+		"requires": [
+			"madfall:quest/trader"
+		],
 		"order": 100,
 		"objectives": [
-			{ "type": "clear_poi", "target": "madfall:hunting_cabin", "count": 1 }
+			{
+				"type": "clear_poi",
+				"target": "madfall:hunting_cabin",
+				"count": 1
+			}
 		],
 		"rewards": {
 			"experience": 120,
 			"items": [
-				{ "item": "madfall:coin", "count": 40 },
-				{ "item": "madfall:bandage", "count": 2 }
+				{
+					"item": "madfall:coin",
+					"count": 40
+				},
+				{
+					"item": "madfall:bandage",
+					"count": 2
+				}
 			]
-		}
+		},
+		"hand_in": true
 	},
 	{
 		"schema": "madfall.quest/1",
 		"id": "madfall:quest/job_camp",
 		"display_name": "@quests.job_camp",
 		"description": "@quests.job_camp.description",
-		"requires": ["madfall:quest/job_cabin"],
+		"requires": [
+			"madfall:quest/job_cabin"
+		],
 		"order": 101,
 		"objectives": [
-			{ "type": "clear_poi", "target": "madfall:logging_camp", "count": 2 }
+			{
+				"type": "clear_poi",
+				"target": "madfall:logging_camp",
+				"count": 2
+			}
 		],
 		"rewards": {
 			"experience": 200,
 			"items": [
-				{ "item": "madfall:coin", "count": 70 },
-				{ "item": "madfall:iron_pickaxe", "count": 1 }
+				{
+					"item": "madfall:coin",
+					"count": 70
+				},
+				{
+					"item": "madfall:iron_pickaxe",
+					"count": 1
+				}
 			]
-		}
+		},
+		"hand_in": true
 	},
 	{
 		"schema": "madfall.quest/1",
 		"id": "madfall:quest/job_bunker",
 		"display_name": "@quests.job_bunker",
 		"description": "@quests.job_bunker.description",
-		"requires": ["madfall:quest/job_camp"],
+		"requires": [
+			"madfall:quest/job_camp"
+		],
 		"order": 102,
 		"objectives": [
-			{ "type": "clear_poi", "target": "madfall:ruined_bunker", "count": 3 }
+			{
+				"type": "clear_poi",
+				"target": "madfall:ruined_bunker",
+				"count": 3
+			}
 		],
 		"rewards": {
 			"experience": 320,
 			"items": [
-				{ "item": "madfall:coin", "count": 110 },
-				{ "item": "madfall:scrap_vest", "count": 1 }
+				{
+					"item": "madfall:coin",
+					"count": 110
+				},
+				{
+					"item": "madfall:scrap_vest",
+					"count": 1
+				}
 			]
-		}
+		},
+		"hand_in": true
 	},
 	{
 		"schema": "madfall.quest/1",
 		"id": "madfall:quest/job_ruin",
 		"display_name": "@quests.job_ruin",
 		"description": "@quests.job_ruin.description",
-		"requires": ["madfall:quest/job_bunker"],
+		"requires": [
+			"madfall:quest/job_bunker"
+		],
 		"order": 103,
 		"objectives": [
-			{ "type": "clear_poi", "tag": "poi.ruin", "count": 5 }
+			{
+				"type": "clear_poi",
+				"tag": "poi.ruin",
+				"count": 5
+			}
 		],
 		"rewards": {
 			"experience": 480,
 			"items": [
-				{ "item": "madfall:coin", "count": 180 },
-				{ "item": "madfall:antibiotics", "count": 1 },
-				{ "item": "madfall:mod_reinforced_grip", "count": 1 }
+				{
+					"item": "madfall:coin",
+					"count": 180
+				},
+				{
+					"item": "madfall:antibiotics",
+					"count": 1
+				},
+				{
+					"item": "madfall:mod_reinforced_grip",
+					"count": 1
+				}
 			]
-		}
+		},
+		"hand_in": true
 	},
 	{
 		"schema": "madfall.quest/1",
 		"id": "madfall:quest/job_outpost",
 		"display_name": "@quests.job_outpost",
 		"description": "@quests.job_outpost.description",
-		"requires": ["madfall:quest/job_ruin"],
+		"requires": [
+			"madfall:quest/job_ruin"
+		],
 		"order": 104,
 		"objectives": [
-			{ "type": "clear_poi", "target": "madfall:military_outpost", "count": 9 }
+			{
+				"type": "clear_poi",
+				"target": "madfall:military_outpost",
+				"count": 9
+			}
 		],
 		"rewards": {
 			"experience": 900,
 			"items": [
-				{ "item": "madfall:coin", "count": 350 },
-				{ "item": "madfall:scrap_helmet", "count": 1 },
-				{ "item": "madfall:antibiotics", "count": 2 }
+				{
+					"item": "madfall:coin",
+					"count": 350
+				},
+				{
+					"item": "madfall:scrap_helmet",
+					"count": 1
+				},
+				{
+					"item": "madfall:antibiotics",
+					"count": 2
+				}
 			]
-		}
+		},
+		"hand_in": true
 	}
 ]

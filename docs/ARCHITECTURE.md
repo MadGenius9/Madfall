@@ -1565,14 +1565,40 @@ a building, kill what wakes up in it, get paid, get the next one.
 - Tested: the `clearing jobs` gate takes the job, checks the compass found a
   matching building, travels, kills a wanderer and checks it did *not* count,
   then clears the cabin and checks the quest completed and handed out the next.
-- Measured, honestly: the frame-budget stage could not run on this branch - the
-  machine was at 8-12 fps with another game on it - so the job search's cost is
-  reasoned about above rather than measured. It is skipped entirely when no
-  clear_poi objective is active, which is every session the budget gate runs.
-- Known gap: a job pays the moment its last objective is met, because quests
-  have no hand-in - `FMadQuestLog` completes them where they stand. Walking back
-  to the trader to be paid is the half of the loop still missing, and it needs a
-  hand-in step in the quest system rather than anything here.
+- Measured, in the end: the branch that added jobs could not be measured at all
+  on the day (8-12 fps, another game using 6.6 GB of the machine), and the
+  frame-rate floor correctly refused to judge it. The next run on a quiet box
+  measured 0.92% tail, 4.28 ms worst and 0.515 ms mean at 104 fps - inside
+  every gate, and in line with the numbers from before any of this landed. The
+  job search costs nothing worth naming, and it is skipped entirely when no
+  clear_poi objective is active.
+- **And the walk home.** A job used to pay on the swing that killed the last
+  zombie, standing in a building a long way from anyone, which made the trader
+  a shop rather than an employer and made the journey back free. A quest marked
+  `"hand_in": true` now stays in the journal with every objective met until the
+  survivor reaches a trader; opening the trade screen pays it and hands out the
+  next one. The return trip is also when a full backpack and a night coming on
+  start to matter.
+
+  "Waiting to hand in" is stored as *nothing*: it is simply an active quest
+  whose counts are all full, so a save written before hand-ins existed loads
+  unchanged. That is the property `MadFall.Progression.QuestHandIn` pins down
+  hardest, along with not paying twice and not paying an unfinished job to
+  someone who walks past a trader. The journal and `mad.quests` say "report to
+  the trader", because a finished hand-in quest otherwise looks exactly like an
+  unfinished one - every line ticked, still sitting there.
+
+  The CI gate now walks the whole loop and asserts the order by log line: the
+  job was cleared (line 621), the trader was reached (713), and only then was
+  it paid (714). Asserting the order rather than the outcome is the point -
+  "the quest completed" was true before any of this.
+- **Talking is not swinging** (`UpdateTarget`). The trader trace used
+  `min(4, GetReach())`, and `GetReach()` is the held tool's range, so a
+  survivor holding a bow (range 2) could not speak to someone three metres away
+  that the same survivor could speak to bare-handed. It is a flat four voxels
+  now. Found by the gate above walking back to the trader with its bow still
+  out and reporting "found nothing to use" - the kind of thing that would have
+  read in play as "the trader is broken".
 
 ### Somewhere to go
 

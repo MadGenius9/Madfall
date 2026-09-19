@@ -94,22 +94,31 @@ TArray<FName> FMadQuestLog::Evaluate(TFunctionRef<int32(const FMadQuestObjective
 	return CollectCompleted(Definitions);
 }
 
+bool FMadQuestLog::AreObjectivesMet(const FMadQuestProgress& Progress, const FMadQuestDefinition& Quest)
+{
+	for (int32 Objective = 0; Objective < Quest.Objectives.Num(); ++Objective)
+	{
+		if (!Progress.Counts.IsValidIndex(Objective) || Progress.Counts[Objective] < Quest.Objectives[Objective].Count)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 TArray<FName> FMadQuestLog::CollectCompleted(const FMadGameplayDefinitions& Definitions)
 {
 	TArray<FName> Done;
 	for (int32 Index = Active.Num() - 1; Index >= 0; --Index)
 	{
 		const FMadQuestDefinition* Quest = Definitions.FindQuest(Active[Index].Quest);
-		if (Quest == nullptr)
+		if (Quest == nullptr || Quest->bHandIn)
 		{
+			// A hand-in quest that is finished stays in the journal, counts
+			// full, until the survivor reaches someone to report to.
 			continue;
 		}
-		bool bMet = true;
-		for (int32 Objective = 0; Objective < Quest->Objectives.Num(); ++Objective)
-		{
-			bMet &= Active[Index].Counts.IsValidIndex(Objective) && Active[Index].Counts[Objective] >= Quest->Objectives[Objective].Count;
-		}
-		if (bMet)
+		if (AreObjectivesMet(Active[Index], *Quest))
 		{
 			Completed.Add(Quest->Id);
 			Done.Insert(Quest->Id, 0);
@@ -117,6 +126,41 @@ TArray<FName> FMadQuestLog::CollectCompleted(const FMadGameplayDefinitions& Defi
 		}
 	}
 	return Done;
+}
+
+TArray<FName> FMadQuestLog::HandIn(const FMadGameplayDefinitions& Definitions)
+{
+	TArray<FName> Paid;
+	for (int32 Index = Active.Num() - 1; Index >= 0; --Index)
+	{
+		const FMadQuestDefinition* Quest = Definitions.FindQuest(Active[Index].Quest);
+		if (Quest == nullptr || !Quest->bHandIn || !AreObjectivesMet(Active[Index], *Quest))
+		{
+			continue;
+		}
+		Completed.Add(Quest->Id);
+		Paid.Insert(Quest->Id, 0);
+		Active.RemoveAt(Index);
+	}
+	return Paid;
+}
+
+bool FMadQuestLog::IsWaitingToHandIn(FName Quest, const FMadGameplayDefinitions& Definitions) const
+{
+	const FMadQuestProgress* Progress = FindActive(Quest);
+	const FMadQuestDefinition* Definition = Progress ? Definitions.FindQuest(Quest) : nullptr;
+	return Definition != nullptr && Definition->bHandIn && AreObjectivesMet(*Progress, *Definition);
+}
+
+int32 FMadQuestLog::NumWaitingToHandIn(const FMadGameplayDefinitions& Definitions) const
+{
+	int32 Waiting = 0;
+	for (const FMadQuestProgress& Progress : Active)
+	{
+		const FMadQuestDefinition* Quest = Definitions.FindQuest(Progress.Quest);
+		Waiting += (Quest != nullptr && Quest->bHandIn && AreObjectivesMet(Progress, *Quest)) ? 1 : 0;
+	}
+	return Waiting;
 }
 
 bool FMadQuestLog::ForceComplete(FName Quest, const FMadGameplayDefinitions& Definitions)

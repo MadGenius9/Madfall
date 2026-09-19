@@ -16,9 +16,11 @@
  * state objectives are re-read, so dropping the planks a "have 12 planks"
  * objective counted undoes it until the quest completes.
  *
- * A quest starts as soon as every quest it requires is complete, and completes
- * the moment its last objective is met - there is no hand-in, because there is
- * no one to hand in to.
+ * A quest starts as soon as every quest it requires is complete. Most complete
+ * the moment their last objective is met; one marked `hand_in` instead waits,
+ * with every objective met, until the survivor reaches a trader and HandIn() is
+ * called. "Ready" is not stored anywhere - it is simply an active quest whose
+ * counts are all full - so a save written before hand-ins existed still loads.
  */
 class MADFALLGAMEPLAY_API FMadQuestLog
 {
@@ -39,6 +41,18 @@ public:
 	/** Completes a quest outright (the console, and tests). */
 	bool ForceComplete(FName Quest, const FMadGameplayDefinitions& Definitions);
 
+	/**
+	 * Completes every active hand-in quest whose objectives are all met, which
+	 * is what reaching a trader does. Returns the quests it completed.
+	 */
+	TArray<FName> HandIn(const FMadGameplayDefinitions& Definitions);
+
+	/** True if this quest is waiting to be handed in: done, but not paid. */
+	bool IsWaitingToHandIn(FName Quest, const FMadGameplayDefinitions& Definitions) const;
+
+	/** How many quests are done but unpaid, for the journal's "see a trader" line. */
+	int32 NumWaitingToHandIn(const FMadGameplayDefinitions& Definitions) const;
+
 	bool IsComplete(FName Quest) const { return Completed.Contains(Quest); }
 	bool IsActive(FName Quest) const { return FindActive(Quest) != nullptr; }
 	const FMadQuestProgress* FindActive(FName Quest) const;
@@ -56,8 +70,14 @@ public:
 	void Reset() { Completed.Reset(); Active.Reset(); }
 
 private:
-	/** Moves every active quest whose objectives are all met to Completed. */
+	/**
+	 * Moves every active quest whose objectives are all met to Completed,
+	 * except the hand-in ones, which stay active until HandIn() is called.
+	 */
 	TArray<FName> CollectCompleted(const FMadGameplayDefinitions& Definitions);
+
+	/** True if every objective of an active quest is met. */
+	static bool AreObjectivesMet(const FMadQuestProgress& Progress, const FMadQuestDefinition& Quest);
 
 	TSet<FName> Completed;
 	TArray<FMadQuestProgress> Active;

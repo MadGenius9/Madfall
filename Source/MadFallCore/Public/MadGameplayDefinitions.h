@@ -596,6 +596,18 @@ struct MADFALLCORE_API FMadQuestDefinition
 	/** Journal order among quests active at once; lower first. */
 	int32 Order = 0;
 
+	/**
+	 * True if meeting every objective is not the end of it: the survivor has to
+	 * walk back to a trader to be paid.
+	 *
+	 * WHY this is worth the walk: without it a clearing job pays out on the
+	 * swing that kills the last zombie, standing in a building a long way from
+	 * anyone, which makes the trader a shop rather than an employer and makes
+	 * the journey home free. The return trip is also when a full backpack and
+	 * a night coming on start to matter.
+	 */
+	bool bHandIn = false;
+
 	FName SourceModId;
 	FString SourcePath;
 };

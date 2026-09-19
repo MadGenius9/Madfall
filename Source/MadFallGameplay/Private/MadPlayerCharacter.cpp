@@ -1189,8 +1189,15 @@ void AMadPlayerCharacter::UpdateTarget()
 	bHasTarget = MadFall::VoxelRaycast(EyeLocation / MadFall::VoxelSizeUU, EyeRotation.Vector(), GetReach(), IsTargetable, Target);
 
 	// A trader in reach and nearer than the block behind them.
-	AimedTrader.Reset();
-	const double Reach = FMath::Min(4.0f, GetReach()) * MadFall::VoxelSizeUU;
+	//
+	// Arm's length, not the held tool's range: GetReach() is how far a pickaxe
+	// can chip a block, and letting it govern this meant a survivor holding a
+	// bow (range 2) could not speak to someone standing three metres away,
+	// while the same survivor bare-handed could. Talking to a person is not a
+	// swing. Found by a CI gate that walked back to the trader with its bow
+	// still out and reported "found nothing to use".
+	constexpr double TalkReachVoxels = 4.0;
+	const double Reach = TalkReachVoxels * MadFall::VoxelSizeUU;
 	const double BlockDistance = bHasTarget ? FVector::Dist(EyeLocation, (FVector(Target.Voxel) + FVector(0.5)) * MadFall::VoxelSizeUU) : Reach;
 	FHitResult Hit;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(MadTraderAim), false, this);
@@ -2488,6 +2495,11 @@ void AMadPlayerCharacter::OpenTrade(const FIntVector& TraderMarker, FName Trader
 		PushMessage(MadFall::Localize(Trader->Greeting), 4.0f);
 	}
 	UE_LOG(LogMadFallGameplay, Display, TEXT("Trade opened with %s at %s."), *TraderId.ToString(), *TraderMarker.ToString());
+
+	// Reaching the trader is the hand-in. Paying here rather than on the last
+	// kill is what makes the walk home part of the job - and paying after the
+	// screen is open, rather than before, is the order a player sees it in.
+	HandleQuestsCompleted(Quests.HandIn(MadFall::GetGameplayDefinitions()));
 }
 
 bool AMadPlayerCharacter::GetOpenTrade(FMadTraderState*& OutState, const FMadTraderDefinition*& OutTrader) const

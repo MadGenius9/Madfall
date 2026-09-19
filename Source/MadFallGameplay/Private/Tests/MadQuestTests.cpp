@@ -124,6 +124,95 @@ bool FMadQuestLogTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// ===========================================================================
+// Handing a job in
+// ===========================================================================
+//
+// A hand-in quest is done but not paid: every objective met, still in the
+// journal, waiting for the survivor to reach someone to report to. It is
+// stored as nothing at all - just an active quest whose counts are full - so
+// a save written before hand-ins existed loads unchanged, and that is the
+// property most worth pinning down, because the alternative is a save field
+// nobody notices is missing until a player's journal empties itself.
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadQuestHandInTest,
+	"MadFall.Progression.QuestHandIn",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadQuestHandInTest::RunTest(const FString& Parameters)
+{
+	using namespace MadQuestTests;
+	const FName Mod(TEXT("test"));
+	const FName Job(TEXT("test:quest/job"));
+	const FName Chore(TEXT("test:quest/chore"));
+
+	FMadGameplayDefinitions Defs;
+	TArray<FMadDefinitionError> Errors;
+	Defs.BeginLoad();
+	Defs.AddItemJson(Json(TEXT(R"({ "schema": "madfall.item/1", "id": "test:axe", "max_stack": 1 })")), TEXT("t"), Mod, Errors);
+	Defs.AddQuestJson(Json(TEXT(R"({ "schema": "madfall.quest/1", "id": "test:quest/job", "order": 1, "hand_in": true,
+		"objectives": [ { "type": "craft", "target": "test:axe", "count": 2 } ] })")), TEXT("t"), Mod, Errors);
+	Defs.AddQuestJson(Json(TEXT(R"({ "schema": "madfall.quest/1", "id": "test:quest/chore", "order": 2,
+		"objectives": [ { "type": "craft", "target": "test:axe" } ] })")), TEXT("t"), Mod, Errors);
+	Defs.FinishLoad(nullptr, Errors);
+	TestEqual(TEXT("both quests load"), Defs.GetQuests().Num(), 2);
+
+	FMadQuestLog Log;
+	Log.Refresh(Defs);
+	TestTrue(TEXT("the job starts"), Log.IsActive(Job));
+
+	// One axe: neither quest's objective is met for the job, but the chore's is.
+	TArray<FName> Done = Log.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 1, Defs);
+	TestTrue(TEXT("an ordinary quest still completes where it stands"), Done.Contains(Chore));
+	TestFalse(TEXT("and the job is not waiting yet"), Log.IsWaitingToHandIn(Job, Defs));
+
+	// The second axe meets the job's objective. It must NOT complete.
+	Done = Log.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 1, Defs);
+	TestFalse(TEXT("meeting a hand-in quest's objectives does not complete it"), Done.Contains(Job));
+	TestFalse(TEXT("it is not marked complete"), Log.IsComplete(Job));
+	TestTrue(TEXT("it is still in the journal"), Log.IsActive(Job));
+	TestTrue(TEXT("and it reports itself as waiting to be handed in"), Log.IsWaitingToHandIn(Job, Defs));
+	TestEqual(TEXT("one job is waiting"), Log.NumWaitingToHandIn(Defs), 1);
+
+	// Further progress does not lose the "waiting" state or double-count.
+	Log.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 5, Defs);
+	TestTrue(TEXT("overshooting the objective keeps it waiting"), Log.IsWaitingToHandIn(Job, Defs));
+
+	// A save round trip through the same representation an old save uses.
+	{
+		TArray<FName> Completed;
+		TArray<FMadQuestProgress> Active;
+		Log.Export(Completed, Active);
+
+		FMadQuestLog Reloaded;
+		Reloaded.Import(Completed, Active, Defs);
+		TestTrue(TEXT("a reloaded save still knows the job is waiting"), Reloaded.IsWaitingToHandIn(Job, Defs));
+		TestFalse(TEXT("and has not paid it"), Reloaded.IsComplete(Job));
+	}
+
+	// Reaching the trader.
+	const TArray<FName> Paid = Log.HandIn(Defs);
+	TestTrue(TEXT("handing in completes the job"), Paid.Contains(Job));
+	TestTrue(TEXT("it is marked complete"), Log.IsComplete(Job));
+	TestFalse(TEXT("and gone from the journal"), Log.IsActive(Job));
+	TestEqual(TEXT("nothing is left waiting"), Log.NumWaitingToHandIn(Defs), 0);
+
+	// A second visit pays nothing twice.
+	TestEqual(TEXT("handing in again pays nothing"), Log.HandIn(Defs).Num(), 0);
+
+	// A hand-in quest whose objectives are not met is not paid by a visit.
+	{
+		FMadQuestLog Fresh;
+		Fresh.Refresh(Defs);
+		Fresh.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 1, Defs);
+		TestEqual(TEXT("an unfinished job is not paid by walking past the trader"), Fresh.HandIn(Defs).Num(), 0);
+		TestTrue(TEXT("and stays active"), Fresh.IsActive(Job));
+	}
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMadShippedQuestsTest,
 	"MadFall.Progression.ShippedQuests",

@@ -597,6 +597,7 @@ namespace MadFall::GameplayDefinitionsJson
 		R.ReadString(Object, TEXT("description"), TEXT("/description"), Data.Description);
 		R.ReadNameArray(Object, TEXT("requires"), TEXT("/requires"), Data.Requires);
 		R.ReadInt(Object, TEXT("order"), TEXT("/order"), Data.Order);
+		R.ReadBool(Object, TEXT("hand_in"), TEXT("/hand_in"), Data.bHandIn);
 
 		TArray<TSharedPtr<FJsonValue>> Objectives;
 		if (!R.ReadArray(Object, TEXT("objectives"), TEXT("/objectives"), Objectives) || Objectives.Num() == 0)
@@ -667,7 +668,7 @@ namespace MadFall::GameplayDefinitionsJson
 		}
 
 		R.ReportUnknownFields(Object, { TEXT("schema"), TEXT("id"), TEXT("display_name"), TEXT("description"), TEXT("requires"),
-			TEXT("order"), TEXT("objectives"), TEXT("rewards"), TEXT("mod_data") });
+			TEXT("order"), TEXT("hand_in"), TEXT("objectives"), TEXT("rewards"), TEXT("mod_data") });
 
 		Data.SourceModId = ModId;
 		Data.SourcePath = SourcePath;
