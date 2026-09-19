@@ -1295,6 +1295,83 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# A moat: deep water stops a shambler, shallow water only slows one
+# ---------------------------------------------------------------------------
+#
+# Water already costs a zombie its pathing and half its speed, which makes a
+# shallow moat a delay. A deep one is meant to be a decision: a zombie whose
+# head is under the surface cannot swing, and its pathfinder will not cross.
+# Both halves matter - a moat that stopped everything would make walls
+# pointless, and one that stopped nothing would be scenery - so this rings the
+# survivor with water twice and fails unless the two outcomes differ.
+#
+# The signal is the lifetime "player hits" counter rather than the survivor's
+# health, because health also moves with hunger, cold and falls; a hit is
+# exactly what a moat is supposed to prevent. mad.ai.MaxZombies 1 keeps ambient
+# wanderers out of the measurement: their wave needs NumAlive < cap/3.
+#
+# The stone slab under the ring is not decoration. mad.scene.pad lays a single
+# floor layer over whatever the terrain was, so cutting water into it makes a
+# hole rather than a moat, and the first version of this scene measured a
+# zombie falling through the world instead of being stopped by water.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: moat (headless -game)'
+
+    $moatOk = $true
+    foreach ($moat in @(
+        @{ Name = 'deep';    Bottom = -3; Expect = $false; Why = 'three voxels of water kept the zombie off the survivor' },
+        @{ Name = 'shallow'; Bottom = -1; Expect = $true;  Why = 'one voxel of water only slowed it down' }
+    )) {
+        # Four strips at radius 6..8, cut into a slab, so the water's top is
+        # flush with the ground the zombie walks in over.
+        $ring = ''
+        foreach ($side in @(@(-8, 6, 8, 8), @(-8, -8, 8, -6), @(6, -8, 8, 8), @(-8, -8, -6, 8))) {
+            $ring += "mad.scene.box madfall:water $($side[0]) $($side[1]) $($moat.Bottom) $($side[2]) $($side[3]) -1; "
+        }
+
+        # The long waits are for collision: an edit this size remeshes several
+        # chunks and cooks their collision off the game thread.
+        $moatScript = "mad.ai.Sleepers 0; mad.ai.MaxZombies 1; mad.scene.anchor; mad.scene.pad 24 12; wait 3; " +
+            "mad.scene.box madfall:stone -10 -10 -4 10 10 -1; wait 8; $ring wait 12; " +
+            "mad.ai.spawn madfall:zombie_civilian 0 -12 0; wait 20; mad.ai.status; wait 25; mad.ai.status; quit"
+
+        $moatLog = Join-Path $LogDir "moat-$($moat.Name).log"
+        $moatProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $moatLog `
+            -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                            "-MadWorld=ci-moat$($moat.Name)", '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn $moatScript`"")
+
+        if (-not $moatProcess.WaitForExit(240000)) {
+            $moatProcess | Stop-Process -Force
+            Write-Host "FAILED: the $($moat.Name) moat script did not finish within 240 s." -ForegroundColor Red
+            $moatOk = $false
+            continue
+        }
+
+        if (-not (Select-String -Path $moatLog -Pattern 'Spawn madfall:zombie_civilian .*: ok' -Quiet)) {
+            Write-Host "FAILED: no zombie spawned for the $($moat.Name) moat, so nothing was measured." -ForegroundColor Red
+            $moatOk = $false
+            continue
+        }
+
+        $reached = [bool](Select-String -Path $moatLog -Pattern '[1-9][0-9]* player hits' -Quiet)
+        if ($reached -eq $moat.Expect) {
+            Write-Host "OK: $($moat.Why)" -ForegroundColor Green
+        }
+        else {
+            Write-Host "FAILED: $($moat.Why) - it did not" -ForegroundColor Red
+            Select-String -Path $moatLog -Pattern 'zombie_civilian at |player hits' |
+                Select-Object -Last 4 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
+            $moatOk = $false
+        }
+    }
+
+    if (-not $moatOk) {
+        $script:Failures += 'moat-acceptance'
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Altitude: a mountain is colder than the valley it stands in
 # ---------------------------------------------------------------------------
 #
@@ -1998,6 +2075,16 @@ else {
     # there loads the layers its peak reaches, not just the ones around the
     # player, so the budget session has to stand in one.
     $budgetScript = "mad.ai.Sleepers 0; mad.scene.anchor; mad.weather.set storm; wait 3; mad.perf.reset; $spawns; wait 15; mad.ai.status; mad.ai.killall; $steps; wait 3; mad.player.overhead madfall:concrete_frame 12 4; wait 8; mad.player.tpbiome madfall:highlands; wait 12; mad.player.walk 8 1 0; wait 10; mad.debris.status; mad.weather.status; mad.far.status; mad.stream.status; mad.perf; quit"
+    # Let the machine settle first. This stage measures frames, and it runs at
+    # the end of twenty-five minutes of builds, editor launches and world
+    # writes; measured, the same build reports ~80 frames a second immediately
+    # after a CI run and ~120 two minutes later, and the tail and worst-frame
+    # numbers move with the frame rate rather than with the game (0.6% at 120
+    # fps against 1.6% at 82, on an unchanged build). A minute of quiet is
+    # cheaper than a gate that fails on whatever else Windows was finishing.
+    Write-Host 'Letting the machine settle for 60 s: this stage measures frames, and CI has been loading it.' -ForegroundColor DarkGray
+    Start-Sleep -Seconds 60
+
     $budgetOk = $false
     $budgetAttempt = 0
     $budgetTimedOut = $false
@@ -2006,6 +2093,7 @@ else {
     if ($budgetAttempt -gt 1) {
         Write-Host 'RETRY: the frame budget is bursty; running the session once more before calling it a regression.' -ForegroundColor Yellow
         if (Test-Path $budgetWorld) { Remove-Item -Recurse -Force $budgetWorld }
+        Start-Sleep -Seconds 60
     }
     $budgetLogName = if ($budgetAttempt -gt 1) { 'frame-budget-retry.log' } else { 'frame-budget.log' }
     $budgetLog = Join-Path $LogDir $budgetLogName
@@ -2043,8 +2131,8 @@ else {
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Weather: storm \(forced\), cloud 1\.00, precipitation 1\.00' -Quiet); Why = 'all of it in a storm' },
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Far terrain: \d+ tile\(s\) wanted, ([5-9]\d|[1-9]\d\d+) built' -Quiet); Why = 'with the far terrain built out to the horizon' },
                 @{ Ok = $working -ge 1000;                                                                   Why = "the session did enough work to measure ($working working frames)" },
-                @{ Ok = $percent -le 1.2;                                                                    Why = "at most 1.2% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%)" },
-                @{ Ok = $worst -le 5.0;                                                                      Why = "no frame over 5 ms (worst $worst ms)" },
+                @{ Ok = $percent -le 1.2;                                                                    Why = "at most 1.2% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%, at $framesPerSecond fps)" },
+                @{ Ok = $worst -le 5.0;                                                                      Why = "no frame over 5 ms (worst $worst ms, at $framesPerSecond fps)" },
                 @{ Ok = $mean -le 0.60;                                                                      Why = "the mean working frame is at most 0.60 ms ($mean ms, at $framesPerSecond fps and $workRate ms/s)" }
             )) {
                 if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }

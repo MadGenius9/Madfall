@@ -41,6 +41,32 @@ namespace
 	 * the head is worse. A horde crossing a moat should arrive late and strung
 	 * out rather than as a wall, which is the whole point of digging one.
 	 */
+	/**
+	 * Out of its depth: the voxel at the head is liquid too, so the thing is
+	 * fully under rather than wading.
+	 *
+	 * WHY IT MATTERS: water already costs a zombie pathing and half its speed,
+	 * which makes a shallow moat a delay. Nothing made a deep one a decision.
+	 * A shambler that is completely submerged cannot swing at anything and
+	 * turns back for the shallows, so digging three voxels down buys a wall
+	 * while digging one buys time - and the horde still comes round.
+	 */
+	bool IsOutOfDepth(const UWorld* World, const FIntVector& Feet)
+	{
+		const UMadVoxelWorldSubsystem* VoxelWorld = World ? World->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
+		if (VoxelWorld == nullptr)
+		{
+			return false;
+		}
+		auto IsLiquid = [VoxelWorld](const FIntVector& V)
+		{
+			const FMadBlockDefinitionData* Block = UMadVoxelWorldSubsystem::GetBlockRegistry().FindDefinition(
+				VoxelWorld->GetVoxel(V.X, V.Y, V.Z).BlockTypeID);
+			return Block != nullptr && Block->bLiquid;
+		};
+		return IsLiquid(Feet) && IsLiquid(Feet + FIntVector(0, 0, 1));
+	}
+
 	float WaterSlowFactor(const UWorld* World, const FIntVector& Feet)
 	{
 		const UMadVoxelWorldSubsystem* VoxelWorld = World ? World->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
@@ -241,6 +267,18 @@ void AMadZombie::Tick(float DeltaSeconds)
 
 	MAD_FRAME_SCOPE(Zombies);
 
+	// Gone through the floor of the world: a body that falls past the bedrock
+	// keeps falling, keeps ticking and keeps its place under the spawn cap
+	// forever. Nothing put it there in normal play - it takes a hole with no
+	// bottom, which a carved-out moat or an unloaded chunk can make - but the
+	// cost of missing it is a slot lost for the rest of the session.
+	if (GetActorLocation().Z < static_cast<double>(MadFall::WorldMinZ - 8) * MadFall::VoxelSizeUU)
+	{
+		UE_LOG(LogMadFallGameplay, Verbose, TEXT("%s fell out of the world at %s; removing it."),
+			*GetName(), *GetActorLocation().ToCompactString());
+		Destroy();
+		return;
+	}
 	if (State == EMadZombieState::Dead)
 	{
 		DespawnTimer -= DeltaSeconds;
@@ -366,7 +404,11 @@ void AMadZombie::Think()
 		if (Offset.Size2D() <= AttackReachCm * GetActorScale3D().X && FMath::Abs(Offset.Z) < 180.0f)
 		{
 			State = EMadZombieState::Attack;
-			TryAttackPlayer();
+			// Not while under: a swing from the bottom of a moat reaches nothing.
+			if (!IsOutOfDepth(GetWorld(), GetFeetVoxel()))
+			{
+				TryAttackPlayer();
+			}
 			return;
 		}
 
@@ -375,9 +417,63 @@ void AMadZombie::Think()
 			State = EMadZombieState::Chase;
 		}
 
+		// Out of its depth: wade back to the nearest ground rather than press on
+		// across the bottom of the moat. The dry way round still exists - water
+		// costs a path, it does not forbid one - so a horde arrives late and by
+		// the bank instead of walking through the water as if it were a field.
+		if (IsOutOfDepth(GetWorld(), GetFeetVoxel()))
+		{
+			const FIntVector Feet = GetFeetVoxel();
+			const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>();
+			FIntVector Shallow = Feet;
+			float Best = MAX_FLT;
+			for (int32 Radius = 1; Radius <= 6 && Best == MAX_FLT; ++Radius)
+			{
+				for (int32 DY = -Radius; DY <= Radius; ++DY)
+				{
+					for (int32 DX = -Radius; DX <= Radius; ++DX)
+					{
+						if (FMath::Max(FMath::Abs(DX), FMath::Abs(DY)) != Radius)
+						{
+							continue;
+						}
+						const FIntVector At(Feet.X + DX, Feet.Y + DY, Feet.Z);
+						if (VoxelWorld == nullptr || IsOutOfDepth(GetWorld(), At))
+						{
+							continue;
+						}
+						// Nearest to the survivor among the shallow neighbours, so a
+						// zombie that can get out on their side does.
+						const float Score = static_cast<float>(FVector::Dist2D(
+							FVector(At) * MadFall::VoxelSizeUU, Player->GetActorLocation()));
+						if (Score < Best)
+						{
+							Best = Score;
+							Shallow = At;
+						}
+					}
+				}
+			}
+			if (Shallow != Feet)
+			{
+				AddMovementInput((FVector(Shallow - Feet)).GetSafeNormal2D(), 1.0f);
+				return;
+			}
+		}
+
 		const FIntVector Goal = Player->GetFeetVoxel();
 		const bool bGoalMoved = FMath::Abs(Goal.X - PathGoal.X) + FMath::Abs(Goal.Y - PathGoal.Y) + FMath::Abs(Goal.Z - PathGoal.Z) >= 3;
-		if (RepathTimer <= 0.0f || bGoalMoved || StepIndex >= Path.Steps.Num())
+
+		// A path that ran out is worth replacing at once. A path that never
+		// existed is not: StepIndex >= Steps.Num() is trivially true for an
+		// empty path, so a zombie whose target it cannot reach - across a deep
+		// moat, inside a sealed room - used to run a full search every time it
+		// thought, for as long as it stood there (measured: 158 searches in 50
+		// seconds for one zombie at a moat's edge, against 3 for one walking
+		// the same distance over land). Requiring steps to exist puts that case
+		// back behind RepathTimer, where the rest of the repathing already is.
+		const bool bPathSpent = Path.Steps.Num() > 0 && StepIndex >= Path.Steps.Num();
+		if (RepathTimer <= 0.0f || bGoalMoved || bPathSpent)
 		{
 			RequestPath(Goal, /*bAllowDigging*/ true);
 

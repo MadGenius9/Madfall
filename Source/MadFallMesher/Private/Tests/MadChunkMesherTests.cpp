@@ -16,6 +16,7 @@ namespace MadMesherTests
 	{
 		uint16 Rock = 0;
 		uint16 Timber = 0;
+		uint16 Water = 0;
 	};
 
 	/**
@@ -43,11 +44,20 @@ namespace MadMesherTests
 		Timber.SourceModId = FName(TEXT("test"));
 		Registry.AddFromAsset(Timber, Errors);
 
+		// A liquid, so a test can ask what water does to the block under it.
+		FMadBlockDefinitionData Water;
+		Water.Id = FName(TEXT("test:water"));
+		Water.MaterialClass = FName(TEXT("test:water"));
+		Water.SourceModId = FName(TEXT("test"));
+		Water.bLiquid = true;
+		Registry.AddFromAsset(Water, Errors);
+
 		Registry.FinishLoad(Errors);
 
 		FTestBlocks Blocks;
 		Blocks.Rock = Registry.ResolveRuntimeId(Rock.Id);
 		Blocks.Timber = Registry.ResolveRuntimeId(Timber.Id);
+		Blocks.Water = Registry.ResolveRuntimeId(Water.Id);
 		return Blocks;
 	}
 
@@ -167,6 +177,96 @@ namespace MadMesherTests
 
 		return Audit;
 	}
+}
+
+// ===========================================================================
+// Built floors under water
+// ===========================================================================
+//
+// A liquid voxel is full density like any other, so the plain "is the
+// neighbour solid" test hid the face between a placed block and the water on
+// top of it. A hidden face is not merely invisible - the chunk's collision is
+// built from the same triangles - so a survivor who poured water onto their own
+// stone floor walked out onto it and fell straight through the building. It was
+// found with a moat: a zombie crossing one voxel of water dropped seven voxels
+// to the terrain below and tunnelled on from there.
+//
+// Terrain never had the bug, because the isosurface pass already treats liquid
+// as air to give a lake a seabed; only the cubic pass, which owns placed
+// blocks, had the hole.
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadBlockUnderLiquidTest,
+	"MadFall.Mesher.BlockUnderLiquid",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadBlockUnderLiquidTest::RunTest(const FString& Parameters)
+{
+	using namespace MadMesherTests;
+
+	FMadBlockRegistry Registry;
+	const FTestBlocks Blocks = BuildRegistry(Registry);
+	MadFall::ChunkMesher::FMeshSettings Settings;
+	Settings.bIsosurface = false;
+
+	auto Slab = [](int32 X, int32 Y, int32 Z) -> uint8
+	{
+		return (Z == 0 && X >= 0 && X < 8 && Y >= 0 && Y < 8) ? 255 : 0;
+	};
+
+	// The bare slab is the baseline: six merged faces, twelve triangles.
+	const FMadChunkSampleGrid Bare = MakeGrid(Blocks.Rock, Slab, /*bCubic*/ true);
+	FMadChunkMesh BareMesh;
+	MadFall::ChunkMesher::BuildChunkMesh(Bare, Registry, Settings, BareMesh);
+	TestEqual(TEXT("a bare 8x8 slab is 6 quads"), BareMesh.TotalTriangles(), 12);
+
+	// Now flood the layer above it. Water is full density but is not a cubic
+	// block: it is drawn by the liquid pass, not this one.
+	FMadChunkSampleGrid Flooded = MakeGrid(Blocks.Rock, Slab, /*bCubic*/ true);
+	for (int32 Y = 0; Y < 8; ++Y)
+	{
+		for (int32 X = 0; X < 8; ++X)
+		{
+			const int32 Index = FMadChunkSampleGrid::Index(X, Y, 1);
+			Flooded.Density[Index] = 255;
+			Flooded.BlockId[Index] = Blocks.Water;
+			Flooded.Flags[Index] = 0;
+		}
+	}
+
+	FMadChunkMesh FloodedMesh;
+	MadFall::ChunkMesher::BuildChunkMesh(Flooded, Registry, Settings, FloodedMesh);
+
+	// The floor a survivor stands on must still be there, and it is what
+	// collision is cooked from.
+	int32 UpwardTriangles = 0;
+	int32 CollidingUpwardTriangles = 0;
+	for (const FMadMeshSection& Section : FloodedMesh.Sections)
+	{
+		for (int32 Index = 0; Index + 2 < Section.Indices.Num(); Index += 3)
+		{
+			const FVector3f& Normal = Section.Normals[Section.Indices[Index]];
+			if (Normal.Z > 0.5f)
+			{
+				++UpwardTriangles;
+				CollidingUpwardTriangles += Section.bCollides ? 1 : 0;
+			}
+		}
+	}
+
+	TestEqual(TEXT("water does not hide the floor beneath it"), UpwardTriangles, 2);
+	TestEqual(TEXT("and that floor still collides"), CollidingUpwardTriangles, 2);
+	TestEqual(TEXT("the flooded slab is the same six quads as the bare one"),
+		FloodedMesh.TotalTriangles(), BareMesh.TotalTriangles());
+
+	// The water itself is not a cubic block: it must not be greedy-meshed into
+	// a solid cube a survivor could stand on top of.
+	for (const FMadMeshSection& Section : FloodedMesh.Sections)
+	{
+		TestNotEqual(TEXT("no section is made of water cubes"), Section.MaterialClass, FName(TEXT("test:water")));
+	}
+
+	return true;
 }
 
 // ===========================================================================

@@ -573,12 +573,33 @@ namespace MadFall::ChunkMesher
 		 *
 		 * Packed 2 bits per corner, corners in quad order: (0,0), (1,0), (1,1), (0,1) in (B, C).
 		 */
+		/**
+		 * True when a voxel fills its cube for the cubic mesher: it hides the
+		 * face of the block beside it, and casts that face's corner shadow.
+		 *
+		 * WHY liquid is excluded: a liquid voxel is full density, so by the
+		 * plain solidity test the top face of a built floor with water poured on
+		 * it was culled - and with no face there was no collision either, so a
+		 * survivor walked onto their own floor and fell through it. Terrain
+		 * under water is fine because the isosurface pass already treats liquid
+		 * as air; only placed blocks, which this pass owns, had the hole.
+		 */
+		FORCEINLINE bool FillsCube(const FMadChunkSampleGrid& Grid, FMaterialResolver& Materials, int32 X, int32 Y, int32 Z)
+		{
+			if (!Grid.IsSolid(X, Y, Z))
+			{
+				return false;
+			}
+			const uint16 BlockId = Grid.GetBlockId(X, Y, Z);
+			return !Materials.IsModel(BlockId) && !Materials.IsLiquid(BlockId);
+		}
+
 		uint8 ComputeFaceOcclusion(const FMadChunkSampleGrid& Grid, FMaterialResolver& Materials,
 			const int32 Voxel[3], int32 Axis, int32 Step, int32 B, int32 C)
 		{
 			auto Occludes = [&Grid, &Materials](const int32 Sample[3])
 			{
-				return Grid.IsSolid(Sample[0], Sample[1], Sample[2]) && !Materials.IsModel(Grid.GetBlockId(Sample[0], Sample[1], Sample[2]));
+				return FillsCube(Grid, Materials, Sample[0], Sample[1], Sample[2]);
 			};
 
 			static constexpr int32 CornerB[4] = { -1, 1, 1, -1 };
@@ -661,8 +682,7 @@ namespace MadFall::ChunkMesher
 								uint32 Value = 0;
 
 								const bool bIsBlock = Grid.IsCubic(Voxel[0], Voxel[1], Voxel[2])
-									&& Grid.IsSolid(Voxel[0], Voxel[1], Voxel[2])
-									&& !Materials.IsModel(Grid.GetBlockId(Voxel[0], Voxel[1], Voxel[2]));
+									&& FillsCube(Grid, Materials, Voxel[0], Voxel[1], Voxel[2]);
 
 								if (bIsBlock)
 								{
@@ -674,9 +694,7 @@ namespace MadFall::ChunkMesher
 									// every chunk would draw its own boundary
 									// faces and the interior of a wall would be
 									// full of hidden geometry.
-									const bool bNeighbourSolid =
-										Grid.IsSolid(Neighbour[0], Neighbour[1], Neighbour[2])
-										&& !Materials.IsModel(Grid.GetBlockId(Neighbour[0], Neighbour[1], Neighbour[2]));
+									const bool bNeighbourSolid = FillsCube(Grid, Materials, Neighbour[0], Neighbour[1], Neighbour[2]);
 
 									if (!bNeighbourSolid)
 									{

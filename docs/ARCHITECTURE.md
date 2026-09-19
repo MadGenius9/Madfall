@@ -1586,8 +1586,45 @@ get under the surface.
   outward faces, so single-sided is what makes a bad winding show up as a hole
   rather than hide silently. Cost: water draws in the translucent pass, which
   is why the opacity is flat rather than a scene-depth fade.
-- Known gaps: zombies and animals walk along the bottom rather than swimming,
-  and there is no current, no waves and no swimming animation.
+- **Out of their depth.** Water slowed a zombie and cost it its pathing, but a
+  lake still did not beat a shambler: it walked the bottom and came up swinging.
+  A zombie or animal whose feet *and* head are both in liquid (`IsOutOfDepth`)
+  now cannot attack, and wades back to the nearest shallow voxel it can find
+  within six - it looks for the shallow spot nearest the survivor, so it leaves
+  by the bank it was heading for rather than retreating. Combined with the
+  pathing toll this makes depth the thing that matters: three voxels of water is
+  a wall a civilian will not enter, one voxel is a slow crossing it walks
+  straight through. Neither is a cheese wall - a zombie that cannot path across
+  will dig under, given a floor it can break.
+  Tested: `moat` in CI.ps1, which rings the survivor with water twice and fails
+  unless the deep ring lands no hits and the shallow one does.
+- **Bodies that fell out of the world.** Both Ticks now destroy an actor below
+  `(WorldMinZ - 8)` voxels. Nothing puts one there in normal play; it takes a
+  hole with no bottom, which is what a carved moat used to be. The cost of
+  missing it is permanent: the body keeps falling, keeps ticking and keeps its
+  place under the spawn cap for the rest of the session. Found by a moat test
+  that "held" for the wrong reason - the zombie had not been stopped by water,
+  it had dropped through the world.
+- **A floor with water on it is still a floor** (the mesher). A liquid voxel is
+  full density like any other, so the cubic pass's "is the neighbour solid"
+  test hid the face between a placed block and the water poured on top of it -
+  and collision is cooked from the same triangles, so a survivor walked onto
+  their own flooded floor and fell through the building. Terrain never had it:
+  the isosurface pass already treats liquid as air, which is what gives a lake
+  a seabed. `FillsCube()` is now the single test all three of the cubic pass's
+  solidity questions ask, and it excludes liquids and models alike.
+  Tested: `MadFall.Mesher.BlockUnderLiquid` (verified to fail without the fix:
+  the floor's upward triangles drop from 2 to 0).
+- **Repathing to somewhere unreachable.** The repath cooldown was bypassed
+  whenever `StepIndex >= Path.Steps.Num()`, which is trivially true of an
+  *empty* path - so a zombie stalled at the edge of a deep moat ran a full A*
+  every time it thought. Measured at a moat's edge: 158 searches in 50 seconds,
+  against 3 for a zombie walking the same distance over land. Requiring the path
+  to have had steps puts that case back behind `RepathTimer`: 19 searches over
+  the same 50 seconds, with identical behaviour.
+- Known gaps: zombies and animals still have no swimming animation and cannot
+  cross deep water at all rather than swimming it, and there is no current and
+  no waves.
 
 ### Dying, and being hurt
 
@@ -2512,6 +2549,28 @@ Console (used by the survival gate): `mad.player.store <item>`,
      the same wall clock, and on a *faster* machine the same game would report a
      higher rate and fail a gate set from those numbers. It was gated for one
      CI run and taken straight back out.
+   - *And the gate was measuring the machine CI had just loaded.* The moat work
+     failed the tail (1.29%, then 1.55%) and worst-frame (6.47, 8.61 ms) gates
+     while the mean passed, which is the shape of a machine problem rather than
+     a cost. A proper A/B settled it: the change stashed and rebuilt, the same
+     session ran 1.61% / 4.75 ms at 81.8 fps and 0.64% / 3.73 ms at 120.6 fps -
+     the *unchanged* build failing the same gate. Re-measured with the change,
+     on a quiet box, three runs each:
+
+     | | tail | worst | mean | fps |
+     |---|---|---|---|---|
+     | without | 0.68 / 1.01 / 1.26% | 3.54 / 4.60 / 4.71 ms | 0.474 / 0.508 / 0.541 | 120 / 115 / 105 |
+     | with | 0.75 / 0.56 / 0.81% | 3.35 / 3.56 / 3.96 ms | 0.477 / 0.467 / 0.492 | 120 / 122 / 116 |
+
+     No regression - and the cause of the CI failure was that the budget stage
+     starts the instant the twenty-five minutes before it finish, on a box still
+     writing out logs and worlds. The same build reports ~80 fps then and ~120
+     two minutes later, and every one of these numbers moves with the frame
+     rate. The stage now waits 60 seconds before each attempt, and the frame
+     rate is printed beside the tail and the worst frame as well as the mean,
+     so the next person to see one of these fail can tell a slow box from a
+     slow build without rebuilding anything. `Scripts/budget-probe.ps1` runs
+     this session standalone, N times, for exactly that A/B.
      What holds still is the **mean working frame**: 37.3/73.5, 56.4/110.9 and
      56.3/119.2 are 0.507, 0.509 and 0.472 ms. Work per frame does not care how
      many frames there are, which is the property a regression gate needs, so

@@ -191,6 +191,19 @@ void AMadAnimal::Tick(float DeltaSeconds)
 
 	MAD_FRAME_SCOPE(Zombies);
 
+	// Gone through the floor of the world: a body that falls past the bedrock
+	// keeps falling, keeps ticking and keeps its place under the spawn cap
+	// forever. Nothing put it there in normal play - it takes a hole with no
+	// bottom, which a carved-out moat or an unloaded chunk can make - but the
+	// cost of missing it is a slot lost for the rest of the session.
+	if (GetActorLocation().Z < static_cast<double>(MadFall::WorldMinZ - 8) * MadFall::VoxelSizeUU)
+	{
+		UE_LOG(LogMadFallGameplay, Verbose, TEXT("%s fell out of the world at %s; removing it."),
+			*GetName(), *GetActorLocation().ToCompactString());
+		Destroy();
+		return;
+	}
+
 	if (State == EMadAnimalState::Dead)
 	{
 		DespawnTimer -= DeltaSeconds;
@@ -276,10 +289,19 @@ void AMadAnimal::Think()
 	GetCharacterMovement()->MaxWalkSpeed = (bRunning ? Definition.RunSpeed : Definition.WalkSpeed) * 100.0f * TrapSlow
 		* WaterSlowFactor(GetWorld(), GetFeetVoxel());
 
+	// A path that ran out is worth replacing at once; a path that never existed
+	// is not. StepIndex >= Steps.Num() is trivially true of an empty path, so
+	// without the first half of this test an animal that cannot reach where it
+	// wants to go - a deer cornered against a lake, a wolf across deep water -
+	// searches every time it thinks instead of every RepathTimer. Measured on
+	// the zombie, which had the same test: 158 searches in 50 seconds at a
+	// moat's edge, against 19 once the timer applied.
+	const bool bPathSpent = Path.Steps.Num() > 0 && StepIndex >= Path.Steps.Num();
+
 	switch (Next)
 	{
 	case EMadAnimalState::Flee:
-		if (Player != nullptr && (Previous != EMadAnimalState::Flee || StepIndex >= Path.Steps.Num() || RepathTimer <= 0.0f))
+		if (Player != nullptr && (Previous != EMadAnimalState::Flee || bPathSpent || RepathTimer <= 0.0f))
 		{
 			RequestPath(MadFall::Animals::PickFleeGoal(GetFeetVoxel(), Player->GetFeetVoxel(), FleeDistanceVoxels, Random.FRandRange(-1.0f, 1.0f)));
 			if (Previous != EMadAnimalState::Flee)
@@ -294,7 +316,7 @@ void AMadAnimal::Think()
 		{
 			const FIntVector Goal = Player->GetFeetVoxel();
 			const bool bGoalMoved = FMath::Abs(Goal.X - PathGoal.X) + FMath::Abs(Goal.Y - PathGoal.Y) + FMath::Abs(Goal.Z - PathGoal.Z) >= 2;
-			if (RepathTimer <= 0.0f || bGoalMoved || StepIndex >= Path.Steps.Num())
+			if (RepathTimer <= 0.0f || bGoalMoved || bPathSpent)
 			{
 				RequestPath(Goal);
 			}
