@@ -44,6 +44,20 @@ namespace MadFall::ViewModel
 	 * is already the block), a resource and the empty hand.
 	 */
 	MADFALLGAMEPLAY_API const TCHAR* GetHeldModelPath(EMadHeldShape Shape);
+
+	/**
+	 * True for a held shape that needs a fist and forearm drawn under it.
+	 *
+	 * A pickaxe reads as held because its handle reaches the corner of the
+	 * screen and the eye fills in an arm. A can, a bottle, a block or a lump of
+	 * iron is fist-sized, so with nothing under it it hangs in the air beside
+	 * the crosshair and reads as a bug. Every shape is one or the other, which
+	 * is what the test checks: a new shape has to say which it is.
+	 */
+	MADFALLGAMEPLAY_API bool NeedsHand(EMadHeldShape Shape);
+
+	/** True for a shape long enough to leave the frame on its own. */
+	MADFALLGAMEPLAY_API bool ReachesTheEdge(EMadHeldShape Shape);
 }
 
 /**
@@ -76,6 +90,9 @@ public:
 
 private:
 	void Rebuild();
+	/** A fist and a forearm, for held things too small to reach the screen edge. */
+	void AddHand();
+
 	UStaticMeshComponent* AddPart(const TCHAR* MeshPath, const FVector& Location, const FVector& SizeCm, const FLinearColor& Colour, const FRotator& Rotation = FRotator::ZeroRotator);
 
 	/**

@@ -63,6 +63,18 @@ EMadHeldShape MadFall::ViewModel::ChooseShape(const FMadItemDefinition* Item)
 	return EMadHeldShape::Resource;
 }
 
+bool MadFall::ViewModel::NeedsHand(EMadHeldShape Shape)
+{
+	return Shape == EMadHeldShape::Block || Shape == EMadHeldShape::Food
+		|| Shape == EMadHeldShape::Drink || Shape == EMadHeldShape::Resource;
+}
+
+bool MadFall::ViewModel::ReachesTheEdge(EMadHeldShape Shape)
+{
+	return Shape == EMadHeldShape::Pickaxe || Shape == EMadHeldShape::Axe || Shape == EMadHeldShape::Shovel
+		|| Shape == EMadHeldShape::Hoe || Shape == EMadHeldShape::Bow || Shape == EMadHeldShape::Club;
+}
+
 FTransform MadFall::ViewModel::ComputeOffset(float Swing, float Use, float BobPhase, float Moving)
 {
 	Swing = FMath::Clamp(Swing, 0.0f, 1.0f);
@@ -121,6 +133,22 @@ void UMadViewModelComponent::PlaySwing()
 void UMadViewModelComponent::PlayUse()
 {
 	UseProgress = 0.0f;
+}
+
+void UMadViewModelComponent::AddHand()
+{
+	// A fist under the thing, and a forearm that runs out of the bottom of the
+	// frame.
+	//
+	// WHY only the compact shapes need this: a pickaxe reads as held because
+	// its handle reaches the corner of the screen - the eye follows it off the
+	// edge and fills in an arm. A can, a bottle, a block or a lump of iron is
+	// the size of a fist, so with nothing under it it hangs in the air beside
+	// the crosshair and reads as a bug rather than as something being carried.
+	// Screenshots of all eight held shapes side by side is what made the
+	// difference obvious; the four long ones were already right.
+	AddPart(CubeMesh, FVector(0.0, 0.0, 10.0), FVector(9.0, 8.0, 9.0), HeldSkin);
+	AddPart(CylinderMesh, FVector(-2.0, 0.0, -12.0), FVector(6.5, 6.5, 34.0), HeldSkin * 0.92f, FRotator(-12.0, 0.0, 0.0));
 }
 
 UStaticMeshComponent* UMadViewModelComponent::AddPart(const TCHAR* MeshPath, const FVector& Location, const FVector& SizeCm,
@@ -232,6 +260,14 @@ void UMadViewModelComponent::Rebuild()
 	// Stone tools have stone heads; anything else metal.
 	const bool bStoneTool = HeldItem.ToString().Contains(TEXT("stone"));
 	const FLinearColor Head = bStoneTool ? HeldStone : HeldIron;
+
+	// The compact shapes get a fist and forearm under them whichever way they
+	// are drawn. Food and drink have hand-built models and return below, so
+	// doing this only in the switch left the can still hanging in the air.
+	if (MadFall::ViewModel::NeedsHand(Shape))
+	{
+		AddHand();
+	}
 
 	// Tools, weapons, food and drink have hand-built models; the parts below
 	// remain for the shapes without one, and for a build without the assets.

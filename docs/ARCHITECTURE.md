@@ -3699,6 +3699,31 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### Looking at it
+
+A pass spent playing rather than building: a rendered session through ordinary
+moments - morning at the spawn, the inventory screen, the map, dusk, a horde at
+night - and then one photographing all eight held shapes side by side. Most of
+it held up. The sky, the grass, dusk and the silhouetted trees read the way
+they are supposed to, and the inventory screen is legible.
+
+One thing was wrong in every single frame, and I had been looking straight past
+it for a whole session of screenshots: **the held item hung in the air.** A can
+of food, a bottle, a block, a lump of iron - each drawn correctly, each floating
+in the lower right with nothing under it. The reason the tools looked fine is
+that a pickaxe's handle reaches the corner of the screen, so the eye follows it
+off the edge and supplies an arm; anything fist-sized has no such help.
+
+`NeedsHand()` now says which shapes get a fist and a forearm drawn under them,
+and `MadFall.Items.ViewModel` asserts that every shape is either that or long
+enough to leave the frame on its own - so a new held shape has to say which it
+is rather than quietly hanging in mid-air.
+
+The first attempt at the fix did nothing visible, which is worth recording:
+food and drink have hand-built prop meshes and take an early return before the
+switch that builds parts, so adding the hand inside the switch missed exactly
+the two shapes that prompted the change. It is added before that branch now.
+
 ### The soak gate
 
 Every other gate is a short scripted burst - the longest is under two minutes -

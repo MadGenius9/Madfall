@@ -47,6 +47,26 @@ bool FMadViewModelTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("items checked"), Items > 10);
 
+	// Every shape is either long enough to leave the frame on its own or gets a
+	// fist and forearm drawn under it. A shape that is neither hangs in the air
+	// beside the crosshair, which is what the canned food did until screenshots
+	// of all eight side by side made it obvious.
+	for (int32 Index = 0; Index <= static_cast<int32>(EMadHeldShape::Resource); ++Index)
+	{
+		const EMadHeldShape Shape = static_cast<EMadHeldShape>(Index);
+		if (Shape == EMadHeldShape::Empty)
+		{
+			continue;   // the empty hand is a fist already
+		}
+		TestTrue(*FString::Printf(TEXT("shape %d is held in a hand or reaches the edge"), Index),
+			NeedsHand(Shape) != ReachesTheEdge(Shape));
+	}
+	TestTrue(TEXT("a block is held in a hand"), NeedsHand(EMadHeldShape::Block));
+	TestTrue(TEXT("so is a can"), NeedsHand(EMadHeldShape::Food));
+	TestTrue(TEXT("and a bottle"), NeedsHand(EMadHeldShape::Drink));
+	TestTrue(TEXT("and a lump of something"), NeedsHand(EMadHeldShape::Resource));
+	TestFalse(TEXT("a pickaxe does not need one"), NeedsHand(EMadHeldShape::Pickaxe));
+
 	// Every shape with a hand-built model has one that loads, and its slots are
 	// surfaces or the tool head - a typo would silently draw the preview material.
 	for (EMadHeldShape Shape : { EMadHeldShape::Pickaxe, EMadHeldShape::Axe, EMadHeldShape::Shovel, EMadHeldShape::Hoe,
