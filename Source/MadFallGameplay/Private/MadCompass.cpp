@@ -75,6 +75,14 @@ void MadFall::Compass::GatherMarkers(const AMadPlayerCharacter& Player, TArray<F
 		}
 	}
 
+	// The building a clearing job points at, from any distance and in its own
+	// colour: a job you cannot find is not a job.
+	if (const TOptional<FIntVector>& Job = Player.GetJobSite(); Job.IsSet())
+	{
+		OutMarkers.Add({ FString::Printf(TEXT("Job: %s"), *Player.GetJobLabel()),
+			(FVector(Job.GetValue()) + FVector(0.5)) * MadFall::VoxelSizeUU, FLinearColor(1.0f, 0.45f, 0.35f) });
+	}
+
 	// POIs are planned per cell and cached by the generator, so asking about the
 	// few cells around the survivor each frame costs map lookups.
 	const UMadVoxelWorldSubsystem* VoxelWorld = World->GetSubsystem<UMadVoxelWorldSubsystem>();

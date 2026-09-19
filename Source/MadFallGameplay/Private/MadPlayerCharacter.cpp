@@ -2,6 +2,8 @@
 
 #include "MadPlayerCharacter.h"
 
+#include "MadPrefabRegistry.h"
+
 #include "MadFrameBudget.h"
 #include "AbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
@@ -274,6 +276,110 @@ void AMadPlayerCharacter::HandleQuestsCompleted(const TArray<FName>& Done)
 	}
 }
 
+void AMadPlayerCharacter::RefreshJobSite(float DeltaSeconds)
+{
+	// Looking at every cell in reach is 169 planning lookups, and the building
+	// a job points at does not move. Once found it is re-checked every few
+	// seconds - enough to notice a nearer one after a long walk - but the first
+	// search runs at once, so taking a job puts a marker on the compass now
+	// rather than in five seconds' time.
+	JobSearchTimer -= DeltaSeconds;
+	if (JobSite.IsSet() && JobSearchTimer > 0.0f)
+	{
+		return;
+	}
+	JobSearchTimer = 5.0f;
+
+	JobSite.Reset();
+	JobLabel.Reset();
+
+	const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>();
+	const FMadWorldGenerator* Generator = VoxelWorld ? VoxelWorld->GetWorldGenerator() : nullptr;
+	if (Generator == nullptr || !Generator->GetPoiPlanner().HasPrefabs())
+	{
+		return;
+	}
+
+	// The first unfinished clearing objective of the first quest that has one:
+	// a survivor is walking to one building, and a compass with three job
+	// arrows on it is a compass with none.
+	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
+	const FMadQuestObjective* Job = nullptr;
+	for (const FMadQuestProgress& Progress : Quests.GetActive())
+	{
+		const FMadQuestDefinition* Quest = Definitions.FindQuest(Progress.Quest);
+		if (Quest == nullptr)
+		{
+			continue;
+		}
+		for (int32 Index = 0; Index < Quest->Objectives.Num() && Job == nullptr; ++Index)
+		{
+			const FMadQuestObjective& Objective = Quest->Objectives[Index];
+			const int32 Done = Progress.Counts.IsValidIndex(Index) ? Progress.Counts[Index] : 0;
+			if (Objective.Type == EMadQuestObjectiveType::ClearPoi && Done < Objective.Count)
+			{
+				Job = &Objective;
+			}
+		}
+		if (Job != nullptr)
+		{
+			break;
+		}
+	}
+
+	if (Job == nullptr)
+	{
+		return;
+	}
+
+	const FMadPoiPlanner& Planner = Generator->GetPoiPlanner();
+	const FMadPrefabRegistry& Prefabs = UMadVoxelWorldSubsystem::GetPrefabRegistry();
+	const int32 CellSize = FMath::Max(1, Planner.GetCellSizeVoxels());
+	const FIntVector Feet = GetFeetVoxel();
+	const int32 CellX = FMath::FloorToInt32(static_cast<float>(Feet.X) / CellSize);
+	const int32 CellY = FMath::FloorToInt32(static_cast<float>(Feet.Y) / CellSize);
+
+	// Every cell within reach, keeping the nearest match.
+	//
+	// WHY not stop at the first ring that has one: a cell is 256 voxels across
+	// and a POI sits anywhere inside its own cell, so ring order is not
+	// distance order. Stopping early sent a survivor to a cabin 525 voxels off
+	// while a nearer one stood at 344. Planning is cached by the generator and
+	// this runs once a second, so looking at all of them costs map lookups.
+	constexpr int32 Reach = 6;
+	for (int32 DY = -Reach; DY <= Reach; ++DY)
+	{
+		{
+			for (int32 DX = -Reach; DX <= Reach; ++DX)
+			{
+				FMadPoiInstance Poi;
+				if (!Planner.PlanCell(*Generator, CellX + DX, CellY + DY, Poi) || Poi.PrefabIndex >= Prefabs.Num())
+				{
+					continue;
+				}
+				const FMadPrefab& Prefab = Prefabs.Get(Poi.PrefabIndex);
+				if (!Job->Matches(Prefab.Id, Prefab.Tags))
+				{
+					continue;
+				}
+
+				const FIntVector Centre = Poi.Origin + FIntVector(Poi.RotatedSize.X / 2, Poi.RotatedSize.Y / 2, 0);
+				const auto FlatDistanceSquared = [&Feet](const FIntVector& At)
+				{
+					const int64 DX64 = At.X - Feet.X;
+					const int64 DY64 = At.Y - Feet.Y;
+					return DX64 * DX64 + DY64 * DY64;
+				};
+				if (!JobSite.IsSet() || FlatDistanceSquared(Centre) < FlatDistanceSquared(JobSite.GetValue()))
+				{
+					JobSite = Centre;
+					JobLabel = Prefab.DisplayName.IsEmpty() ? Prefab.Id.ToString() : MadFall::Localize(Prefab.DisplayName);
+				}
+			}
+		}
+	}
+}
+
 void AMadPlayerCharacter::TickQuests(float DeltaSeconds)
 {
 	QuestCheckTimer -= DeltaSeconds;
@@ -282,6 +388,7 @@ void AMadPlayerCharacter::TickQuests(float DeltaSeconds)
 		return;
 	}
 	QuestCheckTimer = 1.0f;
+	RefreshJobSite(1.0f);
 
 	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
 	const FMadInventory& Items = Inventory->GetInventory();

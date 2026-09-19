@@ -950,6 +950,10 @@ void AMadZombie::Die(AActor* Killer)
 	{
 		Player->AddExperience(Definition.Experience);
 		Player->NotifyQuest(EMadQuestObjectiveType::KillZombie, VariantId, Definition.Tags);
+		if (!PoiPrefabId.IsNone())
+		{
+			Player->NotifyQuest(EMadQuestObjectiveType::ClearPoi, PoiPrefabId, PoiTags);
+		}
 
 		// Loot drops as a bag where the zombie fell: walking over to it is part
 		// of the risk of killing something in the middle of a horde.

@@ -78,6 +78,15 @@ public:
 	EMadZombieState GetState() const { return State; }
 	FName GetVariantId() const { return VariantId; }
 
+	/**
+	 * The prefab whose spawn marker woke this zombie, or none if it wandered in
+	 * or came with a horde. It is what lets a job be about a place: clearing a
+	 * building means killing the zombies that building put there, and a wanderer
+	 * that followed you in must not count toward it.
+	 */
+	FName GetPoiPrefab() const { return PoiPrefabId; }
+	void SetPoiPrefab(FName InPrefabId, const TArray<FName>& InTags) { PoiPrefabId = InPrefabId; PoiTags = InTags; }
+
 	FString DescribeStatus() const;
 
 	/** Makes the zombie hunt Player: a scream, or anything else that tells it where they are. */
@@ -133,6 +142,10 @@ private:
 	FIntVector PickWanderGoal();
 
 	FName VariantId;
+
+	/** Set when a POI's spawn marker woke this one; see GetPoiPrefab. */
+	FName PoiPrefabId;
+	TArray<FName> PoiTags;
 	FMadZombieDefinition Definition;
 	bool bHorde = false;
 

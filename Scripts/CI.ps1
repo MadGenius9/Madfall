@@ -1295,6 +1295,101 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Clearing jobs: the trader sends you somewhere, and only that place counts
+# ---------------------------------------------------------------------------
+#
+# The loop this gate walks is the whole reason the buildings exist: finish with
+# the trader, take a job, follow the compass to a building, kill what wakes up
+# in it, get paid, get the next job. Every part of it is a different subsystem
+# agreeing with the others - quests, the POI planner, sleeper spawning, the
+# compass - and none of them fails loudly when they stop agreeing. A job whose
+# building cannot be found, or whose kills do not count, simply sits in the
+# journal forever.
+#
+# The wanderer half is the one worth the extra minute. A clear_poi objective
+# counts zombies a building woke, and the only thing separating those from any
+# other zombie is a field set at spawn. Lose it and the job completes on the
+# walk over, which reads as "the quest is broken" rather than as a bug.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: clearing jobs (headless -game)'
+
+    # A bow, not the club, for the building's own sleeper. WHY: the first
+    # version swung a club and the gate passed locally and failed in CI - the
+    # sleeper woke on the far side of the cabin and closed from 15.6 to 8.9
+    # voxels over fourteen swings, never reaching melee range. Whether a gate
+    # passes should not depend on which side of a building a zombie spawned.
+    $jobShots = (1..20 | ForEach-Object { 'mad.player.aimzombie; mad.player.use 1; wait 1' }) -join '; '
+    $jobScript = @(
+        'mad.clock.set 10'
+        # The trader quest is the tutorial's; completing it opens the first job.
+        'mad.quests.complete madfall:quest/trader'
+        'wait 2'
+        'mad.quests'
+        'mad.player.compass'
+        'mad.player.give madfall:wooden_club 1'
+        'mad.player.hold madfall:wooden_club'
+        # A wanderer, right here, nowhere near the job's building.
+        'mad.ai.spawn madfall:zombie_civilian 3 0'
+        'wait 2'
+        (1..10 | ForEach-Object { 'mad.player.aimzombie; mad.player.use 2; wait 1' }) -join '; '
+        'mad.quests'
+        # Now the job itself.
+        'mad.player.tpjob 3'
+        'wait 25'
+        'mad.ai.status'
+        'mad.player.give madfall:wooden_bow 1'
+        'mad.player.give madfall:arrow 30'
+        'mad.player.hold madfall:wooden_bow'
+        $jobShots
+        'mad.ai.status'
+        'mad.quests'
+        'quit'
+    ) -join '; '
+
+    $jobLog = Join-Path $LogDir 'jobs-acceptance.log'
+    $jobWorld = Join-Path $RepoRoot 'Saved\MadFallWorlds\ci-jobs'
+    if (Test-Path $jobWorld) { Remove-Item -Recurse -Force $jobWorld }
+
+    $jobProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $jobLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-jobs', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn wait 8; $jobScript`"")
+
+    if (-not $jobProcess.WaitForExit(400000)) {
+        $jobProcess | Stop-Process -Force
+        Write-Host 'FAILED: the clearing-job script did not finish within 400 s.' -ForegroundColor Red
+        $script:Failures += 'jobs-acceptance'
+    }
+    else {
+        # Both readings of the objective line, in order: it must still be 0/1
+        # after the wanderer died, and the quest must have completed after the
+        # building's own sleeper did.
+        $progress = @(Select-String -Path $jobLog -Pattern 'Clear Hunting Cabin: (\d+)/1' |
+            ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+
+        $checks = @(
+            @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Quest started: madfall:quest/job_cabin' -Quiet); Why = 'finishing with the trader handed out a clearing job' },
+            @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Job: Hunting Cabin' -Quiet);                     Why = 'and the compass points at a building that matches it' },
+            @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Travelled to the job at' -Quiet);                Why = 'the survivor walked to it' },
+            @{ Ok = ($progress.Count -ge 2 -and $progress[1] -eq 0);                                             Why = "a wanderer killed on the way did not count toward it ($($progress -join ' -> '))" },
+            @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Quest complete: madfall:quest/job_cabin' -Quiet); Why = 'killing what the building woke did' },
+            @{ Ok = [bool](Select-String -Path $jobLog -Pattern 'Quest started: madfall:quest/job_camp' -Quiet);   Why = 'and the trader had the next job ready' }
+        )
+
+        $jobOk = $true
+        foreach ($check in $checks) {
+            if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
+            else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $jobOk = $false }
+        }
+        if (-not $jobOk) {
+            Select-String -Path $jobLog -Pattern 'Clear Hunting Cabin|Quest |Job: |Zombies: ' |
+                Select-Object -Last 10 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
+            $script:Failures += 'jobs-acceptance'
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # A moat: deep water stops a shambler, shallow water only slows one
 # ---------------------------------------------------------------------------
 #
@@ -2187,6 +2282,7 @@ else {
             }
         }
     }
+    }
 
     if (-not $budgetOk -and -not $budgetMeasured -and -not $budgetTimedOut) {
         # Four sessions, none of them fast enough to judge. Failing here would
@@ -2199,7 +2295,6 @@ else {
         Write-Host $budgetLastNumbers -ForegroundColor Yellow
         Write-Host '         Check with Get-Process, then: Scripts\budget-probe.ps1 -Runs 3' -ForegroundColor Yellow
         $script:Skipped += 'frame-budget (machine too busy to measure)'
-    }
     }
 }
 

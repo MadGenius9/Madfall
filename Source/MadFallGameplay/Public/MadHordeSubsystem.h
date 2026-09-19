@@ -57,6 +57,9 @@ public:
 
 	int32 NumAlive() const;
 
+	/** Every live zombie, for the console and tests. Entries may be stale. */
+	const TArray<TWeakObjectPtr<AMadZombie>>& GetAlive() const { return Alive; }
+
 	/** Sends every live zombie within RadiusVoxels after Player. Returns how many. */
 	int32 AlertNear(const FVector& Location, float RadiusVoxels, AMadPlayerCharacter& Player);
 

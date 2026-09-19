@@ -616,6 +616,7 @@ namespace MadFall::GameplayDefinitionsJson
 			{ TEXT("set_spawn"), EMadQuestObjectiveType::SetSpawn },
 			{ TEXT("reach_day"), EMadQuestObjectiveType::ReachDay },
 			{ TEXT("trade"), EMadQuestObjectiveType::Trade },
+			{ TEXT("clear_poi"), EMadQuestObjectiveType::ClearPoi },
 		};
 
 		for (int32 Index = 0; Index < Objectives.Num(); ++Index)
@@ -633,7 +634,7 @@ namespace MadFall::GameplayDefinitionsJson
 			const EMadQuestObjectiveType* Type = Types.Find(TypeText);
 			if (Type == nullptr)
 			{
-				R.AddError(Pointer + TEXT("/type"), FString::Printf(TEXT("'%s' is not one of craft, have, place, break, kill_zombie, kill_animal, wear, set_spawn, reach_day, trade"), *TypeText));
+				R.AddError(Pointer + TEXT("/type"), FString::Printf(TEXT("'%s' is not one of craft, have, place, break, kill_zombie, kill_animal, wear, set_spawn, reach_day, trade, clear_poi"), *TypeText));
 				continue;
 			}
 			Objective.Type = *Type;

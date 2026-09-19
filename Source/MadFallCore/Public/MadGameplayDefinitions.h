@@ -497,7 +497,16 @@ enum class EMadQuestObjectiveType : uint8
 	/** The clock reaching a day (Count). */
 	ReachDay,
 	/** Trades made with a trader (Target: the trader id). */
-	Trade
+	Trade,
+	/**
+	 * Zombies killed that a POI woke, counted against the POI they came from
+	 * (Target: a prefab id, Tag: one of the prefab's tags).
+	 *
+	 * WHY this is not KillZombie with a tag: a zombie's own definition says
+	 * what it is, not where it was standing. Clearing a building is the one
+	 * job in the game that is about a place, so the event carries the place.
+	 */
+	ClearPoi
 };
 
 struct MADFALLCORE_API FMadQuestObjective

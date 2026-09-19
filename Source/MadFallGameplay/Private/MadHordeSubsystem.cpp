@@ -2,6 +2,8 @@
 
 #include "MadHordeSubsystem.h"
 
+#include "MadPrefabRegistry.h"
+
 #include "MadDifficulty.h"
 #include "MadTraps.h"
 
@@ -225,14 +227,27 @@ void UMadHordeSubsystem::TickSleepers(AMadPlayerCharacter& Player)
 					}
 
 					SleeperSpawnDay.Add(Marker.WorldPosition, Day);
+
+					// The prefab's own tags, so a job can ask for "a military
+					// site" rather than naming one building.
+					const FMadPrefabRegistry& PrefabRegistry = UMadVoxelWorldSubsystem::GetPrefabRegistry();
+					const int32 PrefabIndex = PrefabRegistry.FindIndex(Marker.PrefabId);
+					static const TArray<FName> NoTags;
+					const TArray<FName>& PrefabTags = PrefabIndex != INDEX_NONE ? PrefabRegistry.Get(PrefabIndex).Tags : NoTags;
+
 					int32 Spawned = 0;
 					for (int32 Index = 0; Index < FMath::Max(1, Marker.Count); ++Index)
 					{
 						const FMadZombieDefinition* Variant = PickVariant(Marker.SpawnGroup, Player.GetGameStage());
 						FIntVector SpawnAt;
-						if (Variant && FindStandableNear(Marker.WorldPosition.X + Index % 2, Marker.WorldPosition.Y + Index / 2, Marker.WorldPosition.Z, SpawnAt)
-							&& SpawnZombie(*Variant, SpawnAt, /*bHorde*/ false))
+						AMadZombie* Woken = nullptr;
+						if (Variant && FindStandableNear(Marker.WorldPosition.X + Index % 2, Marker.WorldPosition.Y + Index / 2, Marker.WorldPosition.Z, SpawnAt))
 						{
+							Woken = SpawnZombie(*Variant, SpawnAt, /*bHorde*/ false);
+						}
+						if (Woken)
+						{
+							Woken->SetPoiPrefab(Marker.PrefabId, PrefabTags);
 							++Spawned;
 						}
 					}
@@ -479,6 +494,45 @@ namespace
 		FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
 		{
 			if (UMadHordeSubsystem* Horde = GetHorde(World)) { Horde->ForceWave(); }
+		}));
+
+	// Aiming at the nearest zombie, the same helper mad.player.aimanimal is for:
+	// a scripted session has no mouse, and "walk up to the building and hit what
+	// comes out" is the one thing a clearing job is made of.
+	FAutoConsoleCommandWithWorld CmdAimZombie(
+		TEXT("mad.player.aimzombie"), TEXT("Turns the survivor to look at the nearest live zombie."),
+		FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
+		{
+			UMadHordeSubsystem* Horde = GetHorde(World);
+			AMadPlayerCharacter* Player = MadFall::FindLocalPlayer(World);
+			if (Horde == nullptr || Player == nullptr)
+			{
+				return;
+			}
+
+			AMadZombie* Nearest = nullptr;
+			double Best = TNumericLimits<double>::Max();
+			for (const TWeakObjectPtr<AMadZombie>& Zombie : Horde->GetAlive())
+			{
+				if (!Zombie.IsValid() || Zombie->IsDead())
+				{
+					continue;
+				}
+				const double Distance = FVector::DistSquared(Zombie->GetActorLocation(), Player->GetActorLocation());
+				if (Distance < Best)
+				{
+					Best = Distance;
+					Nearest = Zombie.Get();
+				}
+			}
+			if (Nearest == nullptr)
+			{
+				UE_LOG(LogMadFallGameplay, Display, TEXT("No zombie to aim at."));
+				return;
+			}
+			Player->AimAtLocation(Nearest->GetActorLocation() + FVector(0.0, 0.0, 40.0));
+			UE_LOG(LogMadFallGameplay, Display, TEXT("Aiming at %s, %.1f voxels away."),
+				*Nearest->GetVariantId().ToString(), FMath::Sqrt(Best) / MadFall::VoxelSizeUU);
 		}));
 
 	FAutoConsoleCommandWithWorld CmdKillAll(

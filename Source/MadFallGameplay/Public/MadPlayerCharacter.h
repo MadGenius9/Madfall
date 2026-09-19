@@ -109,6 +109,19 @@ public:
 	//~ End IMadDamageable
 
 	/** Counts something the survivor did toward active quests, and pays out any it completes. */
+	/**
+	 * Where the survivor's current clearing job is, in voxels, if they have one
+	 * and a matching building was found.
+	 *
+	 * WHY it is cached rather than searched by the compass: the compass draws
+	 * every frame, and a job can be a long way off - far enough that finding it
+	 * means planning hundreds of POI cells rather than the couple of dozen the
+	 * compass looks at for scenery. It is refreshed with the rest of the quest
+	 * state, once a second.
+	 */
+	const TOptional<FIntVector>& GetJobSite() const { return JobSite; }
+	const FString& GetJobLabel() const { return JobLabel; }
+
 	void NotifyQuest(EMadQuestObjectiveType Type, FName Id, const TArray<FName>& ThingTags, int32 Amount = 1, const TOptional<FIntVector>& Where = TOptional<FIntVector>());
 
 	const FMadQuestLog& GetQuestLog() const { return Quests; }
@@ -465,7 +478,15 @@ private:
 
 	FMadQuestLog Quests;
 	float QuestCheckTimer = 0.0f;
+
+	/** The building an active clear_poi objective points at; see GetJobSite. */
+	TOptional<FIntVector> JobSite;
+	FString JobLabel;
 	void TickQuests(float DeltaSeconds);
+
+	/** Finds the nearest building an active clear_poi objective matches; see GetJobSite. */
+	void RefreshJobSite(float DeltaSeconds);
+	float JobSearchTimer = 0.0f;
 	void HandleQuestsCompleted(const TArray<FName>& Done);
 
 	/** Swaps a block (and the matching blocks stacked on it: both halves of a door) for its toggle_to. */

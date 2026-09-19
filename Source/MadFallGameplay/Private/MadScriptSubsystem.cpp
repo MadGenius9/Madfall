@@ -147,6 +147,7 @@ void UMadScriptSubsystem::NotifyPlayerAction(EMadQuestObjectiveType Type, FName 
 	case EMadQuestObjectiveType::Wear:       Name = TEXT("item_worn"); IdField = TEXT("item"); break;
 	case EMadQuestObjectiveType::KillZombie: Name = TEXT("zombie_killed"); IdField = TEXT("zombie"); break;
 	case EMadQuestObjectiveType::KillAnimal: Name = TEXT("animal_killed"); IdField = TEXT("animal"); break;
+	case EMadQuestObjectiveType::ClearPoi:   Name = TEXT("poi_zombie_killed"); IdField = TEXT("prefab"); break;
 	default: return;
 	}
 

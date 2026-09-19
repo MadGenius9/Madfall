@@ -7,6 +7,7 @@
 #include "MadDefinitionSources.h"
 #include "MadGameplayDefinitions.h"
 #include "MadGameplaySave.h"
+#include "MadPrefabRegistry.h"
 #include "MadQuests.h"
 #include "MadVoxelWorldSubsystem.h"
 #include "Serialization/JsonReader.h"
@@ -183,6 +184,67 @@ bool FMadShippedQuestsTest::RunTest(const FString& Parameters)
 			TestFalse(*FString::Printf(TEXT("%s: objective text is not a raw key (%s)"), *Quest.Id.ToString(), *Text), Text.StartsWith(TEXT("@")) || Text.StartsWith(TEXT("quests.")));
 		}
 	}
+	// --- a clearing job is one building's worth of work -----------------------
+	//
+	// WHY this is checked rather than trusted: a clear_poi objective's count is
+	// a number in one file and the zombies that satisfy it are spawn markers in
+	// another. Raise a prefab's sleepers and the job finishes early; lower them
+	// and the survivor clears the building, finds it empty, and has to walk to a
+	// second one with no idea why. Neither shows up as an error anywhere.
+	{
+		const FMadPrefabRegistry& Prefabs = UMadVoxelWorldSubsystem::GetPrefabRegistry();
+
+		auto SleeperCount = [](const FMadPrefab& Prefab)
+		{
+			int32 Total = 0;
+			for (const FMadPoiMarker& Marker : Prefab.Markers)
+			{
+				if (!Marker.SpawnGroup.IsNone())
+				{
+					Total += FMath::Max(1, Marker.Count);
+				}
+			}
+			return Total;
+		};
+
+		int32 JobsChecked = 0;
+		for (const FMadQuestDefinition& Quest : Defs.GetQuests())
+		{
+			for (const FMadQuestObjective& Objective : Quest.Objectives)
+			{
+				if (Objective.Type != EMadQuestObjectiveType::ClearPoi)
+				{
+					continue;
+				}
+				++JobsChecked;
+
+				int32 Matches = 0;
+				int32 Exact = 0;
+				FString Counts;
+				for (const FMadPrefab& Prefab : Prefabs.GetAll())
+				{
+					if (!Objective.Matches(Prefab.Id, Prefab.Tags))
+					{
+						continue;
+					}
+					const int32 Sleepers = SleeperCount(Prefab);
+					if (Sleepers == 0)
+					{
+						continue;   // nothing lives there; it can never be cleared
+					}
+					++Matches;
+					Exact += Sleepers == Objective.Count ? 1 : 0;
+					Counts += FString::Printf(TEXT(" %s=%d"), *Prefab.Id.ToString(), Sleepers);
+				}
+
+				TestTrue(*FString::Printf(TEXT("%s: a building with sleepers matches the job"), *Quest.Id.ToString()), Matches > 0);
+				TestTrue(*FString::Printf(TEXT("%s: asks for exactly one building's sleepers (wants %d, buildings:%s)"),
+					*Quest.Id.ToString(), Objective.Count, *Counts), Exact > 0);
+			}
+		}
+		TestTrue(TEXT("clearing jobs ship at all"), JobsChecked >= 3);
+	}
+
 	const TArray<FName> RipeTag = { FName(TEXT("block.ripe")) };
 	TestTrue(TEXT("ripe corn is tagged ripe"), Blocks.FindDefinition(Blocks.ResolveRuntimeId(FName(TEXT("madfall:corn_plant"))))->Tags.Contains(RipeTag[0]));
 	TestFalse(TEXT("a sprout is not"), Blocks.FindDefinition(Blocks.ResolveRuntimeId(FName(TEXT("madfall:corn_sprout"))))->Tags.Contains(RipeTag[0]));

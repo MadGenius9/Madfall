@@ -1514,6 +1514,66 @@ checks that natural spawning places a herd. The bow shot turns off grazing
 strolls first (`mad.animals.Stroll 0`): a stag that wandered two voxels between
 the aim and the arrow's arrival failed the gate on a correct shot.
 
+### Jobs: a reason to go there
+
+Eleven buildings stood in the world and nothing ever asked a survivor to visit
+one. The quest system could say craft, break, place, carry, wear, sleep, kill
+and survive-to-day - every verb except *go somewhere* - so the journal was an
+onboarding chain that ran out, and the POIs were scenery you might stumble on.
+The loop this genre runs on is: finish with the trader, take a job, follow it to
+a building, kill what wakes up in it, get paid, get the next one.
+
+- **`clear_poi`**, a tenth objective type. `Target` is a prefab id and `Tag` one
+  of its tags, so a job is either "clear a Ruined Bunker" or "clear a ruin" -
+  the second lets `job_ruin` accept the warehouse or the freighter, whichever
+  the survivor finds first.
+- **A zombie remembers what woke it** (`AMadZombie::PoiPrefabId`, set by
+  `TickSleepers` from the spawn marker's prefab). WHY the event carries the
+  place rather than reusing `kill_zombie` with a tag: a zombie's own definition
+  says what it is, not where it was standing, and a wanderer that followed you
+  in must not finish a job you have not started walking to. That is the half of
+  this most likely to rot silently, so the gate kills a wanderer first and
+  fails unless the counter stays where it was.
+- **The compass carries the job**, in its own colour and from any distance
+  (`AMadPlayerCharacter::JobSite`, drawn as "Job: Hunting Cabin"). It is cached
+  and refreshed once a second with the rest of the quest state, not searched by
+  the compass: scenery POIs are the couple of dozen cells around the survivor,
+  but a job can be six cells out in every direction, which is 169 cells and the
+  compass draws every frame. The first version stopped at the first ring that
+  had a match and sent a survivor 525 voxels to a cabin while a nearer one
+  stood at 344 - a cell is 256 voxels across, so ring order is not distance
+  order. It now looks at every cell in reach and keeps the nearest, and having
+  found one re-searches only every five seconds: the building does not move,
+  and 169 planning lookups a second is a cost nobody asked for. The first
+  search still runs at once, so taking a job marks the compass immediately.
+- **Five jobs** in `Definitions/quests/madfall_jobs.json`, hung off the
+  tutorial's trader quest and laddered by what each building holds: the cabin
+  (1 sleeper), the logging camp (2), the bunker (3), either ruin (5), the
+  military outpost (9).
+- **The counts are checked against the buildings.** A job's count is a number in
+  one file and the zombies that satisfy it are spawn markers in another; raise a
+  prefab's sleepers and the job finishes early, lower them and the survivor
+  clears the building, finds it empty and walks to a second one with no idea
+  why. Neither is an error anywhere. `MadFall.Progression.ShippedQuests` now
+  fails unless every `clear_poi` count is exactly some matching building's
+  sleeper total, and says which building and both numbers when it does
+  (verified by asking for 4 against the bunker's 3).
+- **`mad.player.tpjob`** and **`mad.player.aimzombie`** exist so a scripted
+  session can walk the loop; they are the same kind of handle as
+  `mad.player.tpbiome` and `mad.player.aimanimal`, which the animal gate
+  already used for the same reason.
+- Tested: the `clearing jobs` gate takes the job, checks the compass found a
+  matching building, travels, kills a wanderer and checks it did *not* count,
+  then clears the cabin and checks the quest completed and handed out the next.
+- Measured, honestly: the frame-budget stage could not run on this branch - the
+  machine was at 8-12 fps with another game on it - so the job search's cost is
+  reasoned about above rather than measured. It is skipped entirely when no
+  clear_poi objective is active, which is every session the budget gate runs.
+- Known gap: a job pays the moment its last objective is met, because quests
+  have no hand-in - `FMadQuestLog` completes them where they stand. Walking back
+  to the trader to be paid is the half of the loop still missing, and it needs a
+  hand-in step in the quest system rather than anything here.
+
 ### Somewhere to go
 
 Six POIs shipped, and counting them by biome showed what that actually meant
@@ -1562,9 +1622,15 @@ remain hand-authored files the script does not own.
   `(x + y) % 3`, which read as clean diagonal rows the moment you were inside
   it; it is now `(x * 37 + y * 101) % 17 < 11`, scattered but still a pure
   function of position, which is what keeps the prefab data rather than a seed.
-- Known gap: a POI on a slope fills down to its foundation block, so a building
-  on a hillside stands on a sheer cube of stone. That is pre-existing and shows
-  on every POI, not just these.
+- **The plinth was measured before it was called a problem.** A POI on a slope
+  fills down to its foundation block, which on a hillside leaves bare plinth
+  standing proud of the ground beside it. Over 79 planned POIs the exposure is
+  0 voxels at the median and 1.3 on average; the top tenth reach 4 and the
+  worst is 7, under the watchtower, which has the most permissive `max_slope`
+  in the game at 10. So it is an occasional eyesore on the steepest sites
+  rather than something every building does, and not worth reshaping the
+  foundation for. The number is here so the next person does not have to
+  re-derive it from a screenshot.
 
 ### Water
 

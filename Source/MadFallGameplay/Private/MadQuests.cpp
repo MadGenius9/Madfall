@@ -2,6 +2,9 @@
 
 #include "MadQuests.h"
 
+#include "MadPrefabRegistry.h"
+#include "MadVoxelWorldSubsystem.h"
+
 #include "Algo/AllOf.h"
 #include "MadLocalization.h"
 
@@ -195,6 +198,19 @@ FString MadFall::Quests::DescribeObjective(const FMadQuestObjective& Objective, 
 	case EMadQuestObjectiveType::SetSpawn:   return FString(TEXT("Sleep in a bed"));
 	case EMadQuestObjectiveType::ReachDay:   return FString::Printf(TEXT("Survive to day %d"), Objective.Count);
 	case EMadQuestObjectiveType::Trade:      return FString(TEXT("Trade with a trader"));
+	case EMadQuestObjectiveType::ClearPoi:
+	{
+		// The prefab's display name if it names one, otherwise the tag, so
+		// "Clear a Ruined Bunker" and "Clear a military site" both read.
+		FString Place = Objective.Tag.ToString();
+		if (!Objective.Target.IsNone())
+		{
+			const FMadPrefabRegistry& Prefabs = UMadVoxelWorldSubsystem::GetPrefabRegistry();
+			const int32 Index = Prefabs.FindIndex(Objective.Target);
+			Place = Index != INDEX_NONE ? MadFall::Localize(Prefabs.Get(Index).DisplayName) : Objective.Target.ToString();
+		}
+		return FString::Printf(TEXT("Clear %s"), *Place);
+	}
 	default:                                 return Thing;
 	}
 }

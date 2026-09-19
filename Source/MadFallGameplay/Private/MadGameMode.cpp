@@ -1788,6 +1788,43 @@ namespace
 			UE_LOG(LogMadFallGameplay, Display, TEXT("Teleported to %s in %s."), *Destination.ToString(), *Args[0]);
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs CmdPlayerTpJob(
+		TEXT("mad.player.tpjob"),
+		TEXT("mad.player.tpjob [offset=6] - stand beside the building the survivor's current clearing job points to."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			if (P == nullptr)
+			{
+				return;
+			}
+			const TOptional<FIntVector>& Job = P->GetJobSite();
+			if (!Job.IsSet())
+			{
+				UE_LOG(LogMadFallGameplay, Error, TEXT("No clearing job to travel to (mad.quests shows what is active)."));
+				return;
+			}
+			int32 Offset = 6;
+			if (Args.Num() > 0) { FDefaultValueHelper::ParseInt(Args[0], Offset); }
+
+			const UMadVoxelWorldSubsystem* VoxelWorld = World->GetSubsystem<UMadVoxelWorldSubsystem>();
+			const FMadWorldGenerator* Generator = VoxelWorld ? VoxelWorld->GetWorldGenerator() : nullptr;
+			if (Generator == nullptr)
+			{
+				return;
+			}
+
+			// Beside it rather than in it: a survivor dropped inside a building
+			// lands in a wall, and the sleepers wake within forty voxels anyway.
+			const FIntVector At = Job.GetValue() + FIntVector(Offset, Offset, 0);
+			const int32 Surface = FMath::FloorToInt(Generator->GetSurfaceHeight(static_cast<float>(At.X), static_cast<float>(At.Y)));
+			const int32 Top = Generator->FindTerrainTopBelow(At.X, At.Y, Surface + 12, 32);
+			const FIntVector Destination(At.X, At.Y, (Top == INDEX_NONE ? Surface : Top) + 1);
+			P->TravelToVoxel(Destination);
+			UE_LOG(LogMadFallGameplay, Display, TEXT("Travelled to the job at %s, standing at %s (%s)."),
+				*Job.GetValue().ToString(), *Destination.ToString(), *P->GetJobLabel());
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerAim(
 		TEXT("mad.player.aim"), TEXT("mad.player.aim <x> <y> <z> - look at a voxel."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
