@@ -213,6 +213,81 @@ bool FMadQuestHandInTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// ===========================================================================
+// Work that comes back
+// ===========================================================================
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadQuestRepeatTest,
+	"MadFall.Progression.QuestRepeat",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadQuestRepeatTest::RunTest(const FString& Parameters)
+{
+	using namespace MadQuestTests;
+	const FName Mod(TEXT("test"));
+	const FName Standing(TEXT("test:quest/standing"));
+	const FName After(TEXT("test:quest/after"));
+
+	FMadGameplayDefinitions Defs;
+	TArray<FMadDefinitionError> Errors;
+	Defs.BeginLoad();
+	Defs.AddItemJson(Json(TEXT(R"({ "schema": "madfall.item/1", "id": "test:axe", "max_stack": 1 })")), TEXT("t"), Mod, Errors);
+	Defs.AddQuestJson(Json(TEXT(R"({ "schema": "madfall.quest/1", "id": "test:quest/standing", "order": 1,
+		"hand_in": true, "repeatable": true,
+		"objectives": [ { "type": "craft", "target": "test:axe" } ] })")), TEXT("t"), Mod, Errors);
+	Defs.AddQuestJson(Json(TEXT(R"({ "schema": "madfall.quest/1", "id": "test:quest/after", "order": 2,
+		"requires": ["test:quest/standing"],
+		"objectives": [ { "type": "craft", "target": "test:axe" } ] })")), TEXT("t"), Mod, Errors);
+	Defs.FinishLoad(nullptr, Errors);
+
+	FMadQuestLog Log;
+	Log.Refresh(Defs);
+	TestTrue(TEXT("the standing job starts"), Log.IsActive(Standing));
+	TestFalse(TEXT("what follows it does not, yet"), Log.IsActive(After));
+
+	// Round one.
+	Log.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 1, Defs);
+	TestTrue(TEXT("it waits to be handed in"), Log.IsWaitingToHandIn(Standing, Defs));
+	TestEqual(TEXT("handing in pays it"), Log.HandIn(Defs).Num(), 1);
+	TestTrue(TEXT("and it counts as done once"), Log.IsComplete(Standing));
+
+	// Which is what unlocks the quest behind it - exactly once.
+	TArray<FName> Started = Log.Refresh(Defs);
+	TestTrue(TEXT("finishing it unlocks what required it"), Started.Contains(After));
+	TestTrue(TEXT("and the trader offers the standing job again"), Started.Contains(Standing));
+	TestTrue(TEXT("so it is active and complete at the same time"), Log.IsActive(Standing) && Log.IsComplete(Standing));
+
+	// Round two pays again.
+	Log.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 1, Defs);
+	TestTrue(TEXT("the repeat can be finished"), Log.IsWaitingToHandIn(Standing, Defs));
+
+	// Saving mid-repeat must not throw the repeat away: it is in Completed and
+	// in Active at once, which is the one state Import used to drop.
+	{
+		TArray<FName> Completed;
+		TArray<FMadQuestProgress> Active;
+		Log.Export(Completed, Active);
+
+		FMadQuestLog Reloaded;
+		Reloaded.Import(Completed, Active, Defs);
+		TestTrue(TEXT("a save mid-repeat keeps the repeat"), Reloaded.IsActive(Standing));
+		TestTrue(TEXT("and still knows it is ready to hand in"), Reloaded.IsWaitingToHandIn(Standing, Defs));
+		TestEqual(TEXT("and pays it on reaching the trader"), Reloaded.HandIn(Defs).Num(), 1);
+	}
+
+	TestEqual(TEXT("the original pays a second time"), Log.HandIn(Defs).Num(), 1);
+
+	// A one-shot does not come back, however many times Refresh is called.
+	Log.Notify(EMadQuestObjectiveType::Craft, FName(TEXT("test:axe")), {}, 1, Defs);
+	TestTrue(TEXT("the one-shot completed"), Log.IsComplete(After));
+	Log.Refresh(Defs);
+	TestFalse(TEXT("and is not offered again"), Log.IsActive(After));
+	TestTrue(TEXT("while the standing job is"), Log.IsActive(Standing));
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMadShippedQuestsTest,
 	"MadFall.Progression.ShippedQuests",
@@ -244,16 +319,28 @@ bool FMadShippedQuestsTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("the tutorial ships"), Defs.GetQuests().Num() >= 8);
 
-	// Completing every quest in unlock order reaches all of them: no quest is stranded behind a cycle.
+	// Completing every quest in unlock order reaches all of them: no quest is
+	// stranded behind a cycle. A repeatable quest is offered again the moment
+	// it is completed, so the loop stops when the only thing still starting is
+	// one of those - otherwise it spins until its guard and says nothing.
 	FMadQuestLog Log;
 	int32 Guard = 0;
-	for (TArray<FName> Started = Log.Refresh(Defs); Started.Num() > 0 && Guard < 64; Started = Log.Refresh(Defs), ++Guard)
+	for (;;)
 	{
+		const TArray<FName> Started = Log.Refresh(Defs);
+		int32 NewlyReached = 0;
 		for (const FName& Id : Started)
 		{
+			const FMadQuestDefinition* Quest = Defs.FindQuest(Id);
+			NewlyReached += (Quest != nullptr && Quest->bRepeatable && Log.IsComplete(Id)) ? 0 : 1;
 			Log.ForceComplete(Id, Defs);
 		}
+		if (NewlyReached == 0 || ++Guard >= 64)
+		{
+			break;
+		}
 	}
+	TestTrue(TEXT("the quest graph settles without spinning"), Guard < 64);
 	TestEqual(TEXT("every shipped quest is reachable"), Log.NumCompleted(), Defs.GetQuests().Num());
 
 	// Exactly one quest to start with, so a new survivor's journal is not a wall of text.
@@ -271,6 +358,20 @@ bool FMadShippedQuestsTest::RunTest(const FString& Parameters)
 			}
 			const FString Text = MadFall::Quests::DescribeObjective(Objective, Defs);
 			TestFalse(*FString::Printf(TEXT("%s: objective text is not a raw key (%s)"), *Quest.Id.ToString(), *Text), Text.StartsWith(TEXT("@")) || Text.StartsWith(TEXT("quests.")));
+
+			// An objective with a tag and no text of its own renders the tag,
+			// which passes the check above and still reads as debug output:
+			// "Clear poi.shelter". Same class of thing as the item slots that
+			// used to say "Wood Pla". A dotted token is the tell.
+			TArray<FString> Words;
+			Text.ParseIntoArray(Words, TEXT(" "), true);
+			for (const FString& Word : Words)
+			{
+				int32 Dot = INDEX_NONE;
+				const bool bDotted = Word.FindChar(TEXT('.'), Dot) && Dot > 0 && Dot < Word.Len() - 1;
+				TestFalse(*FString::Printf(TEXT("%s: objective text reads as English, not a tag (%s)"),
+					*Quest.Id.ToString(), *Text), bDotted);
+			}
 		}
 	}
 	// --- a clearing job is one building's worth of work -----------------------
@@ -332,6 +433,37 @@ bool FMadShippedQuestsTest::RunTest(const FString& Parameters)
 			}
 		}
 		TestTrue(TEXT("clearing jobs ship at all"), JobsChecked >= 3);
+
+		// The journal used to empty itself around day ten: every quest was a
+		// one-shot, so once the chain was done the trader had nothing further
+		// to say, forever. At least one standing job has to survive that.
+		int32 Repeatable = 0;
+		for (const FMadQuestDefinition& Quest : Defs.GetQuests())
+		{
+			Repeatable += Quest.bRepeatable ? 1 : 0;
+		}
+		TestTrue(TEXT("the trader has work that comes back"), Repeatable > 0);
+
+		// And every one-shot chain has to end somewhere a standing job takes
+		// over, or the endgame is empty again with no error anywhere.
+		for (const FMadQuestDefinition& Quest : Defs.GetQuests())
+		{
+			if (Quest.bRepeatable)
+			{
+				continue;
+			}
+			const bool bLeadsOn = Defs.GetQuests().ContainsByPredicate([&Quest](const FMadQuestDefinition& Other)
+			{
+				return Other.Requires.Contains(Quest.Id);
+			});
+			if (!bLeadsOn)
+			{
+				// A dead end is fine as long as a standing job is already open
+				// by then - it cannot require something that never completes.
+				TestTrue(*FString::Printf(TEXT("%s is a dead end, so a standing job must be reachable before it"), *Quest.Id.ToString()),
+					Repeatable > 0);
+			}
+		}
 	}
 
 	const TArray<FName> RipeTag = { FName(TEXT("block.ripe")) };

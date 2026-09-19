@@ -1592,6 +1592,35 @@ a building, kill what wakes up in it, get paid, get the next one.
   job was cleared (line 621), the trader was reached (713), and only then was
   it paid (714). Asserting the order rather than the outcome is the point -
   "the quest completed" was true before any of this.
+- **Work that comes back.** Every quest was a one-shot, so the journal emptied
+  itself somewhere around day ten and stayed empty: the survivor had cleared
+  the five buildings the chain names and the trader had nothing further to say,
+  ever. A quest marked `"repeatable": true` is offered again as soon as it is
+  finished. It still goes into `Completed` the first time, so anything that
+  requires it unlocks exactly once; `Refresh` simply stops treating "complete"
+  as a reason not to offer it.
+
+  Three standing jobs hang off the chain, by tag rather than by name - clear an
+  outlying shelter (1), a ruin (5), a military site (3) - so the endgame is the
+  loop rather than a list. They pay less than the one-shot chain, which stays
+  the progression.
+
+  The subtle part is the save. A repeat in progress is in `Completed` *and* in
+  `Active` at the same time, which is precisely the state `Import` used to drop
+  on the floor - it skipped any saved quest already marked complete. Saving
+  mid-repeat would have quietly thrown the repeat away, and nothing would have
+  reported it. `MadFall.Progression.QuestRepeat` covers it, and was verified to
+  fail without the fix.
+
+  The reachability check in `ShippedQuests` had to learn about this too: it
+  force-completes quests until nothing new starts, and a repeatable one starts
+  forever. It now stops when the only thing still appearing is work that comes
+  back, and asserts it settled rather than hitting its guard.
+- **"Clear poi.shelter" is not English.** An objective with a tag and no text of
+  its own renders the tag, which passes a check for raw `@keys` and still reads
+  as debug output - the same class of thing as the item slots that used to say
+  "Wood Pla". The four tag-form jobs carry their own text now, and the shipped-
+  quest test rejects any objective whose rendered line contains a dotted token.
 - **Talking is not swinging** (`UpdateTarget`). The trader trace used
   `min(4, GetReach())`, and `GetReach()` is the held tool's range, so a
   survivor holding a bow (range 2) could not speak to someone three metres away

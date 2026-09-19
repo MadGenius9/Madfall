@@ -608,6 +608,20 @@ struct MADFALLCORE_API FMadQuestDefinition
 	 */
 	bool bHandIn = false;
 
+	/**
+	 * True if the trader offers this again once it is done.
+	 *
+	 * WHY the game needs any: every quest was a one-shot, so the journal
+	 * emptied itself somewhere around day ten and stayed empty - the survivor
+	 * had cleared the five buildings the chain names and the trader had nothing
+	 * further to say, forever. A repeatable job is what a trader is *for*.
+	 *
+	 * It still goes into Completed when it is first finished, so a quest that
+	 * requires it unlocks exactly once; Refresh simply does not treat being
+	 * complete as a reason to stop offering it.
+	 */
+	bool bRepeatable = false;
+
 	FName SourceModId;
 	FString SourcePath;
 };

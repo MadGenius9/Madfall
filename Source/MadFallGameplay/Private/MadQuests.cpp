@@ -27,7 +27,10 @@ TArray<FName> FMadQuestLog::Refresh(const FMadGameplayDefinitions& Definitions)
 	TArray<FName> Started;
 	for (const FMadQuestDefinition& Quest : Definitions.GetQuests())
 	{
-		if (Completed.Contains(Quest.Id) || FindActive(Quest.Id) != nullptr)
+		// Being complete stops a quest coming back, unless it is the kind a
+		// trader keeps having more of. Its place in Completed is left alone, so
+		// anything that requires it still unlocks exactly once.
+		if ((Completed.Contains(Quest.Id) && !Quest.bRepeatable) || FindActive(Quest.Id) != nullptr)
 		{
 			continue;
 		}
@@ -208,12 +211,19 @@ void FMadQuestLog::Import(const TArray<FName>& InCompleted, const TArray<FMadQue
 	Active.Reset();
 	for (const FMadQuestProgress& Saved : InActive)
 	{
-		if (Completed.Contains(Saved.Quest) || FindActive(Saved.Quest) != nullptr)
+		const FMadQuestDefinition* Quest = Definitions.FindQuest(Saved.Quest);
+
+		// A repeatable job on its second run is active AND complete at the same
+		// time - complete because it was done once, active because it was taken
+		// again - so "complete" cannot be the reason to drop it here, or saving
+		// mid-repeat would quietly throw the repeat away.
+		const bool bCompletedForGood = Completed.Contains(Saved.Quest) && (Quest == nullptr || !Quest->bRepeatable);
+		if (bCompletedForGood || FindActive(Saved.Quest) != nullptr)
 		{
 			continue;
 		}
 		FMadQuestProgress& Progress = Active.Add_GetRef(Saved);
-		if (const FMadQuestDefinition* Quest = Definitions.FindQuest(Saved.Quest))
+		if (Quest != nullptr)
 		{
 			FitCounts(Progress, *Quest);
 		}

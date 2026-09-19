@@ -105,7 +105,8 @@
 			{
 				"type": "clear_poi",
 				"tag": "poi.ruin",
-				"count": 5
+				"count": 5,
+				"text": "@quests.objective.clear_ruin"
 			}
 		],
 		"rewards": {

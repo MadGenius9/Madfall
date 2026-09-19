@@ -1,0 +1,105 @@
+[
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/standing_shelter",
+		"display_name": "@quests.standing_shelter",
+		"description": "@quests.standing_shelter.description",
+		"requires": [
+			"madfall:quest/job_bunker"
+		],
+		"order": 200,
+		"hand_in": true,
+		"repeatable": true,
+		"objectives": [
+			{
+				"type": "clear_poi",
+				"tag": "poi.shelter",
+				"count": 1,
+				"text": "@quests.objective.clear_shelter"
+			}
+		],
+		"rewards": {
+			"experience": 90,
+			"items": [
+				{
+					"item": "madfall:coin",
+					"count": 45
+				},
+				{
+					"item": "madfall:bandage",
+					"count": 1
+				}
+			]
+		}
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/standing_ruin",
+		"display_name": "@quests.standing_ruin",
+		"description": "@quests.standing_ruin.description",
+		"requires": [
+			"madfall:quest/job_ruin"
+		],
+		"order": 201,
+		"hand_in": true,
+		"repeatable": true,
+		"objectives": [
+			{
+				"type": "clear_poi",
+				"tag": "poi.ruin",
+				"count": 5,
+				"text": "@quests.objective.clear_ruin"
+			}
+		],
+		"rewards": {
+			"experience": 260,
+			"items": [
+				{
+					"item": "madfall:coin",
+					"count": 130
+				},
+				{
+					"item": "madfall:scrap_iron",
+					"count": 12
+				}
+			]
+		}
+	},
+	{
+		"schema": "madfall.quest/1",
+		"id": "madfall:quest/standing_military",
+		"display_name": "@quests.standing_military",
+		"description": "@quests.standing_military.description",
+		"requires": [
+			"madfall:quest/job_outpost"
+		],
+		"order": 202,
+		"hand_in": true,
+		"repeatable": true,
+		"objectives": [
+			{
+				"type": "clear_poi",
+				"tag": "poi.military",
+				"count": 3,
+				"text": "@quests.objective.clear_military"
+			}
+		],
+		"rewards": {
+			"experience": 340,
+			"items": [
+				{
+					"item": "madfall:coin",
+					"count": 170
+				},
+				{
+					"item": "madfall:arrow",
+					"count": 20
+				},
+				{
+					"item": "madfall:antibiotics",
+					"count": 1
+				}
+			]
+		}
+	}
+]
