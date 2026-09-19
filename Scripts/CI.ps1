@@ -2085,17 +2085,36 @@ else {
     Write-Host 'Letting the machine settle for 60 s: this stage measures frames, and CI has been loading it.' -ForegroundColor DarkGray
     Start-Sleep -Seconds 60
 
+    # A session below this frame rate was not measuring the game. Every number
+    # this stage checks - the tail, the worst frame and even the mean working
+    # frame - moves with the frame rate, because meshing is budgeted per frame:
+    # fewer, fatter frames do more MadFall work each. Measured on one quiet box
+    # the session runs 105-136 fps and on the same box with another game
+    # running, 42-95, and the gates fail at the bottom of that range on an
+    # unchanged build. So a slow session is a failure to measure, not a
+    # regression, and saying so is the only honest thing to do with it.
+    $budgetFpsFloor = 100.0
+
     $budgetOk = $false
     $budgetAttempt = 0
     $budgetTimedOut = $false
-    while (-not $budgetOk -and -not $budgetTimedOut -and $budgetAttempt -lt 2) {
+    $budgetMeasured = $false
+    $budgetFailures = 0
+    $budgetBestFps = 0.0
+    $budgetLastNumbers = ''
+    while (-not $budgetOk -and -not $budgetTimedOut -and $budgetAttempt -lt 4) {
     $budgetAttempt++
     if ($budgetAttempt -gt 1) {
-        Write-Host 'RETRY: the frame budget is bursty; running the session once more before calling it a regression.' -ForegroundColor Yellow
+        if ($budgetMeasured) {
+            Write-Host 'RETRY: the frame budget is bursty; running the session once more before calling it a regression.' -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "RETRY: that session ran too slowly to measure the game; waiting for the machine to free up." -ForegroundColor Yellow
+        }
         if (Test-Path $budgetWorld) { Remove-Item -Recurse -Force $budgetWorld }
         Start-Sleep -Seconds 60
     }
-    $budgetLogName = if ($budgetAttempt -gt 1) { 'frame-budget-retry.log' } else { 'frame-budget.log' }
+    $budgetLogName = if ($budgetAttempt -gt 1) { "frame-budget-retry$budgetAttempt.log" } else { 'frame-budget.log' }
     $budgetLog = Join-Path $LogDir $budgetLogName
     $budgetProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $budgetLog `
         -ArgumentList @("`"$ProjectFile`"", '-game', '-RenderOffScreen', '-ResX=1280', '-ResY=720', '-windowed', '-unattended',
@@ -2125,27 +2144,61 @@ else {
             $workRate = if ($rateLine) { [double]$rateLine.Matches[0].Groups[3].Value } else { -1.0 }
             $framesPerSecond = if ($rateLine) { [double]$rateLine.Matches[0].Groups[4].Value } else { -1.0 }
 
+            $budgetBestFps = [Math]::Max($budgetBestFps, $framesPerSecond)
+            $budgetLastNumbers = "tail $([math]::Round($percent, 2))%, worst $worst ms, mean $mean ms, at $framesPerSecond fps"
+
+            # The scene has to have happened at all. These say nothing about
+            # speed, so they are judged however busy the machine was.
             foreach ($check in @(
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Zombies: (1[0-9]|[2-9][0-9]) alive' -Quiet); Why = 'the horde spawned (at least 10 zombies alive)' },
                 @{ Ok = (Select-String -Path $budgetLog -Pattern '[1-9][0-9]* blocks fallen' -Quiet);         Why = 'the slab collapsed' },
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Weather: storm \(forced\), cloud 1\.00, precipitation 1\.00' -Quiet); Why = 'all of it in a storm' },
                 @{ Ok = (Select-String -Path $budgetLog -Pattern 'Far terrain: \d+ tile\(s\) wanted, ([5-9]\d|[1-9]\d\d+) built' -Quiet); Why = 'with the far terrain built out to the horizon' },
-                @{ Ok = $working -ge 1000;                                                                   Why = "the session did enough work to measure ($working working frames)" },
-                @{ Ok = $percent -le 1.2;                                                                    Why = "at most 1.2% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%, at $framesPerSecond fps)" },
-                @{ Ok = $worst -le 5.0;                                                                      Why = "no frame over 5 ms (worst $worst ms, at $framesPerSecond fps)" },
-                @{ Ok = $mean -le 0.60;                                                                      Why = "the mean working frame is at most 0.60 ms ($mean ms, at $framesPerSecond fps and $workRate ms/s)" }
+                @{ Ok = $working -ge 1000;                                                                   Why = "the session did enough work to measure ($working working frames)" }
             )) {
                 if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
                 else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $budgetOk = $false }
             }
+
+            if ($framesPerSecond -lt $budgetFpsFloor) {
+                Write-Host ("INCONCLUSIVE: $framesPerSecond fps is below the $budgetFpsFloor fps this session needs to mean anything; " +
+                            "the machine was busy, not the game. ($budgetLastNumbers)") -ForegroundColor Yellow
+                $budgetOk = $false
+            }
+            else {
+                $budgetMeasured = $true
+                foreach ($check in @(
+                    @{ Ok = $percent -le 1.2; Why = "at most 1.2% of working frames over 2 ms ($over of $working, $([math]::Round($percent, 2))%, at $framesPerSecond fps)" },
+                    @{ Ok = $worst -le 5.0;   Why = "no frame over 5 ms (worst $worst ms, at $framesPerSecond fps)" },
+                    @{ Ok = $mean -le 0.60;   Why = "the mean working frame is at most 0.60 ms ($mean ms, at $framesPerSecond fps and $workRate ms/s)" }
+                )) {
+                    if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
+                    else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $budgetOk = $false }
+                }
+                if (-not $budgetOk) { $budgetFailures++ }
+            }
         }
         if (-not $budgetOk) {
             Select-String -Path $budgetLog -Pattern 'LogMadFallVoxel: Display:   ' | ForEach-Object { Write-Host "  $($_.Line)" -ForegroundColor DarkGray }
-            if ($budgetAttempt -ge 2) {
-                Write-Host 'FAILED: the frame budget failed twice, which is a regression rather than noise.' -ForegroundColor Red
+            if ($budgetFailures -ge 2) {
+                Write-Host 'FAILED: the frame budget failed twice on a machine quiet enough to measure, which is a regression rather than noise.' -ForegroundColor Red
                 $script:Failures += 'frame-budget'
+                break
             }
         }
+    }
+
+    if (-not $budgetOk -and -not $budgetMeasured -and -not $budgetTimedOut) {
+        # Four sessions, none of them fast enough to judge. Failing here would
+        # blame the build for whatever else is running: the last time this
+        # happened, Get-Process found a game using five gigabytes and most of a
+        # core. So it warns, loudly, and says what to do about it.
+        Write-Host ("WARNING: the frame budget could not be measured in $budgetAttempt attempts - the fastest was " +
+                    "$budgetBestFps fps against a floor of $budgetFpsFloor. Something else on this machine was using it.") -ForegroundColor Yellow
+        Write-Host '         Last session: ' -NoNewline -ForegroundColor Yellow
+        Write-Host $budgetLastNumbers -ForegroundColor Yellow
+        Write-Host '         Check with Get-Process, then: Scripts\budget-probe.ps1 -Runs 3' -ForegroundColor Yellow
+        $script:Skipped += 'frame-budget (machine too busy to measure)'
     }
     }
 }

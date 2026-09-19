@@ -1,0 +1,40 @@
+{
+	"schema": "madfall.prefab/1",
+	"id": "madfall:fishing_shack",
+	"display_name": "Fishing Shack",
+	"tier": 1,
+	"tags": ["poi.residential", "poi.shelter"],
+	"size": [9, 11, 6],
+	"placement": {
+		"rarity": 1.5,
+		"conform": "base",
+		"embed_depth": 1,
+		"max_slope": 6,
+		"foundation": "madfall:wood_frame",
+		"max_foundation_depth": 6,
+		"biomes": ["madfall:beach"],
+		"underwater": false
+	},
+	"palette": [
+		{ "block": "*" },
+		{ "block": "madfall:air" },
+		{ "block": "madfall:wood_reinforced" },
+		{ "block": "madfall:wood_frame" },
+		{ "block": "madfall:base_log" },
+		{ "block": "madfall:loot_crate" }
+	],
+	"voxels": [
+		2, 0, 3, 4, 6, 0, 3, 4, 6, 0, 3, 4, 6, 0, 3, 4, 5, 0, 5, 3, 4, 0, 5, 3, 4, 0, 5, 3, 4, 0, 5, 3,
+		4, 0, 5, 3, 4, 0, 5, 3, 12, 0, 2, 1, 3, 3, 6, 1, 3, 3, 6, 1, 3, 3, 6, 1, 3, 3, 5, 1, 2, 2, 1, 1,
+		2, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1, 1, 2, 1, 1, 1, 5, 1, 1, 1, 2, 4, 1,
+		1, 2, 3, 1, 1, 2, 4, 1, 5, 2, 49, 1, 2, 2, 1, 1, 2, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1, 1, 2, 3, 1,
+		1, 2, 8, 1, 1, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1, 5, 2, 49, 1, 5, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1,
+		1, 2, 3, 1, 1, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1, 1, 2, 3, 1, 1, 2, 4, 1, 5, 2, 49, 1, 5, 3, 4, 1,
+		5, 3, 4, 1, 5, 3, 4, 1, 5, 3, 4, 1, 5, 3, 4, 1, 5, 3, 12, 1, 99, 0
+	],
+	"markers": [
+		{ "type": "entrance", "position": [3, 4, 1] },
+		{ "type": "loot", "position": [3, 7, 1], "loot_table": "madfall:loot/food" },
+		{ "type": "spawn", "position": [2, 6, 1], "spawn_group": "madfall:zombies/civilian", "count": 1 }
+	]
+}

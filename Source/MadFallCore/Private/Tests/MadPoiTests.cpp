@@ -4,6 +4,7 @@
 
 #include "MadBiomeRegistry.h"
 #include "MadBlockRegistry.h"
+#include "MadGameplayDefinitions.h"
 #include "MadOrientation.h"
 #include "MadPrefab.h"
 #include "MadPrefabRegistry.h"
@@ -269,6 +270,117 @@ bool FMadPrefabFormatTest::RunTest(const FString& Parameters)
 		"markers": [ { "type": "loot", "position": [9, 9, 9], "loot_table": "test:x" },
 		             { "type": "loot", "position": [1, 1, 0], "loot_table": "test:y" } ] })"), true);
 	TestEqual(TEXT("an out-of-bounds marker is dropped and an in-bounds one kept"), OutOfBounds.Markers.Num(), 1);
+
+	return true;
+}
+
+// ===========================================================================
+// What the shipped POIs promise a survivor
+// ===========================================================================
+//
+// WHY THIS IS A TEST AND NOT A README: a prefab's markers name a loot table
+// and a spawn group as plain strings, and nothing resolved them until a player
+// opened the crate. A typo produced an empty container and a POI with no
+// zombies in it - content that is silently missing, which is the kind that
+// ships. The coverage half is the same argument one level up: "every biome has
+// something to find early" is the claim the world makes, and a claim worth
+// making is worth failing on.
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadPoiContentTest,
+	"MadFall.WorldGen.PoiContent",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadPoiContentTest::RunTest(const FString& Parameters)
+{
+	MadPoiTests::FFixture Fixture;
+
+	const FString Defs = FPaths::Combine(FPaths::ProjectDir(), TEXT("Definitions"));
+	TArray<FMadDefinitionError> Errors;
+	FMadGameplayDefinitions Gameplay;
+	Gameplay.BeginLoad();
+	Gameplay.AddItemsFromDirectory(FPaths::Combine(Defs, TEXT("items")), FName(TEXT("madfall")), Errors);
+	Gameplay.AddLootFromDirectory(FPaths::Combine(Defs, TEXT("loot")), FName(TEXT("madfall")), Errors);
+	Gameplay.AddZombiesFromDirectory(FPaths::Combine(Defs, TEXT("zombies")), FName(TEXT("madfall")), Errors);
+	Gameplay.FinishLoad(&Fixture.Blocks, Errors);
+
+	// --- every marker names something that exists -----------------------------
+	for (const FMadPrefab& Prefab : Fixture.Prefabs.GetAll())
+	{
+		for (const FMadPoiMarker& Marker : Prefab.Markers)
+		{
+			if (!Marker.LootTable.IsNone())
+			{
+				TestNotNull(*FString::Printf(TEXT("%s: loot table %s exists"),
+					*Prefab.Id.ToString(), *Marker.LootTable.ToString()),
+					Gameplay.FindLootTable(Marker.LootTable));
+			}
+
+			if (!Marker.SpawnGroup.IsNone())
+			{
+				// Asked at game stage 0 a group may legitimately be empty - a
+				// soldier is gated behind stage 8 - so the question is whether
+				// the group has any member at all, at any stage.
+				TArray<const FMadZombieDefinition*> InGroup;
+				Gameplay.GetZombiesInGroup(Marker.SpawnGroup, MAX_int32, InGroup);
+				TestTrue(*FString::Printf(TEXT("%s: spawn group %s has variants"),
+					*Prefab.Id.ToString(), *Marker.SpawnGroup.ToString()), InGroup.Num() > 0);
+
+				TestTrue(*FString::Printf(TEXT("%s: spawn marker asks for at least one zombie"),
+					*Prefab.Id.ToString()), Marker.Count >= 1);
+			}
+		}
+	}
+
+	// --- every land biome has something to find, and something to find early --
+	//
+	// A prefab with no biomes listed stands in all of them, which is how the
+	// watchtower covers the whole world; it counts for "something", but a biome
+	// whose only POI is that watchtower is a biome with no character of its own,
+	// so the second check asks for one that named this biome on purpose.
+	for (const FName BiomeId : { FName(TEXT("madfall:plains")), FName(TEXT("madfall:forest")),
+		FName(TEXT("madfall:desert")), FName(TEXT("madfall:tundra")),
+		FName(TEXT("madfall:highlands")), FName(TEXT("madfall:beach")) })
+	{
+		int32 EarlyHere = 0;
+		int32 OfItsOwn = 0;
+		int32 BestTier = 0;
+		for (const FMadPrefab& Prefab : Fixture.Prefabs.GetAll())
+		{
+			const TArray<FName>& Biomes = Prefab.Placement.Biomes;
+			if (Prefab.Placement.Rarity <= 0.0f || (Biomes.Num() > 0 && !Biomes.Contains(BiomeId)))
+			{
+				continue;
+			}
+			BestTier = FMath::Max(BestTier, Prefab.Tier);
+			EarlyHere += Prefab.Tier <= 1 ? 1 : 0;
+			OfItsOwn += Biomes.Contains(BiomeId) ? 1 : 0;
+		}
+
+		TestTrue(*FString::Printf(TEXT("%s has a tier 1 POI, so its first hours are not empty"),
+			*BiomeId.ToString()), EarlyHere > 0);
+		TestTrue(*FString::Printf(TEXT("%s has at least two POIs that chose it"),
+			*BiomeId.ToString()), OfItsOwn >= 2);
+		TestTrue(*FString::Printf(TEXT("%s has somewhere to go later (best tier %d)"),
+			*BiomeId.ToString(), BestTier), BestTier >= 2);
+	}
+
+	// --- the tiers are a ladder, not a jump ----------------------------------
+	//
+	// Tier is distance from spawn, so a missing tier is a stretch of a run with
+	// no POI a survivor has not already cleared.
+	TSet<int32> Tiers;
+	for (const FMadPrefab& Prefab : Fixture.Prefabs.GetAll())
+	{
+		if (Prefab.Placement.Rarity > 0.0f)
+		{
+			Tiers.Add(Prefab.Tier);
+		}
+	}
+	for (int32 Tier = 1; Tier <= 4; ++Tier)
+	{
+		TestTrue(*FString::Printf(TEXT("tier %d has a POI"), Tier), Tiers.Contains(Tier));
+	}
 
 	return true;
 }

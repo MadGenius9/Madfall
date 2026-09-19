@@ -274,3 +274,248 @@ Write-Prefab -Id 'madfall:military_outpost' -DisplayName 'Military Outpost' -Tie
         if ($z -le 3) { return 1 }                                                     # clear the courtyard
         return 0
     }
+
+# ---------------------------------------------------------------------------
+# Desert way station - tier 1
+# ---------------------------------------------------------------------------
+#
+# WHY: counted by biome, the desert had two POIs of its own and both were out
+# of reach of a new survivor - the ruined bunker at tier 2 and the military
+# outpost at tier 4 - leaving the watchtower, which lists no biomes and so
+# stands in all of them. The first hours in the sand were a watchtower or
+# nothing. Cells near the spawn are tier 1, so only a tier-1 prefab fills it.
+Write-Prefab -Id 'madfall:desert_way_station' -DisplayName 'Way Station' -Tier 1 `
+    -Tags @('poi.roadside', 'poi.shelter') -Size @(11, 9, 6) `
+    -Palette @('*', 'madfall:air', 'madfall:stone', 'madfall:wood_frame', 'madfall:gravel_path') `
+    -Placement @{ rarity = 1.6; conform = 'base'; embed_depth = 1; max_slope = 8; foundation = 'madfall:stone';
+                  max_foundation_depth = 8; biomes = @('madfall:desert', 'madfall:beach') } `
+    -Markers @(
+        @{ type = 'entrance'; pos = @(3, 1, 1) },
+        @{ type = 'loot'; pos = @(3, 4, 1); loot = 'madfall:loot/scout_cache' },
+        @{ type = 'spawn'; pos = @(8, 4, 1); spawn = 'madfall:zombies/civilian'; count = 1 }
+    ) `
+    -Shape {
+        param($x, $y, $z)
+        if ($z -eq 0) { return 4 }                                                     # gravel pad
+        $hut = ($x -ge 1 -and $x -le 5 -and $y -ge 1 -and $y -le 7)
+        $hutEdge = $hut -and ($x -eq 1 -or $x -eq 5 -or $y -eq 1 -or $y -eq 7)
+        $shade = ($x -ge 7 -and $x -le 9 -and $y -ge 2 -and $y -le 6)
+
+        if ($hut) {
+            if ($z -le 3) {
+                if ($y -eq 1 -and $x -eq 3 -and $z -le 2) { return 1 }                  # doorway
+                if ($x -eq 5 -and $y -eq 4 -and $z -eq 2) { return 1 }                  # shutter
+                if ($hutEdge) { return 2 }
+                return 1
+            }
+            if ($z -eq 4) { return 3 }                                                 # roof
+            return 0
+        }
+
+        if ($shade) {
+            # Four posts and a plank roof: shade is the whole point of it.
+            if ($z -le 3) {
+                if (($x -eq 7 -or $x -eq 9) -and ($y -eq 2 -or $y -eq 6)) { return 3 }
+                return 1
+            }
+            if ($z -eq 4) { return 3 }
+            return 0
+        }
+
+        if ($z -le 4) { return 1 }                                                     # clear the yard
+        return 0
+    }
+
+# ---------------------------------------------------------------------------
+# Fishing shack - tier 1
+# ---------------------------------------------------------------------------
+#
+# WHY: the beach had nothing of its own in any tier - only the watchtower,
+# which stands in every biome and so says nothing about where you are. It is
+# also the biome a survivor is most likely to walk along, because the coast is
+# the one line in the world that reads as a direction.
+Write-Prefab -Id 'madfall:fishing_shack' -DisplayName 'Fishing Shack' -Tier 1 `
+    -Tags @('poi.residential', 'poi.shelter') -Size @(9, 11, 6) `
+    -Palette @('*', 'madfall:air', 'madfall:wood_reinforced', 'madfall:wood_frame', 'madfall:base_log') `
+    -Placement @{ rarity = 1.5; conform = 'base'; embed_depth = 1; max_slope = 6; foundation = 'madfall:wood_frame';
+                  max_foundation_depth = 6; biomes = @('madfall:beach') } `
+    -Markers @(
+        @{ type = 'entrance'; pos = @(3, 4, 1) },
+        @{ type = 'loot'; pos = @(3, 7, 1); loot = 'madfall:loot/food' },
+        @{ type = 'spawn'; pos = @(2, 6, 1); spawn = 'madfall:zombies/civilian'; count = 1 }
+    ) `
+    -Shape {
+        param($x, $y, $z)
+        $shack = ($x -ge 1 -and $x -le 5 -and $y -ge 4 -and $y -le 9)
+        $shackEdge = $shack -and ($x -eq 1 -or $x -eq 5 -or $y -eq 4 -or $y -eq 9)
+        $jetty = ($x -ge 2 -and $x -le 4 -and $y -le 3)
+
+        if ($z -eq 0) {
+            if ($shack) { return 3 }                                                   # plank floor
+            if ($jetty) { return 4 }                                                   # posts in the sand
+            return 0
+        }
+
+        if ($shack) {
+            if ($z -le 3) {
+                if ($y -eq 4 -and $x -eq 3 -and $z -le 2) { return 1 }                  # door onto the jetty
+                if ($x -eq 1 -and $y -eq 7 -and $z -eq 2) { return 1 }                  # window
+                if ($shackEdge) { return 2 }
+                return 1
+            }
+            if ($z -eq 4) { return 3 }
+            return 0
+        }
+
+        if ($jetty -and $z -eq 1) { return 3 }                                         # the deck
+        if ($z -le 4) { return 1 }
+        return 0
+    }
+
+# ---------------------------------------------------------------------------
+# Logging camp - tier 2
+# ---------------------------------------------------------------------------
+#
+# WHY: the forest had the cabin and the bunker, and the bunker is in five
+# biomes, so a forest walk was a cabin or a building you had already seen
+# elsewhere. A camp is also the one POI whose loot says what it was for.
+Write-Prefab -Id 'madfall:logging_camp' -DisplayName 'Logging Camp' -Tier 2 `
+    -Tags @('poi.industrial', 'poi.shelter') -Size @(15, 13, 7) `
+    -Palette @('*', 'madfall:air', 'madfall:wood_reinforced', 'madfall:wood_frame', 'madfall:pine_log', 'madfall:storage_barrel') `
+    -Placement @{ rarity = 1.3; conform = 'base'; embed_depth = 1; max_slope = 7; foundation = 'madfall:stone';
+                  max_foundation_depth = 10; biomes = @('madfall:forest', 'madfall:tundra') } `
+    -Markers @(
+        @{ type = 'entrance'; pos = @(4, 1, 1) },
+        @{ type = 'loot'; pos = @(3, 5, 1); loot = 'madfall:loot/tools' },
+        @{ type = 'loot'; pos = @(5, 5, 1); loot = 'madfall:loot/cabin_supplies' },
+        @{ type = 'spawn'; pos = @(2, 3, 1); spawn = 'madfall:zombies/civilian'; count = 2 }
+    ) `
+    -Shape {
+        param($x, $y, $z)
+        if ($z -eq 0) { return 3 }                                                     # planked yard
+        $cabin = ($x -ge 1 -and $x -le 7 -and $y -ge 1 -and $y -le 7)
+        $cabinEdge = $cabin -and ($x -eq 1 -or $x -eq 7 -or $y -eq 1 -or $y -eq 7)
+        $piles = ($x -ge 10 -and $x -le 13) -and (($y -ge 2 -and $y -le 4) -or ($y -ge 8 -and $y -le 10))
+
+        if ($cabin) {
+            if ($z -le 4) {
+                if ($y -eq 1 -and $x -eq 4 -and $z -le 2) { return 1 }                  # door
+                if ($x -eq 7 -and $y -eq 4 -and $z -eq 2) { return 1 }                  # window
+                if ($cabinEdge) { return 2 }
+                return 1
+            }
+            if ($z -eq 5) { return 3 }                                                 # roof
+            return 0
+        }
+
+        if ($piles -and $z -le 2) { return 4 }                                         # stacked timber
+        if ($x -eq 9 -and $y -eq 6 -and $z -eq 1) { return 5 }                          # a barrel by the track
+        if ($z -le 5) { return 1 }
+        return 0
+    }
+
+# ---------------------------------------------------------------------------
+# Collapsed warehouse - tier 3
+# ---------------------------------------------------------------------------
+#
+# WHY: the tiers went 1, 2, 4 - there was nothing between the bunker and the
+# military outpost, so the middle of a run had no POI that was new. Half of
+# this one has come down, which is the point: the standing half is a roofed
+# building to clear, and the fallen half is rubble to dig through to reach it.
+Write-Prefab -Id 'madfall:collapsed_warehouse' -DisplayName 'Collapsed Warehouse' -Tier 3 `
+    -Tags @('poi.industrial', 'poi.ruin') -Size @(21, 17, 8) `
+    -Palette @('*', 'madfall:air', 'madfall:concrete_frame', 'madfall:rebar_concrete', 'madfall:steel_beam', 'madfall:concrete_rubble') `
+    -Placement @{ rarity = 1.0; conform = 'base'; embed_depth = 1; max_slope = 5; foundation = 'madfall:concrete_frame';
+                  max_foundation_depth = 12; biomes = @('madfall:plains', 'madfall:desert', 'madfall:tundra', 'madfall:forest') } `
+    -Markers @(
+        @{ type = 'entrance'; pos = @(9, 0, 1) },
+        @{ type = 'loot'; pos = @(4, 8, 1); loot = 'madfall:loot/ammo_crate' },
+        @{ type = 'loot'; pos = @(4, 12, 1); loot = 'madfall:loot/tools' },
+        @{ type = 'loot'; pos = @(8, 12, 1); loot = 'madfall:loot/medical_cabinet' },
+        @{ type = 'spawn'; pos = @(3, 4, 1); spawn = 'madfall:zombies/civilian'; count = 3 },
+        @{ type = 'spawn'; pos = @(9, 8, 1); spawn = 'madfall:zombies/soldier'; count = 2 }
+    ) `
+    -Shape {
+        param($x, $y, $z)
+        if ($z -eq 0) { return 2 }                                                     # the slab
+        $wall = ($x -eq 0 -or $x -eq 20 -or $y -eq 0 -or $y -eq 16)
+        $fallen = ($x -ge 12)                                                          # the half that came down
+
+        if ($wall) {
+            if ($y -eq 0 -and $x -ge 8 -and $x -le 11 -and $z -le 3) { return 1 }      # loading door
+            if ($fallen) { if ($z -le 2) { return 3 } else { return 0 } }               # broken off at waist height
+            if ($z -le 6) { return 3 }
+            return 0
+        }
+
+        # Two rows of roof posts. They are what is holding the standing half up,
+        # and what the fallen half is missing.
+        if (($x -eq 6 -or $x -eq 12) -and ($y % 6) -eq 3 -and $z -le 5) { return 4 }
+
+        if ($fallen) {
+            # Scattered, not striped: (x + y) % 3 laid the rubble in clean
+            # diagonal rows that read as tiling the moment you stood in it.
+            # Two coprime multipliers into a prime modulus break the eye's line
+            # while staying a pure function of the position, which is what lets
+            # the prefab be data rather than a seed.
+            if ($z -eq 1 -and ((($x * 37 + $y * 101) % 17) -lt 11)) { return 5 }         # rubble to dig through
+            if ($z -le 6) { return 1 }
+            return 0
+        }
+
+        if ($z -eq 6) { return 3 }                                                     # the roof that held
+        if ($z -le 6) { return 1 }
+        return 0
+    }
+
+# ---------------------------------------------------------------------------
+# Wrecked freighter - tier 3
+# ---------------------------------------------------------------------------
+#
+# WHY: with the shack added, every POI on the beach was tier 1, so the coast
+# was somewhere to start and never somewhere to go - a survivor who walked it
+# outward found the same two buildings further from home. MadFall.WorldGen.
+# PoiContent fails on exactly that ("beach has somewhere to go later"), which
+# is how this one came to be written.
+#
+# The hull tapers to a point at both ends: half-width is 6 amidships and loses
+# a voxel a step outside that, which is a bow and a stern without a curve
+# table. The deck survives only amidships, so the hold is open to the sky at
+# both ends - that is the way in, and the reason it reads as a wreck from
+# outside rather than a box.
+Write-Prefab -Id 'madfall:wrecked_freighter' -DisplayName 'Wrecked Freighter' -Tier 3 `
+    -Tags @('poi.industrial', 'poi.ruin') -Size @(27, 13, 9) `
+    -Palette @('*', 'madfall:air', 'madfall:steel_beam', 'madfall:rebar_concrete', 'madfall:concrete_rubble') `
+    -Placement @{ rarity = 1.1; conform = 'base'; embed_depth = 2; max_slope = 6; foundation = 'madfall:sand';
+                  max_foundation_depth = 10; biomes = @('madfall:beach') } `
+    -Markers @(
+        @{ type = 'entrance'; pos = @(13, 0, 1) },
+        @{ type = 'loot'; pos = @(10, 6, 1); loot = 'madfall:loot/weapons_locker' },
+        @{ type = 'loot'; pos = @(15, 6, 1); loot = 'madfall:loot/medical_cabinet' },
+        @{ type = 'loot'; pos = @(13, 4, 1); loot = 'madfall:loot/tools' },
+        @{ type = 'spawn'; pos = @(11, 8, 1); spawn = 'madfall:zombies/civilian'; count = 4 },
+        @{ type = 'spawn'; pos = @(17, 6, 1); spawn = 'madfall:zombies/brute'; count = 1 }
+    ) `
+    -Shape {
+        param($x, $y, $z)
+        $half = 6 - [Math]::Max(0, 6 - $x) - [Math]::Max(0, $x - 20)
+        $dy = [Math]::Abs($y - 6)
+        if ($half -lt 0 -or $dy -gt $half) { return 0 }                                # outside the hull
+
+        if ($z -eq 0) { return 2 }                                                     # the keel
+        if ($dy -eq $half) {
+            if ($x -ge 12 -and $x -le 14 -and $y -eq 0 -and $z -le 2) { return 1 }      # the gash you get in by
+            # Up to the deck, not short of it: at z <= 5 the plates stopped a
+            # voxel below the deck they are supposed to carry, and
+            # MadFall.Structural.ShippedPrefabsStand called all 121 deck blocks
+            # unsupported with no path to the ground. A floating slab.
+            if ($z -le 6) { return 2 }                                                 # hull plate
+            return 0
+        }
+
+        if ($z -eq 6 -and $x -ge 8 -and $x -le 18) { return 3 }                          # what is left of the deck
+        if ($z -le 2 -and $x -ge 21) { return 4 }                                       # silt in the bow
+        if (($x % 5) -eq 0 -and $z -le 1 -and $dy -le 2) { return 3 }                    # cargo stacks
+        if ($z -le 6) { return 1 }
+        return 0
+    }
