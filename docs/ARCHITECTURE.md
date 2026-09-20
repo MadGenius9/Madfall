@@ -3699,6 +3699,37 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### The dead belong somewhere
+
+Animals already knew where they lived - every species carries a `spawn.biomes`
+list - but zombies did not. The desert, the tundra and the forest fielded
+exactly the same dead, so nowhere felt like anywhere in particular.
+
+A zombie definition now takes `biomes`, and `GetZombiesInGroupForBiome` is what
+the horde asks. The rule that matters is the shape of the filter:
+
+- **A biome-specific variant is *added* to the ones that walk everywhere**, not
+  selected instead of them. Two passes - the ones that named this biome, and
+  the ones that named none - concatenated. WHY: a filter that can empty a biome
+  is worse than no filter at all. One typo in a biome list and a whole region
+  spawns nothing, which reads in play as the AI being broken rather than as a
+  content mistake. With this shape the worst a bad list can do is fail to add
+  flavour.
+- `MadFall.Items.ShippedContent` walks **every biome in the registry** and
+  fails unless each has zombies to spawn, never has more than the unrestricted
+  set, and at least two biomes field something of their own. It also asks for a
+  biome that does not exist, and checks the common dead still turn up.
+
+Two variants that belong somewhere: `zombie_husk` in the desert and on the
+beach - dried out, quick, and it goes down fast - and `zombie_frostbitten` in
+the tundra and highlands, stiff with cold, slow and hard to put down. Both are
+tinted humanoid rigs like every other zombie, so they cost nothing in art.
+
+Measured in a running game, standing in each biome and calling two waves:
+the desert produced two husks, the tundra two frostbitten, and the forest
+neither - while civilians, soldiers and spitters turned up in all three, as did
+the example mods' zombies, which declare no biome.
+
 ### Something better to wear
 
 The same count that found the gear ladder one rung high found armour with two

@@ -302,6 +302,17 @@ struct MADFALLCORE_API FMadZombieDefinition
 	float SpawnWeight = 1.0f;
 	int32 MinGameStage = 0;
 
+	/**
+	 * Biomes this one is found in. Empty means anywhere, which is what every
+	 * zombie was until now: the desert, the tundra and the forest all fielded
+	 * exactly the same dead, and nowhere felt like anywhere in particular.
+	 *
+	 * A filter that can empty a biome is worse than no filter, so the rule is
+	 * that something must always be left - see MadFall::Zombies::FilterToBiome,
+	 * which falls back to the unrestricted ones rather than returning nothing.
+	 */
+	TArray<FName> Biomes;
+
 	float Health = 100.0f;
 
 	/** Metres per second. */
@@ -693,6 +704,13 @@ public:
 
 	/** Variants in a spawn group that are unlocked at a game stage. */
 	void GetZombiesInGroup(FName Group, int32 GameStage, TArray<const FMadZombieDefinition*>& OutZombies) const;
+
+	/**
+	 * Variants in a spawn group unlocked at a game stage and at home in a
+	 * biome. Passing NAME_None asks for everything, as before.
+	 */
+	void GetZombiesInGroupForBiome(FName Group, int32 GameStage, FName Biome,
+		TArray<const FMadZombieDefinition*>& OutZombies) const;
 
 	/** The item that places a block, or nullptr. */
 	const FMadItemDefinition* FindItemForBlock(FName BlockId) const;

@@ -238,7 +238,7 @@ void UMadHordeSubsystem::TickSleepers(AMadPlayerCharacter& Player)
 					int32 Spawned = 0;
 					for (int32 Index = 0; Index < FMath::Max(1, Marker.Count); ++Index)
 					{
-						const FMadZombieDefinition* Variant = PickVariant(Marker.SpawnGroup, Player.GetGameStage());
+						const FMadZombieDefinition* Variant = PickVariant(Marker.SpawnGroup, Player.GetGameStage(), BiomeAt(Marker.WorldPosition));
 						FIntVector SpawnAt;
 						AMadZombie* Woken = nullptr;
 						if (Variant && FindStandableNear(Marker.WorldPosition.X + Index % 2, Marker.WorldPosition.Y + Index / 2, Marker.WorldPosition.Z, SpawnAt))
@@ -284,10 +284,23 @@ void UMadHordeSubsystem::TickWanderers(float DeltaTime, AMadPlayerCharacter& Pla
 // Spawning
 // ===========================================================================
 
-const FMadZombieDefinition* UMadHordeSubsystem::PickVariant(FName Group, int32 GameStage)
+FName UMadHordeSubsystem::BiomeAt(const FIntVector& Voxel) const
+{
+	const UMadVoxelWorldSubsystem* VoxelWorld = GetWorld() ? GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
+	const FMadWorldGenerator* Generator = VoxelWorld ? VoxelWorld->GetWorldGenerator() : nullptr;
+	if (Generator == nullptr)
+	{
+		return NAME_None;
+	}
+	const int32 Index = Generator->GetDominantBiome(static_cast<float>(Voxel.X), static_cast<float>(Voxel.Y));
+	const FMadBiomeRegistry& Biomes = UMadVoxelWorldSubsystem::GetBiomeRegistry();
+	return (Index >= 0 && Index < Biomes.Num()) ? Biomes.Get(Index).Id : NAME_None;
+}
+
+const FMadZombieDefinition* UMadHordeSubsystem::PickVariant(FName Group, int32 GameStage, FName Biome)
 {
 	TArray<const FMadZombieDefinition*> Candidates;
-	MadFall::GetGameplayDefinitions().GetZombiesInGroup(Group, GameStage, Candidates);
+	MadFall::GetGameplayDefinitions().GetZombiesInGroupForBiome(Group, GameStage, Biome, Candidates);
 	if (Candidates.Num() == 0)
 	{
 		return nullptr;
@@ -369,13 +382,20 @@ AMadZombie* UMadHordeSubsystem::SpawnZombie(const FMadZombieDefinition& Definiti
 int32 UMadHordeSubsystem::SpawnWave(AMadPlayerCharacter& Player, int32 Count, bool bHorde, FName Group, int32 MinRing, int32 MaxRing)
 {
 	const FIntVector Feet = Player.GetFeetVoxel();
+
+	// Once for the wave, not once a zombie: every spawn in a wave is a ring
+	// around the same survivor, so the biome lookup would return the same
+	// answer up to fourteen times a night otherwise. A wave also reads better
+	// as belonging to where the survivor is than to where each body happens to
+	// land, which matters at a biome border.
+	const FName Biome = BiomeAt(Feet);
 	int32 Spawned = 0;
 
 	// A few attempts per zombie: a ring position can be over water, inside a
 	// hill with no air above, or in a chunk that has not loaded.
 	for (int32 Index = 0; Index < Count; ++Index)
 	{
-		const FMadZombieDefinition* Variant = PickVariant(Group, Player.GetGameStage());
+		const FMadZombieDefinition* Variant = PickVariant(Group, Player.GetGameStage(), Biome);
 		if (Variant == nullptr)
 		{
 			break;

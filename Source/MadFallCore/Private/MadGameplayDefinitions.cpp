@@ -449,6 +449,7 @@ namespace MadFall::GameplayDefinitionsJson
 		R.ReadNameArray(Object, TEXT("spawn_groups"), TEXT("/spawn_groups"), Data.SpawnGroups);
 		R.ReadFloat(Object, TEXT("spawn_weight"), TEXT("/spawn_weight"), Data.SpawnWeight);
 		R.ReadInt(Object, TEXT("min_game_stage"), TEXT("/min_game_stage"), Data.MinGameStage);
+		R.ReadNameArray(Object, TEXT("biomes"), TEXT("/biomes"), Data.Biomes);
 
 		TSharedPtr<FJsonObject> Section;
 		if (R.ReadObject(Object, TEXT("stats"), TEXT("/stats"), Section))
@@ -553,8 +554,8 @@ namespace MadFall::GameplayDefinitionsJson
 		}
 
 		R.ReportUnknownFields(Object, { TEXT("schema"), TEXT("id"), TEXT("display_name"), TEXT("tags"), TEXT("spawn_groups"),
-			TEXT("spawn_weight"), TEXT("min_game_stage"), TEXT("stats"), TEXT("senses"), TEXT("rewards"), TEXT("appearance"), TEXT("abilities"),
-			TEXT("resistances"), TEXT("mod_data") });
+			TEXT("spawn_weight"), TEXT("min_game_stage"), TEXT("biomes"), TEXT("stats"), TEXT("senses"), TEXT("rewards"),
+			TEXT("appearance"), TEXT("abilities"), TEXT("resistances"), TEXT("mod_data") });
 
 		Data.Health = FMath::Max(1.0f, Data.Health);
 		Data.AttackSeconds = FMath::Max(0.1f, Data.AttackSeconds);
@@ -1124,6 +1125,37 @@ void FMadGameplayDefinitions::GetZombiesInGroup(FName Group, int32 GameStage, TA
 			OutZombies.Add(&Zombie);
 		}
 	}
+}
+
+void FMadGameplayDefinitions::GetZombiesInGroupForBiome(FName Group, int32 GameStage, FName Biome,
+	TArray<const FMadZombieDefinition*>& OutZombies) const
+{
+	GetZombiesInGroup(Group, GameStage, OutZombies);
+	if (Biome.IsNone())
+	{
+		return;
+	}
+
+	// Two passes rather than one filter: the ones that named this biome, and
+	// the ones that named none. A biome-specific variant is *added* to what
+	// walks everywhere, so no biome can be emptied by a typo in a biome list -
+	// the worst a bad list can do is fail to add flavour.
+	TArray<const FMadZombieDefinition*> AtHome;
+	TArray<const FMadZombieDefinition*> Anywhere;
+	for (const FMadZombieDefinition* Zombie : OutZombies)
+	{
+		if (Zombie->Biomes.Num() == 0)
+		{
+			Anywhere.Add(Zombie);
+		}
+		else if (Zombie->Biomes.Contains(Biome))
+		{
+			AtHome.Add(Zombie);
+		}
+	}
+
+	OutZombies = Anywhere;
+	OutZombies.Append(AtHome);
 }
 
 bool FMadGameplayDefinitions::AddItemJson(const TSharedRef<FJsonObject>& Object, const FString& SourcePath, FName ModId,

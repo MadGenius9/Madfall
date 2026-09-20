@@ -374,6 +374,45 @@ bool FMadShippedItemContentTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("%s has a tier above it"), Line), bHasBetter);
 	}
 
+	// --- the dead belong somewhere, and nowhere is empty ---------------------
+	//
+	// A biome filter that can empty a biome is worse than no filter: one typo
+	// in a biome list and a whole region spawns nothing, which reads as the AI
+	// being broken rather than as a content mistake. The rule is that a
+	// biome-specific variant is *added* to the ones that walk everywhere, so
+	// the filter can only ever add flavour - this checks that holds for every
+	// biome in the game, including ones no zombie has ever heard of.
+	{
+		const FMadBiomeRegistry& Biomes = UMadVoxelWorldSubsystem::GetBiomeRegistry();
+		const FName Wander(TEXT("madfall:zombies/wander"));
+
+		int32 Flavoured = 0;
+		for (int32 Index = 0; Index < Biomes.Num(); ++Index)
+		{
+			const FName BiomeId = Biomes.Get(Index).Id;
+
+			TArray<const FMadZombieDefinition*> Anywhere;
+			Defs.GetZombiesInGroup(Wander, 0, Anywhere);
+			TArray<const FMadZombieDefinition*> Here;
+			Defs.GetZombiesInGroupForBiome(Wander, 0, BiomeId, Here);
+
+			TestTrue(*FString::Printf(TEXT("%s has zombies to spawn (%d)"), *BiomeId.ToString(), Here.Num()),
+				Here.Num() > 0);
+			TestTrue(*FString::Printf(TEXT("%s never has fewer than the unrestricted ones"), *BiomeId.ToString()),
+				Here.Num() <= Anywhere.Num());
+			Flavoured += Here.ContainsByPredicate(
+				[&BiomeId](const FMadZombieDefinition* Z) { return Z->Biomes.Contains(BiomeId); }) ? 1 : 0;
+		}
+
+		// A filter nothing uses is a filter that does nothing.
+		TestTrue(*FString::Printf(TEXT("some biomes field something of their own (%d)"), Flavoured), Flavoured >= 2);
+
+		// A biome no zombie names still gets the ones that walk everywhere.
+		TArray<const FMadZombieDefinition*> Nowhere;
+		Defs.GetZombiesInGroupForBiome(Wander, 0, FName(TEXT("madfall:not_a_biome")), Nowhere);
+		TestTrue(TEXT("an unknown biome still spawns the common dead"), Nowhere.Num() > 0);
+	}
+
 	TestNull(TEXT("bedrock (indestructible) has no item"), Defs.FindItemForBlock(FName(TEXT("madfall:bedrock"))));
 	TestNull(TEXT("water (liquid) has no item"), Defs.FindItemForBlock(FName(TEXT("madfall:water"))));
 

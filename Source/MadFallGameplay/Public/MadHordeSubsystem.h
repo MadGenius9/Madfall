@@ -79,7 +79,11 @@ private:
 
 	int32 SpawnWave(AMadPlayerCharacter& Player, int32 Count, bool bHorde, FName Group, int32 MinRing, int32 MaxRing);
 
-	const FMadZombieDefinition* PickVariant(FName Group, int32 GameStage);
+	/** Weighted pick from a group, unlocked by game stage and at home in a biome. */
+	const FMadZombieDefinition* PickVariant(FName Group, int32 GameStage, FName Biome);
+
+	/** The biome a column belongs to, or None if the world is not ready. */
+	FName BiomeAt(const FIntVector& Voxel) const;
 
 	TArray<TWeakObjectPtr<AMadZombie>> Alive;
 
