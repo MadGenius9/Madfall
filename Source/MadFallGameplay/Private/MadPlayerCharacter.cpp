@@ -174,6 +174,9 @@ bool AMadPlayerCharacter::ReceiveHit(float Amount, FName DamageType, AActor* Att
 	{
 		return false;
 	}
+	// The hide and wound perks are applied inside the survival component, which
+	// is the funnel every attacker shares - a zombie's melee never comes
+	// through here at all.
 	Survival->ApplyAttackDamage(Amount);
 	// The edge of the screen reddens with the size of the hit, so a scratch and
 	// a mauling do not look the same.
@@ -1378,6 +1381,7 @@ bool AMadPlayerCharacter::UsePrimary(bool bIgnoreCooldown)
 	{
 		TArray<FMadItemStack> Drops;
 		MadFall::Harvest::RollDrops(*Block, HeldPtr ? &Held : nullptr, Hit.bHarvests, Definitions, Random, Drops);
+		MadFall::Harvest::ApplyYieldBonus(Drops, GetPerkMultiplier(FName(TEXT("harvest_yield"))), Random);
 
 		GiveOrDrop(Drops, (FVector(Target.Voxel) + FVector(0.5)) * MadFall::VoxelSizeUU);
 		AddExperience(Hit.bHarvests ? 2 : 1);
@@ -2506,6 +2510,7 @@ void AMadPlayerCharacter::ApplyPerkStats()
 		Defaults.MaxStamina * GetPerkMultiplier(FName(TEXT("max_stamina"))));
 	const float Drain = MadFall::Difficulty::GetWorldScale(GetWorld(), FName(TEXT("survival_drain")));
 	Survival->SetDrainMultipliers(GetPerkMultiplier(FName(TEXT("food_drain"))) * Drain, GetPerkMultiplier(FName(TEXT("water_drain"))) * Drain);
+	Survival->SetPerkDefences(GetPerkMultiplier(FName(TEXT("damage_taken"))), GetPerkMultiplier(FName(TEXT("infection_chance"))));
 }
 
 // ===========================================================================

@@ -10,7 +10,12 @@ namespace MadFall::Perks
 	{
 		static const TSet<FName> Stats = {
 			FName(TEXT("mining_damage")), FName(TEXT("melee_damage")), FName(TEXT("stamina_cost")), FName(TEXT("craft_time")),
-			FName(TEXT("max_health")), FName(TEXT("max_stamina")), FName(TEXT("food_drain")), FName(TEXT("water_drain"))
+			FName(TEXT("max_health")), FName(TEXT("max_stamina")), FName(TEXT("food_drain")), FName(TEXT("water_drain")),
+			// ranged_damage was read by the bow code and missing from here, so a
+			// perk that used the hook the game already honoured was rejected as
+			// naming an unknown stat. The rest are new hooks with new perks.
+			FName(TEXT("ranged_damage")), FName(TEXT("damage_taken")), FName(TEXT("infection_chance")),
+			FName(TEXT("harvest_yield"))
 		};
 		return Stats;
 	}

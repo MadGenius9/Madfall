@@ -130,6 +130,22 @@ public:
 	/** Sets maximum health and stamina (perks), keeping current values within the new maxima. */
 	void SetMaxVitals(float MaxHealth, float MaxStamina);
 
+	/**
+	 * Perk multipliers on what reaches the survivor: 1 is no perk, below 1 is
+	 * tougher hide and a cleaner wound.
+	 *
+	 * WHY they live here rather than at the caller: a zombie's melee goes
+	 * straight to ApplyAttackDamage and ApplyEffects, never through
+	 * AMadPlayerCharacter::ReceiveHit, so hooks placed on the character missed
+	 * the commonest way of being hurt in the game and read as perks that did
+	 * nothing. This is the one funnel every attacker shares.
+	 */
+	void SetPerkDefences(float DamageTaken, float InfectionChance)
+	{
+		PerkDamageTaken = FMath::Max(0.0f, DamageTaken);
+		PerkInfectionChance = FMath::Max(0.0f, InfectionChance);
+	}
+
 	/** Marks the survivor as exerting for a short window (a swing). */
 	void NoteExertion(float Seconds) { ExertionRemaining = FMath::Max(ExertionRemaining, Seconds); }
 
@@ -150,6 +166,10 @@ private:
 	FMadSurvivalStepResult LastCauses;
 	float ExertionRemaining = 0.0f;
 	float Armor = 0.0f;
+
+	/** See SetPerkDefences. */
+	float PerkDamageTaken = 1.0f;
+	float PerkInfectionChance = 1.0f;
 	bool bWasDead = false;
 	FMadOnSurvivorDied DiedDelegate;
 };

@@ -53,6 +53,18 @@ namespace MadFall::Harvest
 		const FMadGameplayDefinitions& Definitions, FRandomStream& Random, TArray<FMadItemStack>& OutDrops);
 
 	/**
+	 * Scales what a block gave up by a perk multiplier, in whole items.
+	 *
+	 * WHY the fraction is a chance rather than a rounding: at 1.25x a stack of
+	 * one would round to one every time and the perk would do nothing at all
+	 * for the single-item drops that most blocks give. Paying the fraction as
+	 * odds means a quarter of the rocks come with a second rock, which is the
+	 * thing the player was promised. A multiplier of 1 leaves the drops
+	 * untouched and rolls nothing.
+	 */
+	MADFALLGAMEPLAY_API void ApplyYieldBonus(TArray<FMadItemStack>& Drops, float Multiplier, FRandomStream& Random);
+
+	/**
 	 * Uses one point of durability. Returns true if the item broke (and was
 	 * cleared). Items without durability never break. Durability mods scale
 	 * the chance a use consumes a point, so a 1.5x mod lasts 1.5x as long on

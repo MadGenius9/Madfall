@@ -190,6 +190,28 @@ void UMadSurvivalComponent::ApplyEffects(const TMap<FName, float>& Effects)
 {
 	FMadSurvivalStats Stats = GetStats();
 	TArray<FName> Unknown;
+
+	// Infection a survivor catches is scaled here, where every bite, claw and
+	// spit passes, rather than at each attacker. A perk that reduces it must
+	// not also reduce the infection a bandage takes away, so only what is being
+	// added is scaled.
+	static const FName InfectionName(TEXT("infection"));
+	if (!FMath::IsNearlyEqual(PerkInfectionChance, 1.0f))
+	{
+		if (const float* Caught = Effects.Find(InfectionName); Caught != nullptr && *Caught > 0.0f)
+		{
+			TMap<FName, float> Scaled = Effects;
+			Scaled[InfectionName] = *Caught * PerkInfectionChance;
+			MadFall::Survival::ApplyEffects(Stats, Scaled, &Unknown);
+			SetStats(Stats);
+			for (const FName& Name : Unknown)
+			{
+				UE_LOG(LogMadFallGameplay, Warning, TEXT("Consumable effect '%s' is not a survival stat and was ignored."), *Name.ToString());
+			}
+			return;
+		}
+	}
+
 	MadFall::Survival::ApplyEffects(Stats, Effects, &Unknown);
 	SetStats(Stats);
 
@@ -208,7 +230,9 @@ void UMadSurvivalComponent::ApplyDamage(float Amount)
 
 float UMadSurvivalComponent::ApplyAttackDamage(float Amount)
 {
-	const float Taken = FMath::Max(0.0f, Amount) * (1.0f - Armor);
+	// Worn armour first, then the hide the survivor has trained: both are ways
+	// of taking less than was swung, and they multiply rather than compete.
+	const float Taken = FMath::Max(0.0f, Amount) * (1.0f - Armor) * PerkDamageTaken;
 	ApplyDamage(Taken);
 	return Taken;
 }

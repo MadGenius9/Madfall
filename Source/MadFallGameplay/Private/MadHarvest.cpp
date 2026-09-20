@@ -110,6 +110,28 @@ namespace MadFall::Harvest
 		return Hit;
 	}
 
+	void ApplyYieldBonus(TArray<FMadItemStack>& Drops, float Multiplier, FRandomStream& Random)
+	{
+		if (Multiplier <= 1.0f)
+		{
+			return;
+		}
+		for (FMadItemStack& Stack : Drops)
+		{
+			if (Stack.IsEmpty())
+			{
+				continue;
+			}
+			const float Scaled = static_cast<float>(Stack.Count) * Multiplier;
+			int32 Whole = FMath::FloorToInt32(Scaled);
+			if (Random.FRand() < Scaled - static_cast<float>(Whole))
+			{
+				++Whole;
+			}
+			Stack.Count = FMath::Max(Stack.Count, Whole);
+		}
+	}
+
 	void RollDrops(const FMadBlockDefinitionData& Block, const FMadItemStack* Held, bool bHarvests,
 		const FMadGameplayDefinitions& Definitions, FRandomStream& Random, TArray<FMadItemStack>& OutDrops)
 	{

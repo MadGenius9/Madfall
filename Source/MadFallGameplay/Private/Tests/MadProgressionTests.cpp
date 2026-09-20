@@ -4,6 +4,7 @@
 
 #include "Dom/JsonObject.h"
 #include "MadGameplayDefinitions.h"
+#include "MadHarvest.h"
 #include "MadProgression.h"
 #include "MadSurvivalModel.h"
 #include "Serialization/JsonReader.h"
@@ -184,6 +185,71 @@ bool FMadPerkPrerequisitesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("every perk listed once"), Ids.Num() == Defs.GetPerks().Num());
 	TestTrue(TEXT("agility tree in depth order, then strength"), Ids.Num() >= 4 && Ids[0] == Athlete && Ids[1] == Sprinter
 		&& Ids[2] == Marathon && Ids[3] == FName(TEXT("test:brawler")));
+	return true;
+}
+
+// ===========================================================================
+// What a perk multiplier does to a pile of drops
+// ===========================================================================
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMadYieldBonusTest,
+	"MadFall.Progression.YieldBonus",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::EngineFilter)
+
+bool FMadYieldBonusTest::RunTest(const FString& Parameters)
+{
+	FRandomStream Random(12345);
+
+	auto Pile = [](int32 Count)
+	{
+		FMadItemStack Stack;
+		Stack.Item = FName(TEXT("madfall:rock"));
+		Stack.Count = Count;
+		return TArray<FMadItemStack>{ Stack };
+	};
+
+	// No perk, no change - and nothing rolled, so the stream is untouched.
+	{
+		TArray<FMadItemStack> Drops = Pile(3);
+		MadFall::Harvest::ApplyYieldBonus(Drops, 1.0f, Random);
+		TestEqual(TEXT("without the perk the drops are exactly what the block gave"), Drops[0].Count, 3);
+	}
+
+	// A whole multiplier is exact, with no luck involved.
+	{
+		TArray<FMadItemStack> Drops = Pile(3);
+		MadFall::Harvest::ApplyYieldBonus(Drops, 2.0f, Random);
+		TestEqual(TEXT("doubling doubles"), Drops[0].Count, 6);
+	}
+
+	// WHY the fraction is odds and not rounding: most blocks drop one thing, and
+	// 1 * 1.25 rounds to 1 every single time. Over many swings the perk has to
+	// actually pay out, and it must never pay less than the block gave.
+	{
+		int32 Total = 0;
+		int32 Worse = 0;
+		constexpr int32 Swings = 4000;
+		for (int32 Swing = 0; Swing < Swings; ++Swing)
+		{
+			TArray<FMadItemStack> Drops = Pile(1);
+			MadFall::Harvest::ApplyYieldBonus(Drops, 1.25f, Random);
+			Total += Drops[0].Count;
+			Worse += Drops[0].Count < 1 ? 1 : 0;
+		}
+		const float Average = static_cast<float>(Total) / Swings;
+		TestEqual(TEXT("a quarter more rocks, on average"), Average, 1.25f, 0.05f);
+		TestEqual(TEXT("and never fewer than the block dropped"), Worse, 0);
+	}
+
+	// An empty stack is left alone rather than conjured into existence.
+	{
+		TArray<FMadItemStack> Drops;
+		Drops.Add(FMadItemStack());
+		MadFall::Harvest::ApplyYieldBonus(Drops, 3.0f, Random);
+		TestTrue(TEXT("nothing multiplied is still nothing"), Drops[0].IsEmpty());
+	}
+
 	return true;
 }
 

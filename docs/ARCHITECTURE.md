@@ -3699,6 +3699,54 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### More to spend a level on
+
+Six perks, and levelling gave a point to spend on one of them. "Progression is
+flat" has been the first line of the known gaps since Phase 4, and the reason
+was narrower than it looked: the game only honoured **eight** perk modifiers,
+so there were only eight distinct things a perk could ever say.
+
+Four new hooks, four new perks (`quarryman`, `marksman`, `iron_hide`,
+`clean_living`), and the count goes 6 to 10 across all four attributes, with the
+new ones hanging off the existing trees rather than standing beside them.
+
+- **`ranged_damage` was already honoured by the code and forbidden to data.**
+  The bow multiplies arrow damage by it, but it was missing from
+  `GetKnownStats()`, which is the list a test checks every shipped perk against
+  - so a perk using the hook the game already had would have been rejected as
+  naming an unknown stat. One line, and `marksman` became possible.
+- **`harvest_yield`** scales what a block gives up, in whole items, paying the
+  fraction as odds rather than rounding it away. WHY: at 1.2x a drop of one
+  rounds to one every time, so the perk would do nothing at all for the
+  single-item drops most blocks give. `MadFall.Progression.YieldBonus` checks
+  1.0x changes nothing, 2.0x doubles exactly, and 1.25x averages 1.25 over four
+  thousand swings while never paying less than the block dropped.
+- **`damage_taken` and `infection_chance`** scale what reaches the survivor.
+
+**The last two were written twice, and the first version did nothing.** They
+went on `AMadPlayerCharacter::ReceiveHit`, which reads like the place a survivor
+gets hurt. A zombie's melee calls `Survival->ApplyAttackDamage()` and
+`ApplyEffects()` directly and never goes through `ReceiveHit` at all - so the
+hooks missed the commonest way of being hurt in the game, and an A/B fight
+showed infection identical to the decimal with the perks bought and without
+them. They live in the survival component now, beside the armour multiplier,
+which is the one funnel every attacker shares.
+
+Measured after the move, with the perk ranks chosen so both runs have the same
+maximum health and take the same number of hits:
+
+| | damage taken | infection | hits |
+|---|---|---|---|
+| without | 78.0 | 30.3 | 10 |
+| with | 70.0 | 21.3 | 10 |
+
+70.0/78.0 = 0.897 against a declared `damage_taken` of 0.9, and 21.3/30.3 =
+0.703 against a declared `infection_chance` of 0.7. The first A/B had bought
+`tough` as a prerequisite, which raised maximum health, which let the survivor
+live longer and take *more* hits - the comparison said the perks made things
+worse. Isolating the ranks so only the hook under test differs is what made the
+numbers readable.
+
 ### Building on what is already there
 
 The tier ladder shipped as four separate blocks you craft and place. So a
