@@ -867,5 +867,109 @@
 		"tags": [
 			"recipe.medical"
 		]
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "madfall:iron_axe",
+		"output": {
+			"item": "madfall:iron_axe",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:stone_axe",
+				"count": 1
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 8
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 2
+			}
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 6.0,
+		"required_level": 6
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "madfall:iron_shovel",
+		"output": {
+			"item": "madfall:iron_shovel",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:stone_shovel",
+				"count": 1
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 8
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 2
+			}
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 6.0,
+		"required_level": 6
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "madfall:iron_club",
+		"output": {
+			"item": "madfall:iron_club",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wooden_club",
+				"count": 1
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 10
+			},
+			{
+				"item": "madfall:cloth",
+				"count": 2
+			}
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 7.0,
+		"required_level": 8
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "madfall:recurve_bow",
+		"output": {
+			"item": "madfall:recurve_bow",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wooden_bow",
+				"count": 1
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 6
+			},
+			{
+				"item": "madfall:animal_hide",
+				"count": 3
+			},
+			{
+				"item": "madfall:plant_fiber",
+				"count": 6
+			}
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 8.0,
+		"required_level": 10
 	}
 ]

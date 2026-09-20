@@ -264,6 +264,76 @@ bool FMadShippedItemContentTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	// --- an upgrade is an upgrade -------------------------------------------
+	//
+	// WHY: a tool tier is a whole item that inherits from the one below it, and
+	// nothing stopped the child being *worse* - a typo in one number would ship
+	// an iron axe that chopped slower than the stone one it cost eight scrap to
+	// make, and no test anywhere would notice. "Extends" is the claim; this is
+	// the check.
+	{
+		auto BestDamage = [](const FMadItemDefinition& Item)
+		{
+			float Best = 0.0f;
+			for (const TPair<FName, float>& Pair : Item.Tool.Damage)
+			{
+				Best = FMath::Max(Best, Pair.Value);
+			}
+			return Best;
+		};
+
+		int32 Pairs = 0;
+		for (const FMadItemDefinition& Child : Defs.GetItems())
+		{
+			if (Child.Extends.IsNone() || !Child.bHasTool)
+			{
+				continue;
+			}
+			const FMadItemDefinition* Parent = Defs.FindItem(Child.Extends);
+			if (Parent == nullptr || !Parent->bHasTool || BestDamage(*Parent) <= 0.0f)
+			{
+				continue;
+			}
+
+			// Only compare things of the same kind. madfall:base_tool is the
+			// template every tool inherits - bare hands, ten damage, and the
+			// tag "item.tool" - so a hoe "extends" it without being an upgrade
+			// of it. A real tier shares a *line* tag with its parent
+			// (tool.axe, weapon.melee); "item.something" is the kind, which
+			// every tool in the game has in common.
+			const bool bSameLine = Parent->Tags.ContainsByPredicate([&Child](const FName& Tag)
+			{
+				return !Tag.ToString().StartsWith(TEXT("item.")) && Child.Tags.Contains(Tag);
+			});
+			if (!bSameLine)
+			{
+				continue;
+			}
+			++Pairs;
+			TestTrue(*FString::Printf(TEXT("%s hits harder than the %s it upgrades (%.0f vs %.0f)"),
+				*Child.Id.ToString(), *Parent->Id.ToString(), BestDamage(Child), BestDamage(*Parent)),
+				BestDamage(Child) > BestDamage(*Parent));
+			TestTrue(*FString::Printf(TEXT("%s lasts longer than the %s it upgrades (%d vs %d)"),
+				*Child.Id.ToString(), *Parent->Id.ToString(), Child.Tool.Durability, Parent->Tool.Durability),
+				Child.Tool.Durability > Parent->Tool.Durability);
+		}
+		TestTrue(*FString::Printf(TEXT("tool tiers ship (%d upgrade pairs)"), Pairs), Pairs >= 4);
+	}
+
+	// --- nothing a survivor swings is a dead end -----------------------------
+	//
+	// Every tool and weapon line needs somewhere to go, or the mid-game is the
+	// early game with more perks: for a long time the best weapon in the world
+	// was the wooden club you made on day two.
+	for (const TCHAR* Line : { TEXT("madfall:stone_pickaxe"), TEXT("madfall:stone_axe"), TEXT("madfall:stone_shovel"),
+		TEXT("madfall:wooden_club"), TEXT("madfall:wooden_bow") })
+	{
+		const FName Base(Line);
+		const bool bHasBetter = Defs.GetItems().ContainsByPredicate(
+			[&Base](const FMadItemDefinition& Item) { return Item.Extends == Base; });
+		TestTrue(*FString::Printf(TEXT("%s has a tier above it"), Line), bHasBetter);
+	}
+
 	TestNull(TEXT("bedrock (indestructible) has no item"), Defs.FindItemForBlock(FName(TEXT("madfall:bedrock"))));
 	TestNull(TEXT("water (liquid) has no item"), Defs.FindItemForBlock(FName(TEXT("madfall:water"))));
 

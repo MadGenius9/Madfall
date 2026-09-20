@@ -3699,6 +3699,43 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### Something better to swing
+
+Counted by line rather than by item, the gear ladder was one rung high almost
+everywhere. The pickaxe went stone to iron; the axe, the shovel, the club and
+the bow had exactly one tier each. So a survivor at level twenty was swinging
+the same wooden club they made on day two, and the Brawler and Marksman perks
+had nothing better to scale.
+
+`iron_axe`, `iron_shovel`, `iron_club` and `recurve_bow`, each crafted at a
+workbench from the thing it replaces plus scrap, between levels 6 and 10 - so
+the middle of a run has something to work towards that is not another building
+material.
+
+- **An upgrade has to be an upgrade.** A tier is a whole item that `extends`
+  the one below it, and nothing stopped the child being *worse*: one mistyped
+  number would ship an iron axe that chopped slower than the stone one it cost
+  eight scrap to make, and nothing would have noticed. `MadFall.Items.
+  ShippedContent` now fails unless every item that extends another of the same
+  line hits harder and lasts longer, and unless each of the five base lines has
+  a tier above it.
+- *The first version of that test was wrong, and its failures were informative.*
+  It compared every tool against whatever it extended - and everything extends
+  `madfall:base_tool`, the bare-hands template with ten damage and two hundred
+  durability. So it reported the wooden bow, the club and the hoe as "worse
+  than what they upgrade", which is true and meaningless. The check now needs a
+  shared *line* tag (`tool.axe`, `weapon.melee`) rather than the kind tag
+  (`item.tool`) that every tool in the game has in common.
+- **Measured in a running game, not just in the numbers.** One swing each at a
+  110 hp zombie: the wooden club left it on 75 and the iron club on 48 - 35 and
+  62 damage, exactly what the two items declare. All four craft at a workbench
+  from their parent.
+- *And the first attempt at that measurement was void*, which is worth
+  recording because it looked like a result. The scene had no workbench, so the
+  craft silently failed, `hold` fell back to bare hands, and the iron club
+  "did less damage than the wooden one". Giving the item directly separated the
+  weapon from the crafting.
+
 ### More to spend a level on
 
 Six perks, and levelling gave a point to spend on one of them. "Progression is
