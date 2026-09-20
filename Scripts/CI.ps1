@@ -1295,6 +1295,95 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Building on what is already there: repair and upgrade in place
+# ---------------------------------------------------------------------------
+#
+# The tier ladder shipped as four blocks you craft and place, so a survivor who
+# wanted a stronger wall knocked their own wall down, and a wall a horde had
+# chewed stayed chewed. Both verbs go through the same key and the same plan,
+# and the interesting part is which one it picks: a damaged block is repaired,
+# never upgraded, because upgrading would throw the damage away and be a
+# cheaper repair than repairing.
+#
+# The ladder itself is derived from the crafting recipes rather than written
+# down twice, so this gate is also what catches a tier recipe being edited in a
+# way that breaks upgrading while leaving crafting fine.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: repair and upgrade in place (headless -game)'
+
+    $buildScript = @(
+        'mad.scene.anchor'
+        'mad.scene.pad 12 8'
+        'wait 3'
+        'mad.player.xp 12000'
+        'mad.player.give madfall:wood_frame 6'
+        'mad.player.give madfall:wood_plank 40'
+        'mad.player.give madfall:scrap_iron 40'
+        'mad.player.give madfall:cement 20'
+        'mad.player.give madfall:rock 40'
+        'mad.player.give madfall:wood_reinforced 3'
+        # A frame, chewed, then patched.
+        'mad.scene.set 3 0 0 madfall:wood_frame'
+        'wait 2'
+        'mad.scene.aim 3 0 0'
+        'mad.scene.damage 3 0 0 25'
+        'wait 1'
+        'mad.player.work'
+        'wait 1'
+        # Whole again, so the same key now climbs the ladder to the top.
+        'mad.player.work'
+        'wait 1'
+        'mad.player.work'
+        'wait 1'
+        'mad.player.work'
+        'wait 1'
+        'mad.player.work'
+        'mad.player.slots'
+        'quit'
+    ) -join '; '
+
+    $buildLog = Join-Path $LogDir 'building.log'
+    $buildWorld = Join-Path $RepoRoot 'Saved\MadFallWorlds\ci-building'
+    if (Test-Path $buildWorld) { Remove-Item -Recurse -Force $buildWorld }
+
+    $buildProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $buildLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-building', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn wait 8; $buildScript`"")
+
+    if (-not $buildProcess.WaitForExit(300000)) {
+        $buildProcess | Stop-Process -Force
+        Write-Host 'FAILED: the building script did not finish within 300 s.' -ForegroundColor Red
+        $script:Failures += 'building-acceptance'
+    }
+    else {
+        # The blocks it climbed through, in order, from the log.
+        $climbed = @(Select-String -Path $buildLog -Pattern 'Upgraded (madfall:\w+) at' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value })
+
+        $checks = @(
+            @{ Ok = [bool](Select-String -Path $buildLog -Pattern 'damage byte [1-9]' -Quiet);            Why = 'the wall took damage to repair' },
+            @{ Ok = [bool](Select-String -Path $buildLog -Pattern 'Repaired madfall:wood_frame' -Quiet);   Why = 'and the repair key mended it rather than upgrading it' },
+            @{ Ok = ($climbed.Count -ge 3);                                                                Why = "then the same key climbed the ladder ($($climbed -join ' -> '))" },
+            @{ Ok = ($climbed -contains 'madfall:wood_frame' -and $climbed -contains 'madfall:wood_reinforced' -and $climbed -contains 'madfall:concrete_frame'); Why = 'wood to reinforced to concrete, in place' },
+            @{ Ok = [bool](Select-String -Path $buildLog -Pattern 'Block work: nothing to do' -Quiet);     Why = 'and stopped at the top of the ladder' },
+            @{ Ok = [bool](Select-String -Path $buildLog -Pattern 'madfall:wood_frame x[0-5]\b' -Quiet);   Why = 'the materials were paid for out of the backpack' }
+        )
+
+        $buildOk = $true
+        foreach ($check in $checks) {
+            if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
+            else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $buildOk = $false }
+        }
+        if (-not $buildOk) {
+            Select-String -Path $buildLog -Pattern 'Block work|Upgraded|Repaired|refused|damage byte|Slots:' |
+                Select-Object -Last 12 | ForEach-Object { Write-Host "  $($_.Line.Trim())" -ForegroundColor DarkGray }
+            $script:Failures += 'building-acceptance'
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Clearing jobs: the trader sends you somewhere, and only that place counts
 # ---------------------------------------------------------------------------
 #

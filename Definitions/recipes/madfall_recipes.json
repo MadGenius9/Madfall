@@ -2,428 +2,870 @@
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_plank_from_oak_log",
-		"output": { "item": "madfall:wood_plank", "count": 4 },
-		"ingredients": [{ "item": "madfall:oak_log", "count": 1 }],
+		"output": {
+			"item": "madfall:wood_plank",
+			"count": 4
+		},
+		"ingredients": [
+			{
+				"item": "madfall:oak_log",
+				"count": 1
+			}
+		],
 		"craft_seconds": 1.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_plank_from_pine_log",
-		"output": { "item": "madfall:wood_plank", "count": 4 },
-		"ingredients": [{ "item": "madfall:pine_log", "count": 1 }],
+		"output": {
+			"item": "madfall:wood_plank",
+			"count": 4
+		},
+		"ingredients": [
+			{
+				"item": "madfall:pine_log",
+				"count": 1
+			}
+		],
 		"craft_seconds": 1.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:torch",
-		"output": { "item": "madfall:torch", "count": 4 },
+		"output": {
+			"item": "madfall:torch",
+			"count": 4
+		},
 		"ingredients": [
-			{ "item": "madfall:wood_plank", "count": 1 },
-			{ "item": "madfall:plant_fiber", "count": 2 }
+			{
+				"item": "madfall:wood_plank",
+				"count": 1
+			},
+			{
+				"item": "madfall:plant_fiber",
+				"count": 2
+			}
 		],
 		"craft_seconds": 1.5,
-		"tags": ["recipe.light"]
+		"tags": [
+			"recipe.light"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:water_bottle_boiled",
-		"output": { "item": "madfall:water_bottle", "count": 1 },
-		"ingredients": [{ "item": "madfall:murky_water", "count": 1 }],
+		"output": {
+			"item": "madfall:water_bottle",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:murky_water",
+				"count": 1
+			}
+		],
 		"station": "madfall:campfire",
 		"craft_seconds": 6.0,
-		"tags": ["recipe.food"]
+		"tags": [
+			"recipe.food"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:cooked_meat",
-		"output": { "item": "madfall:cooked_meat", "count": 1 },
-		"ingredients": [{ "item": "madfall:raw_meat", "count": 1 }],
+		"output": {
+			"item": "madfall:cooked_meat",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:raw_meat",
+				"count": 1
+			}
+		],
 		"station": "madfall:campfire",
 		"craft_seconds": 6.0,
-		"tags": ["recipe.food"]
+		"tags": [
+			"recipe.food"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:cloth_from_hide",
-		"output": { "item": "madfall:cloth", "count": 3 },
-		"ingredients": [{ "item": "madfall:animal_hide", "count": 1 }],
+		"output": {
+			"item": "madfall:cloth",
+			"count": 3
+		},
+		"ingredients": [
+			{
+				"item": "madfall:animal_hide",
+				"count": 1
+			}
+		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:grilled_corn",
-		"output": { "item": "madfall:grilled_corn", "count": 1 },
-		"ingredients": [{ "item": "madfall:corn", "count": 2 }],
+		"output": {
+			"item": "madfall:grilled_corn",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:corn",
+				"count": 2
+			}
+		],
 		"station": "madfall:campfire",
 		"craft_seconds": 5.0,
-		"tags": ["recipe.food"]
+		"tags": [
+			"recipe.food"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:baked_potato",
-		"output": { "item": "madfall:baked_potato", "count": 1 },
-		"ingredients": [{ "item": "madfall:potato", "count": 2 }],
+		"output": {
+			"item": "madfall:baked_potato",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:potato",
+				"count": 2
+			}
+		],
 		"station": "madfall:campfire",
 		"craft_seconds": 5.0,
-		"tags": ["recipe.food"]
+		"tags": [
+			"recipe.food"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:fur_hat",
-		"output": { "item": "madfall:fur_hat", "count": 1 },
+		"output": {
+			"item": "madfall:fur_hat",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:animal_hide", "count": 2 }
+			{
+				"item": "madfall:animal_hide",
+				"count": 2
+			}
 		],
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:fur_coat",
-		"output": { "item": "madfall:fur_coat", "count": 1 },
+		"output": {
+			"item": "madfall:fur_coat",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:animal_hide", "count": 4 },
-			{ "item": "madfall:cloth", "count": 2 }
+			{
+				"item": "madfall:animal_hide",
+				"count": 4
+			},
+			{
+				"item": "madfall:cloth",
+				"count": 2
+			}
 		],
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:hide_trousers",
-		"output": { "item": "madfall:hide_trousers", "count": 1 },
+		"output": {
+			"item": "madfall:hide_trousers",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:animal_hide", "count": 3 },
-			{ "item": "madfall:cloth", "count": 1 }
+			{
+				"item": "madfall:animal_hide",
+				"count": 3
+			},
+			{
+				"item": "madfall:cloth",
+				"count": 1
+			}
 		],
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:hide_boots",
-		"output": { "item": "madfall:hide_boots", "count": 1 },
+		"output": {
+			"item": "madfall:hide_boots",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:animal_hide", "count": 2 }
+			{
+				"item": "madfall:animal_hide",
+				"count": 2
+			}
 		],
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:straw_hat",
-		"output": { "item": "madfall:straw_hat", "count": 1 },
+		"output": {
+			"item": "madfall:straw_hat",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:plant_fiber", "count": 8 }
+			{
+				"item": "madfall:plant_fiber",
+				"count": 8
+			}
 		],
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:scrap_helmet",
-		"output": { "item": "madfall:scrap_helmet", "count": 1 },
+		"output": {
+			"item": "madfall:scrap_helmet",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:scrap_iron", "count": 6 },
-			{ "item": "madfall:cloth", "count": 1 }
+			{
+				"item": "madfall:scrap_iron",
+				"count": 6
+			},
+			{
+				"item": "madfall:cloth",
+				"count": 1
+			}
 		],
 		"station": "madfall:forge",
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:scrap_vest",
-		"output": { "item": "madfall:scrap_vest", "count": 1 },
+		"output": {
+			"item": "madfall:scrap_vest",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:scrap_iron", "count": 10 },
-			{ "item": "madfall:cloth", "count": 3 }
+			{
+				"item": "madfall:scrap_iron",
+				"count": 10
+			},
+			{
+				"item": "madfall:cloth",
+				"count": 3
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 6.0,
-		"tags": ["recipe.clothing"]
+		"tags": [
+			"recipe.clothing"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_spikes",
-		"output": { "item": "madfall:wood_spikes", "count": 2 },
-		"ingredients": [{ "item": "madfall:wood_plank", "count": 6 }],
+		"output": {
+			"item": "madfall:wood_spikes",
+			"count": 2
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wood_plank",
+				"count": 6
+			}
+		],
 		"craft_seconds": 4.0,
-		"tags": ["recipe.defence"]
+		"tags": [
+			"recipe.defence"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:iron_spikes",
-		"output": { "item": "madfall:iron_spikes", "count": 1 },
-		"ingredients": [{ "item": "madfall:scrap_iron", "count": 8 }],
+		"output": {
+			"item": "madfall:iron_spikes",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:scrap_iron",
+				"count": 8
+			}
+		],
 		"station": "madfall:forge",
 		"craft_seconds": 8.0,
-		"tags": ["recipe.defence"]
+		"tags": [
+			"recipe.defence"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:barbed_wire",
-		"output": { "item": "madfall:barbed_wire", "count": 2 },
+		"output": {
+			"item": "madfall:barbed_wire",
+			"count": 2
+		},
 		"ingredients": [
-			{ "item": "madfall:scrap_iron", "count": 4 },
-			{ "item": "madfall:wood_plank", "count": 1 }
+			{
+				"item": "madfall:scrap_iron",
+				"count": 4
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 1
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 5.0,
-		"tags": ["recipe.defence"]
+		"tags": [
+			"recipe.defence"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wooden_bow",
-		"output": { "item": "madfall:wooden_bow", "count": 1 },
+		"output": {
+			"item": "madfall:wooden_bow",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:wood_plank", "count": 4 },
-			{ "item": "madfall:plant_fiber", "count": 6 }
+			{
+				"item": "madfall:wood_plank",
+				"count": 4
+			},
+			{
+				"item": "madfall:plant_fiber",
+				"count": 6
+			}
 		],
 		"craft_seconds": 5.0,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:arrow",
-		"output": { "item": "madfall:arrow", "count": 6 },
+		"output": {
+			"item": "madfall:arrow",
+			"count": 6
+		},
 		"ingredients": [
-			{ "item": "madfall:wood_plank", "count": 1 },
-			{ "item": "madfall:rock", "count": 1 },
-			{ "item": "madfall:plant_fiber", "count": 1 }
+			{
+				"item": "madfall:wood_plank",
+				"count": 1
+			},
+			{
+				"item": "madfall:rock",
+				"count": 1
+			},
+			{
+				"item": "madfall:plant_fiber",
+				"count": 1
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:stone_hoe",
-		"output": { "item": "madfall:stone_hoe", "count": 1 },
+		"output": {
+			"item": "madfall:stone_hoe",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:rock", "count": 2 },
-			{ "item": "madfall:wood_plank", "count": 3 }
+			{
+				"item": "madfall:rock",
+				"count": 2
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 3
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:campfire",
-		"output": { "item": "madfall:campfire", "count": 1 },
+		"output": {
+			"item": "madfall:campfire",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:rock", "count": 6 },
-			{ "item": "madfall:wood_plank", "count": 3 }
+			{
+				"item": "madfall:rock",
+				"count": 6
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 3
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.station"]
+		"tags": [
+			"recipe.station"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_door",
-		"output": { "item": "madfall:wood_door", "count": 2 },
-		"ingredients": [{ "item": "madfall:wood_plank", "count": 8 }],
+		"output": {
+			"item": "madfall:wood_door",
+			"count": 2
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wood_plank",
+				"count": 8
+			}
+		],
 		"station": "madfall:workbench",
 		"craft_seconds": 4.0,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:ladder",
-		"output": { "item": "madfall:ladder", "count": 3 },
-		"ingredients": [{ "item": "madfall:wood_plank", "count": 4 }],
+		"output": {
+			"item": "madfall:ladder",
+			"count": 3
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wood_plank",
+				"count": 4
+			}
+		],
 		"craft_seconds": 2.0,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:bedroll",
-		"output": { "item": "madfall:bedroll", "count": 1 },
+		"output": {
+			"item": "madfall:bedroll",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:plant_fiber", "count": 8 },
-			{ "item": "madfall:cloth", "count": 2 }
+			{
+				"item": "madfall:plant_fiber",
+				"count": 8
+			},
+			{
+				"item": "madfall:cloth",
+				"count": 2
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:empty_bottle",
-		"output": { "item": "madfall:empty_bottle", "count": 2 },
-		"ingredients": [{ "item": "madfall:sand", "count": 4 }],
+		"output": {
+			"item": "madfall:empty_bottle",
+			"count": 2
+		},
+		"ingredients": [
+			{
+				"item": "madfall:sand",
+				"count": 4
+			}
+		],
 		"station": "madfall:forge",
 		"craft_seconds": 5.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:cloth_from_fiber",
-		"output": { "item": "madfall:cloth", "count": 1 },
-		"ingredients": [{ "item": "madfall:plant_fiber", "count": 4 }],
+		"output": {
+			"item": "madfall:cloth",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:plant_fiber",
+				"count": 4
+			}
+		],
 		"craft_seconds": 2.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:storage_barrel",
-		"output": { "item": "madfall:storage_barrel", "count": 1 },
+		"output": {
+			"item": "madfall:storage_barrel",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:scrap_iron", "count": 4 }
+			{
+				"item": "madfall:scrap_iron",
+				"count": 4
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 4.0,
-		"tags": ["recipe.station"]
+		"tags": [
+			"recipe.station"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:workbench",
-		"output": { "item": "madfall:workbench", "count": 1 },
+		"output": {
+			"item": "madfall:workbench",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:wood_plank", "count": 8 },
-			{ "item": "madfall:rock", "count": 4 }
+			{
+				"item": "madfall:wood_plank",
+				"count": 8
+			},
+			{
+				"item": "madfall:rock",
+				"count": 4
+			}
 		],
 		"craft_seconds": 5.0,
-		"tags": ["recipe.station"]
+		"tags": [
+			"recipe.station"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:forge",
-		"output": { "item": "madfall:forge", "count": 1 },
+		"output": {
+			"item": "madfall:forge",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:rock", "count": 16 },
-			{ "item": "madfall:scrap_iron", "count": 4 }
+			{
+				"item": "madfall:rock",
+				"count": 16
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 4
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 10.0,
-		"tags": ["recipe.station"]
+		"tags": [
+			"recipe.station"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_plank_from_frame",
-		"output": { "item": "madfall:wood_plank", "count": 4 },
-		"ingredients": [{ "item": "madfall:wood_frame", "count": 1 }],
+		"output": {
+			"item": "madfall:wood_plank",
+			"count": 4
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wood_frame",
+				"count": 1
+			}
+		],
 		"craft_seconds": 1.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_frame",
-		"output": { "item": "madfall:wood_frame", "count": 1 },
-		"ingredients": [{ "item": "madfall:wood_plank", "count": 4 }],
+		"output": {
+			"item": "madfall:wood_frame",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wood_plank",
+				"count": 4
+			}
+		],
 		"craft_seconds": 2.0,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wood_reinforced",
-		"output": { "item": "madfall:wood_reinforced", "count": 1 },
+		"output": {
+			"item": "madfall:wood_reinforced",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:wood_frame", "count": 1 },
-			{ "item": "madfall:wood_plank", "count": 4 },
-			{ "item": "madfall:scrap_iron", "count": 2 }
+			{
+				"item": "madfall:wood_frame",
+				"count": 1
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 4
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 2
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 4.0,
 		"required_level": 2,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:cement",
-		"output": { "item": "madfall:cement", "count": 1 },
-		"ingredients": [{ "item": "madfall:rock", "count": 4 }],
+		"output": {
+			"item": "madfall:cement",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:rock",
+				"count": 4
+			}
+		],
 		"station": "madfall:forge",
 		"craft_seconds": 6.0,
-		"tags": ["recipe.resource"]
+		"tags": [
+			"recipe.resource"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:concrete_frame",
-		"output": { "item": "madfall:concrete_frame", "count": 1 },
+		"output": {
+			"item": "madfall:concrete_frame",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:cement", "count": 2 },
-			{ "item": "madfall:rock", "count": 4 }
+			{
+				"item": "madfall:wood_reinforced",
+				"count": 1
+			},
+			{
+				"item": "madfall:cement",
+				"count": 2
+			},
+			{
+				"item": "madfall:rock",
+				"count": 4
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 8.0,
 		"required_level": 5,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:rebar_concrete",
-		"output": { "item": "madfall:rebar_concrete", "count": 1 },
+		"output": {
+			"item": "madfall:rebar_concrete",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:concrete_frame", "count": 1 },
-			{ "item": "madfall:scrap_iron", "count": 6 }
+			{
+				"item": "madfall:concrete_frame",
+				"count": 1
+			},
+			{
+				"item": "madfall:scrap_iron",
+				"count": 6
+			}
 		],
 		"station": "madfall:workbench",
 		"craft_seconds": 10.0,
 		"required_level": 10,
-		"tags": ["recipe.building"]
+		"tags": [
+			"recipe.building"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:stone_pickaxe",
-		"output": { "item": "madfall:stone_pickaxe", "count": 1 },
+		"output": {
+			"item": "madfall:stone_pickaxe",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:rock", "count": 3 },
-			{ "item": "madfall:wood_plank", "count": 2 }
+			{
+				"item": "madfall:rock",
+				"count": 3
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 2
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:stone_axe",
-		"output": { "item": "madfall:stone_axe", "count": 1 },
+		"output": {
+			"item": "madfall:stone_axe",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:rock", "count": 2 },
-			{ "item": "madfall:wood_plank", "count": 2 }
+			{
+				"item": "madfall:rock",
+				"count": 2
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 2
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:stone_shovel",
-		"output": { "item": "madfall:stone_shovel", "count": 1 },
+		"output": {
+			"item": "madfall:stone_shovel",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:rock", "count": 2 },
-			{ "item": "madfall:wood_plank", "count": 3 }
+			{
+				"item": "madfall:rock",
+				"count": 2
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 3
+			}
 		],
 		"craft_seconds": 3.0,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:iron_pickaxe",
-		"output": { "item": "madfall:iron_pickaxe", "count": 1 },
+		"output": {
+			"item": "madfall:iron_pickaxe",
+			"count": 1
+		},
 		"ingredients": [
-			{ "item": "madfall:scrap_iron", "count": 8 },
-			{ "item": "madfall:wood_plank", "count": 2 }
+			{
+				"item": "madfall:scrap_iron",
+				"count": 8
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 2
+			}
 		],
 		"station": "madfall:forge",
 		"craft_seconds": 12.0,
 		"required_level": 8,
-		"tags": ["recipe.tool"]
+		"tags": [
+			"recipe.tool"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:wooden_club",
-		"output": { "item": "madfall:wooden_club", "count": 1 },
-		"ingredients": [{ "item": "madfall:wood_plank", "count": 4 }],
+		"output": {
+			"item": "madfall:wooden_club",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:wood_plank",
+				"count": 4
+			}
+		],
 		"craft_seconds": 2.0,
-		"tags": ["recipe.weapon"]
+		"tags": [
+			"recipe.weapon"
+		]
 	},
 	{
 		"schema": "madfall.recipe/1",
 		"id": "madfall:bandage",
-		"output": { "item": "madfall:bandage", "count": 1 },
-		"ingredients": [{ "item": "madfall:cloth", "count": 2 }],
+		"output": {
+			"item": "madfall:bandage",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:cloth",
+				"count": 2
+			}
+		],
 		"craft_seconds": 1.5,
-		"tags": ["recipe.medical"]
+		"tags": [
+			"recipe.medical"
+		]
 	}
 ]

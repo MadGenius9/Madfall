@@ -1797,6 +1797,21 @@ namespace
 			UE_LOG(LogMadFallGameplay, Display, TEXT("Teleported to %s in %s."), *Destination.ToString(), *Args[0]);
 		}));
 
+	FAutoConsoleCommandWithWorld CmdPlayerWorkBlock(
+		TEXT("mad.player.work"),
+		TEXT("Repair or upgrade the targeted block, the same as the repair key does."),
+		FConsoleCommandWithWorldDelegate::CreateStatic([](UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			if (P == nullptr)
+			{
+				return;
+			}
+			const EMadBlockWork Did = P->WorkOnTargetBlock();
+			UE_LOG(LogMadFallGameplay, Display, TEXT("Block work: %s."),
+				Did == EMadBlockWork::Upgrade ? TEXT("upgrade") : Did == EMadBlockWork::Repair ? TEXT("repair") : TEXT("nothing to do"));
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerTpJob(
 		TEXT("mad.player.tpjob"),
 		TEXT("mad.player.tpjob [offset=6] - stand beside the building the survivor's current clearing job points to."),

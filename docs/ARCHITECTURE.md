@@ -3699,6 +3699,57 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### Building on what is already there
+
+The tier ladder shipped as four separate blocks you craft and place. So a
+survivor who wanted a stronger wall knocked their own wall down and built
+another one, losing the first; and a wall a horde had spent a night chewing
+stayed chewed for ever. Upgrading and repairing *in place* is the verb the
+whole base-building loop is built around, and it was the one verb missing.
+
+Both go through the repair key and one plan (`MadFall::Building::PlanBlockWork`,
+`MadBuilding.h`):
+
+- **A damaged block is repaired**, never upgraded, and costs one of itself -
+  you patch a wooden frame with another wooden frame. Damage is checked first
+  deliberately: upgrading a chewed wall would throw its damage away, which would
+  make upgrading a *cheaper repair than repairing*.
+- **A whole block is upgraded** to the next tier for the rest of its recipe.
+- **The key falls through to the held tool** when there is nothing to do on the
+  block. WHY: a survivor is almost always looking at something within reach, so
+  a block that claimed the key unconditionally would make repairing a tool
+  nearly impossible. The block only takes the key when it has work to offer.
+
+**The ladder is not new data - the recipes already say it.** A recipe whose
+output is a placeable block and whose ingredients include exactly one other
+placeable block, once, *is* an upgrade: "this block, plus these materials,
+becomes that block". Deriving it means the ladder cannot drift out of step with
+crafting, the costs stay balanced in one place, and a mod that adds a tier
+recipe gets upgrading for nothing. The station is ignored - a recipe may want a
+workbench, but a survivor upgrading a wall is standing at the wall and nobody
+carries a workbench to a fight. The level requirement is kept, because that is
+a progression gate rather than a place.
+
+**One balance change came out of this, and it is a real one.** The derived
+ladder was broken in the middle: `wood_frame -> wood_reinforced` and
+`concrete_frame -> rebar_concrete` existed, but concrete was crafted from
+cement and rock rather than from reinforced wood, so there was no rung between
+them - you could not upgrade a wooden base into a concrete one, which is the
+main thing anyone wants from this feature. `madfall:concrete_frame` now takes
+`wood_reinforced` x1 alongside its cement and rock, matching what
+`rebar_concrete` already did. Concrete is a step more expensive to craft from
+scratch as a result; every tier now consumes the one below it, and the ladder
+walks from the bottom to the top.
+
+Tested: `MadFall.World.BlockWork` walks the ladder out of the real definitions
+rather than a list written in the test, checks it does not loop and terminates,
+checks the base block is not part of its own upgrade price, checks every
+placeable block can at least be patched (a block you can put up and a horde can
+chew with no way to mend it is a trap), and checks terrain is not something to
+mend. The `repair and upgrade in place` gate then does it in a running game:
+chew a frame, patch it, then climb wood to reinforced to concrete to rebar and
+stop.
+
 ### Looking at it
 
 A pass spent playing rather than building: a rendered session through ordinary

@@ -20,6 +20,7 @@
 #include "InputModifiers.h"
 #include "MadAudioSubsystem.h"
 #include "MadBlockDamage.h"
+#include "MadBuilding.h"
 #include "MadBlockRegistry.h"
 #include "MadChunkMeshSubsystem.h"
 #include "MadChunkStreamingSubsystem.h"
@@ -2354,7 +2355,112 @@ void AMadPlayerCharacter::OnHotbar(const FInputActionValue& Value, int32 Slot)
 
 void AMadPlayerCharacter::OnRepair(const FInputActionValue& Value)
 {
+	// The block in front of you first, the tool in your hand second.
+	//
+	// WHY this order, and why it falls through: a survivor pressing repair
+	// while looking at a wall means the wall. But they are almost always
+	// looking at *something* within reach, so taking the key whenever a block
+	// is targeted would make repairing a tool nearly impossible. The block only
+	// claims the key when there is actually work to do on it.
+	if (WorkOnTargetBlock() != EMadBlockWork::None)
+	{
+		return;
+	}
 	RepairSelected();
+}
+
+EMadBlockWork AMadPlayerCharacter::WorkOnTargetBlock()
+{
+	UMadVoxelWorldSubsystem* VoxelWorld = GetWorld()->GetSubsystem<UMadVoxelWorldSubsystem>();
+	if (!bHasTarget || VoxelWorld == nullptr)
+	{
+		return EMadBlockWork::None;
+	}
+
+	const FMadBlockRegistry& Registry = UMadVoxelWorldSubsystem::GetBlockRegistry();
+	const FMadVoxel Voxel = VoxelWorld->GetVoxel(Target.Voxel.X, Target.Voxel.Y, Target.Voxel.Z);
+	const FMadBlockDefinitionData* Block = Registry.FindDefinition(Voxel.BlockTypeID);
+	if (Block == nullptr)
+	{
+		return EMadBlockWork::None;
+	}
+
+	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
+	const FMadInventory& Items = Inventory->GetInventory();
+	const FMadBlockWorkPlan Plan = MadFall::Building::PlanBlockWork(Definitions, Block->Id, Voxel.Damage, Level,
+		[&Items](FName Item) { return Items.CountItem(Item); });
+
+	if (Plan.Action == EMadBlockWork::None)
+	{
+		return EMadBlockWork::None;
+	}
+
+	// From here the key belongs to the block, so every way of failing has to
+	// say what is wrong - silence would read as the key not working.
+	if (Plan.bUnderLevelled)
+	{
+		PushMessage(FString::Printf(TEXT("Level %d needed to upgrade this."), Plan.RequiredLevel), 2.0f);
+		UE_LOG(LogMadFallGameplay, Display, TEXT("Block work refused: %s needs level %d, survivor is %d."),
+			*Block->Id.ToString(), Plan.RequiredLevel, Level);
+		return Plan.Action;
+	}
+	if (Plan.bMissingMaterials)
+	{
+		FString Needed;
+		for (const FMadItemAmount& Amount : Plan.Cost)
+		{
+			Needed += (Needed.IsEmpty() ? TEXT("") : TEXT(", "));
+			Needed += FString::Printf(TEXT("%d x %s"), Amount.Count, *Definitions.GetItemName(Amount.Item));
+		}
+		PushMessage(FString::Printf(TEXT("Needs %s."), *Needed), 2.5f);
+		UE_LOG(LogMadFallGameplay, Display, TEXT("Block work refused: %s needs %s."), *Block->Id.ToString(), *Needed);
+		return Plan.Action;
+	}
+
+	if (!Inventory->GetInventory().RemoveAll(Plan.Cost))
+	{
+		PushMessage(TEXT("Not enough materials."), 2.0f);
+		return Plan.Action;
+	}
+
+	FMadVoxel Worked = Voxel;
+	Worked.Damage = 0;
+	if (Plan.Action == EMadBlockWork::Upgrade)
+	{
+		const uint16 ToId = Registry.ResolveRuntimeId(Plan.ToBlock);
+		const FMadBlockDefinitionData* ToBlock = Registry.FindDefinition(ToId);
+		if (ToId == MadFall::BlockTypeUnresolved || ToId == MadFall::BlockTypeAir || ToBlock == nullptr)
+		{
+			return EMadBlockWork::None;
+		}
+		// The rotation is kept: a survivor who lined a wall up does not want it
+		// turning round because it got stronger.
+		Worked.BlockTypeID = ToId;
+		Worked.Density = 255;
+		Worked.SetFlag(EMadVoxelFlags::Cubic, ToBlock->ShapeKind != EMadBlockShapeKind::Isosurface);
+	}
+
+	if (!VoxelWorld->SetVoxel(Target.Voxel.X, Target.Voxel.Y, Target.Voxel.Z, Worked))
+	{
+		return EMadBlockWork::None;
+	}
+
+	ReportNoise();
+	ViewModel->PlayUse();
+	if (UMadAudioSubsystem* Audio = GetWorld()->GetSubsystem<UMadAudioSubsystem>())
+	{
+		Audio->PlayAt(EMadSound::Place, (FVector(Target.Voxel) + FVector(0.5)) * MadFall::VoxelSizeUU);
+	}
+
+	PushMessage(Plan.Action == EMadBlockWork::Upgrade
+		? FString::Printf(TEXT("Upgraded to %s."), *FMadGameplayDefinitions::GetBlockName(Plan.ToBlock))
+		: FString::Printf(TEXT("Repaired the %s."), *FMadGameplayDefinitions::GetBlockName(Block->Id)), 1.8f);
+	Inventory->NotifyChanged();
+	UpdateTarget();
+	UE_LOG(LogMadFallGameplay, Display, TEXT("%s %s at %s."),
+		Plan.Action == EMadBlockWork::Upgrade ? TEXT("Upgraded") : TEXT("Repaired"),
+		*Block->Id.ToString(), *Target.Voxel.ToString());
+	return Plan.Action;
 }
 
 void AMadPlayerCharacter::OnDrop(const FInputActionValue& Value)

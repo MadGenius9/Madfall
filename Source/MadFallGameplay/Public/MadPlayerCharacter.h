@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "MadHarvest.h"
+#include "MadBuilding.h"
 #include "MadInventory.h"
 #include "MadProgression.h"
 #include "MadSurvivalModel.h"
@@ -155,6 +156,13 @@ public:
 
 	/** Repairs the held tool with materials from the backpack. */
 	EMadItemActionResult RepairSelected();
+
+	/**
+	 * Repairs or upgrades the block the survivor is looking at, and says what
+	 * it did. None means there was nothing to work on, which is what lets the
+	 * repair key fall through to the held tool.
+	 */
+	EMadBlockWork WorkOnTargetBlock();
 
 	/** Installs a mod from the backpack into the held tool. */
 	EMadItemActionResult InstallModOnSelected(FName ModItem);
