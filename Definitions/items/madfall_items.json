@@ -805,5 +805,37 @@
 				"recover_chance": 0.55
 			}
 		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:scrap_greaves",
+		"value": 70,
+		"display_name": "@items.scrap_greaves",
+		"tags": [
+			"item.clothing"
+		],
+		"max_stack": 1,
+		"weight_kg": 3.2,
+		"wear": {
+			"slot": "legs",
+			"cold": 2,
+			"armor": 0.18
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:scrap_boots",
+		"value": 50,
+		"display_name": "@items.scrap_boots",
+		"tags": [
+			"item.clothing"
+		],
+		"max_stack": 1,
+		"weight_kg": 2.2,
+		"wear": {
+			"slot": "feet",
+			"cold": 2,
+			"armor": 0.12
+		}
 	}
 ]

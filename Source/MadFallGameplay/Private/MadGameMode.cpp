@@ -2314,7 +2314,9 @@ namespace
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CmdPlayerDamage(
-		TEXT("mad.player.damage"), TEXT("mad.player.damage <amount>"),
+		TEXT("mad.player.damage"),
+		TEXT("mad.player.damage <amount> - takes health off directly. It does NOT go through armour or the "
+			 "hide perks, so it cannot be used to measure them; spawn something that hits for that."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
 		{
 			AMadPlayerCharacter* P = GetPlayer(World);

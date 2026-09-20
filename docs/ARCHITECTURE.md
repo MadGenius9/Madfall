@@ -3699,6 +3699,35 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### Something better to wear
+
+The same count that found the gear ladder one rung high found armour with two
+slots missing entirely. Head went fur 0.05 to scrap 0.20 and body fur 0.10 to
+scrap 0.25, but **legs and feet had exactly one piece each** - hide trousers and
+hide boots - with nothing above them. Armour is additive and capped at
+`MadFall::Wear::MaxArmor` (0.80), so those two slots were a hole in the curve no
+perk could fill.
+
+`scrap_greaves` (0.18) and `scrap_boots` (0.12) finish the set, which now totals
+**0.75** - deliberately just under the cap, so scrap is the intended ceiling
+rather than an accident, and the last piece of the set is still worth wearing.
+
+- `MadFall.Items.ShippedContent` now fails unless every wearable slot has more
+  than one piece of armour in it, and unless the best of everything lands under
+  the cap and above 0.5. Verified by deleting `scrap_boots` and watching it
+  name the slot: "the feet slot has more than one piece of armour to find (1)".
+- Measured in a fight rather than in the numbers: bare, a civilian zombie did
+  7.8 damage a hit; in the full set the survivor read **armour 75%** and took
+  1.8 a hit - a ratio of 0.23 against the 0.25 the numbers promise, which is
+  what a live fight's variance looks like.
+- *Two console commands cost an hour between them and are worth recording.*
+  There is no `mad.player.wear`: clothing is put on by holding it and using the
+  place action, which is how the base-building gate does it. And
+  `mad.player.damage` calls `ApplyDamage` directly rather than
+  `ApplyAttackDamage`, so it bypasses armour and the hide perks entirely - it
+  is a way to take health off, not a way to measure defence. Its help text now
+  says so.
+
 ### Something better to swing
 
 Counted by line rather than by item, the gear ladder was one rung high almost

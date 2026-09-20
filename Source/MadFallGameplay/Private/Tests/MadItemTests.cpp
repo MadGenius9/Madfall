@@ -320,6 +320,46 @@ bool FMadShippedItemContentTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("tool tiers ship (%d upgrade pairs)"), Pairs), Pairs >= 4);
 	}
 
+	// --- and nothing a survivor wears is one either ---------------------------
+	//
+	// Armour is additive and capped at MadFall::Wear::MaxArmor, so a slot with
+	// only one piece in it is a hole in the curve that no perk can fill: legs
+	// and feet had exactly one each - hide trousers and hide boots - while the
+	// head and body went on to scrap. This checks every slot a survivor can
+	// fill has somewhere to go, and that the best of everything lands under the
+	// cap rather than through it, because a set that hits the ceiling makes the
+	// last piece of it pointless.
+	{
+		TMap<FName, TArray<float>> BySlot;
+		for (const FMadItemDefinition& Item : Defs.GetItems())
+		{
+			if (Item.Wear.Slot.IsNone())
+			{
+				continue;
+			}
+			BySlot.FindOrAdd(Item.Wear.Slot).Add(Item.Wear.Armor);
+		}
+
+		float BestTotal = 0.0f;
+		for (const TPair<FName, TArray<float>>& Slot : BySlot)
+		{
+			float Best = 0.0f;
+			int32 Protective = 0;
+			for (const float Armour : Slot.Value)
+			{
+				Best = FMath::Max(Best, Armour);
+				Protective += Armour > 0.0f ? 1 : 0;
+			}
+			BestTotal += Best;
+			TestTrue(*FString::Printf(TEXT("the %s slot has more than one piece of armour to find (%d)"),
+				*Slot.Key.ToString(), Protective), Protective >= 2);
+		}
+
+		TestTrue(*FString::Printf(TEXT("a full set of the best armour is under the cap (%.2f of %.2f)"),
+			BestTotal, MadFall::Wear::MaxArmor), BestTotal <= MadFall::Wear::MaxArmor);
+		TestTrue(*FString::Printf(TEXT("and is worth wearing (%.2f)"), BestTotal), BestTotal >= 0.5f);
+	}
+
 	// --- nothing a survivor swings is a dead end -----------------------------
 	//
 	// Every tool and weapon line needs somewhere to go, or the mid-game is the
