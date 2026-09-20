@@ -2406,7 +2406,20 @@ else {
     }
     }
 
-    if (-not $budgetOk -and -not $budgetMeasured -and -not $budgetTimedOut) {
+    if (-not $budgetOk -and $budgetMeasured -and $budgetFailures -eq 1 -and -not $budgetTimedOut) {
+        # Measured once, failed, and never measurable again: the machine went
+        # busy before the retry could confirm or clear it. Passing silently
+        # here reports a half-answer as a pass, which is the thing this whole
+        # stage exists to avoid. It is still not a failure - one bad sample is
+        # what the retry exists for - so it says so and asks for a re-run.
+        Write-Host ("WARNING: the frame budget failed its only measurable session and the retries were too slow " +
+                    "to confirm it ($budgetAttempt attempts). This is not a verdict either way.") -ForegroundColor Yellow
+        Write-Host '         Last session: ' -NoNewline -ForegroundColor Yellow
+        Write-Host $budgetLastNumbers -ForegroundColor Yellow
+        Write-Host '         Re-measure on a quiet machine: Scriptsudget-probe.ps1 -Runs 3' -ForegroundColor Yellow
+        $script:Skipped += 'frame-budget (one failed sample, unconfirmed)'
+    }
+    elseif (-not $budgetOk -and -not $budgetMeasured -and -not $budgetTimedOut) {
         # Four sessions, none of them fast enough to judge. Failing here would
         # blame the build for whatever else is running: the last time this
         # happened, Get-Process found a game using five gigabytes and most of a

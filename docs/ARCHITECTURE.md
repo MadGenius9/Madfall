@@ -2035,9 +2035,14 @@ Six-hour fronts of clear, cloudy, rain or storm, turning to snow below freezing:
 
 ### Sound
 
-There are no audio assets, so every effect is synthesised in code
-(`MadFall::Synth`): noise, sine and sawtooth oscillators, one-pole filters and
-envelopes. Struck stone is a short bright noise burst over a low knock, wood a
+**Most of the game is recorded; five sounds are still synthesised.** Read the
+paragraph on recordings below before believing anything in this one - this
+section used to open by saying there were no audio assets at all, which stayed
+there long after CC0 packs landed, and it has since misled a reader of these
+docs into repeating it twice.
+
+The synthesiser is the fallback and the original (`MadFall::Synth`): noise, sine
+and sawtooth oscillators, one-pole filters and envelopes. Struck stone is a short bright noise burst over a low knock, wood a
 damped resonance, metal inharmonic partials that ring, dirt a dull thud, foliage
 a high-passed rustle; a break is a strike followed by smaller duller pieces; a
 groan is a vibrato sawtooth through a low pass with breath; a collapse is brown
@@ -2063,12 +2068,24 @@ horde-night horn and menu clicks. Plays are counted even with no audio device,
 which is how the survival and zombie gates check events reach the audio system
 (`mad.audio.stats`). `mad.audio.play <name>` auditions one.
 
-**Recorded sounds replace most synthesised ones.** 27 of the 36 sounds now play
+**Recorded sounds replace most synthesised ones.** 31 of the 36 sounds now play
 recordings from CC0 packs: Kenney's Impact Sounds and RPG Audio (hits, breaks
 and footsteps per impact kind, placing, pickups, crafting, wood creaks), the
 Summoning Wars zombie pack (groans, attack grunts, screams), and OpenGameArt's
 100 CC0 SFX #2, 30 CC0 SFX loops and Wind Whoosh Loop (stone breaks, thunder,
-rain, wind, clicks). `Scripts/fetch_audio.ps1` downloads them (12.5 MB) into the
+rain, wind, clicks). The four most dramatic were the last to be wired: the
+horde-night horn (a siren), the bowstring (a whoosh), a steel beam groaning
+under load, and a building coming down (heavy timber over falling stone).
+
+The five left synthesised are left so on purpose. `player_hurt` because nothing
+in the packs is a human voice and a zombie grunt for the survivor is worse than
+the synth; `zombie_spit` because nothing reads unambiguously as a wet splat, and
+a wrong guess is worse than a generated one; and `creak_stone`, `creak_dirt` and
+`creak_foliage` because soil and leaves do not creak - the synthesised groan is
+the intended character. The reasons are in `Scripts/prepare_audio.py` beside the
+mapping, so the next person does not go looking.
+
+`Scripts/fetch_audio.ps1` downloads them (12.5 MB) into the
 uncommitted `SourceArt/audio/`, `Scripts/prepare_audio.py` maps files to sounds
 and uses ffmpeg to trim silence from one-shots, fold to mono and peak-normalise
 to -2 dBFS - the synthesised sounds' level, so every volume tuned against them
@@ -2765,6 +2782,14 @@ Console (used by the survival gate): `mad.player.store <item>`,
      `Scripts/budget-probe.ps1`, and records itself as skipped rather than
      failed. Blaming the build for another process is worse than admitting the
      measurement did not happen.
+   - *And one more hole in the stage, found by watching it pass.* A run measured
+     once (worst 6.45 ms at 129.8 fps - a failure), then three retries came in
+     at 94.8, 91.4 and 92.4 fps, all just under the floor and so unmeasurable.
+     Two measured failures are a regression and none is noise, but *one failure
+     and no second opinion* fell between the two and passed in silence, which
+     is a half-answer reported as a pass. It now warns, names the numbers, asks
+     for a re-measure, and records itself skipped - still not a failure,
+     because one bad sample is exactly what the retry exists for.
      What holds still is the **mean working frame**: 37.3/73.5, 56.4/110.9 and
      56.3/119.2 are 0.507, 0.509 and 0.472 ms. Work per frame does not care how
      many frames there are, which is the property a regression gate needs, so

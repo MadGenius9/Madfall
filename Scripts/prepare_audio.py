@@ -90,7 +90,29 @@ SOUNDS = {
     "wind_loop": ["wind_woosh_loop.ogg"],
     "thunder": [SFX + "thunder_01.ogg"],
     "creak_wood": [RPG + "creak1.ogg", RPG + "creak2.ogg", RPG + "creak3.ogg"],
+
+    # The dramatic ones, which were the last still synthesised. Chosen from
+    # what the packs plainly contain rather than from what would be ideal:
+    # a siren for the horde, a whoosh for the string, groaning metal for a
+    # steel beam under load, and a mix of heavy timber and falling stone for a
+    # building coming down.
+    "horde_horn": ["sfx_loops/alarm_01.ogg", "sfx_loops/alarm_02.ogg"],
+    "bow_release": [SFX + "air_01.ogg", SFX + "air_02.ogg", SFX + "air_03.ogg"],
+    "creak_metal": [SFX + "metal_01.ogg", SFX + "metal_02.ogg", SFX + "metal_03.ogg"],
+    "collapse": [IMPACT + "impactWood_heavy_000.ogg", IMPACT + "impactWood_heavy_003.ogg",
+                 SFX + "stones_01.ogg", SFX + "stones_03.ogg"],
 }
+
+# Still synthesised on purpose, and why:
+#   player_hurt                         nothing in the packs is a human voice,
+#                                       and a zombie grunt for the survivor is
+#                                       worse than the synth.
+#   zombie_spit                         nothing reads unambiguously as a wet
+#                                       splat; a wrong guess is worse than a
+#                                       generated one.
+#   creak_stone/dirt/foliage            soil and leaves do not creak; the synth
+#                                       groan is the intended character.
+
 
 LOOPS = {"rain_loop", "wind_loop"}
 
