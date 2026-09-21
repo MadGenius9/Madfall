@@ -1589,6 +1589,74 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Gunfire: a shot is heard, an arrow is not
+# ---------------------------------------------------------------------------
+#
+# A pistol outdamages every bow; the price is that a shot carries three times a
+# zombie's hearing range. If the noise stopped carrying, the pistol would be
+# strictly better and the bow pointless, and nothing else in CI would notice.
+# So a civilian (hearing 36, sight 22) is spawned 60 voxels out - beyond both -
+# and the survivor fires once into the air, twice: with the pistol it must turn
+# and path to the survivor, with the recurve bow it must go on wandering.
+#
+# The status taken before the shot is checked too: if the zombie was already
+# chasing, the shot proved nothing.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: gunfire is heard (headless -game)'
+
+    $gunOk = $true
+    foreach ($gun in @(
+        @{ Name = 'pistol'; Weapon = 'madfall:pistol';      Ammo = 'madfall:pistol_round'; Expect = $true;  Why = 'a pistol shot alerted a zombie 60 voxels away' },
+        @{ Name = 'bow';    Weapon = 'madfall:recurve_bow'; Ammo = 'madfall:arrow';        Expect = $false; Why = 'a bow shot left the same zombie wandering' }
+    )) {
+        $gunScript = "mad.clock.set 10; mad.ai.Sleepers 0; mad.ai.MaxZombies 1; mad.ai.killall; " +
+            "mad.player.give $($gun.Weapon) 1; mad.player.give $($gun.Ammo) 10; mad.player.hold $($gun.Weapon); " +
+            "mad.ai.spawn madfall:zombie_civilian 60 0; wait 3; mad.ai.status; mad.player.use 1; wait 4; mad.ai.status; quit"
+
+        $gunLog = Join-Path $LogDir "gunfire-$($gun.Name).log"
+        $gunWorld = Join-Path $RepoRoot "Saved\MadFallWorlds\ci-gun$($gun.Name)"
+        if (Test-Path $gunWorld) { Remove-Item -Recurse -Force $gunWorld }
+        $gunProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $gunLog `
+            -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                            "-MadWorld=ci-gun$($gun.Name)", '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn wait 8; $gunScript`"")
+
+        if (-not $gunProcess.WaitForExit(240000)) {
+            $gunProcess | Stop-Process -Force
+            Write-Host "FAILED: the $($gun.Name) gunfire script did not finish within 240 s." -ForegroundColor Red
+            $gunOk = $false
+            continue
+        }
+
+        $states = @(Select-String -Path $gunLog -Pattern '^\s+madfall:zombie_civilian at [^:]+: (\w+)' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value })
+        if ($states.Count -lt 2) {
+            Write-Host "FAILED: the $($gun.Name) run reported $($states.Count) zombie status line(s), so nothing was measured." -ForegroundColor Red
+            $gunOk = $false
+            continue
+        }
+        $aware = @('chase', 'dig', 'attack')
+        if ($aware -contains $states[0]) {
+            Write-Host "FAILED: the zombie was already '$($states[0])' before the $($gun.Name) shot - the gate measured nothing." -ForegroundColor Red
+            $gunOk = $false
+            continue
+        }
+        $alerted = $aware -contains $states[-1]
+        if ($alerted -eq $gun.Expect) {
+            Write-Host "OK: $($gun.Why) ($($states[0]) -> $($states[-1]))" -ForegroundColor Green
+        }
+        else {
+            Write-Host "FAILED: expected that $($gun.Why), but it went $($states[0]) -> $($states[-1])" -ForegroundColor Red
+            $gunOk = $false
+        }
+    }
+
+    if (-not $gunOk) {
+        $script:Failures += 'gunfire-acceptance'
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Altitude: a mountain is colder than the valley it stands in
 # ---------------------------------------------------------------------------
 #

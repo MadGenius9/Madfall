@@ -3733,6 +3733,43 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### A shot is heard
+
+The pistol is the first firearm, and the design is a trade rather than an
+upgrade: 85 pierce against the recurve bow's 62, a 0.45 s cycle, rounds that
+fly nearly flat - and every shot announces where the survivor is.
+
+- **Noise has a loudness now.** It was a timestamp: any noise within 1.5 s was
+  heard by anything within its own hearing range. `ReportNoise(Loudness)` keeps
+  the loudest noise inside the window (a swing just after a shot does not make
+  the shot quieter) and `MadFall::Noise::CarriesTo` hears it out to
+  `HearingRange * Loudness`. Swings, placing and sprinting stay at 1. A tool's
+  `ranged.noise` sets its shot's loudness: the pistol is 3, so a civilian
+  (hearing 36) hears it from 108 voxels. Bows stay 0 - silent, as before.
+  Zombies and animals share the rule, so game bolts from a gunshot too.
+- **Rounds are found, never made.** There is no gunpowder chain, and adding
+  one only to hand out unlimited ammunition would undo the trade. Pistol
+  rounds come from ammo crates, weapons lockers and the quartermaster (70%
+  of restocks). The pistol itself is a weapons-locker find from game stage 10,
+  or a workbench recipe at level 12 that needs a reinforced grip - a looted
+  part, so crafting one is still a find.
+- **It looks like a gun.** Every ranged weapon was drawn and iconed as a bow.
+  A `weapon.firearm` tag picks a gun held-shape (grip, slide, muzzle) and a
+  pistol icon; `ammo.bullet` picks a bullet icon.
+- **The sound is synthesised.** Nothing in the CC0 packs is a gunshot, and a
+  shot is mostly noise with an envelope - the one thing the synth does well: a
+  12 ms crack, a low-passed thump and a short tail. Appended to `EMadSound` so
+  no existing sound's index moves.
+- **Tests.** `MadFall.Combat.NoiseCarries` covers the loudness rule;
+  `MadFall.Items.Firearms` requires every ranged weapon's ammunition to be
+  craftable, lootable or sold, the pistol to outdamage the best bow while
+  being loud, and bows to stay silent.
+- **CI gate "gunfire is heard".** A civilian 60 voxels out - past its hearing
+  and its sight - is shot past once with each weapon. Measured: pistol
+  wander -> chase, bow wander -> wander. The status before the shot must
+  not already be aware, or the gate measured nothing. With the pistol's noise
+  set to 0 in data the gate fails ("wander -> wander"), so it can.
+
 ### Something you can read at a distance
 
 Eight zombie archetypes shared one body and one pose. They differed by tint and

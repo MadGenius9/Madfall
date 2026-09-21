@@ -258,7 +258,8 @@ FMadAnimalSenses AMadAnimal::Sense() const
 				[VoxelWorld](const FIntVector& V) { return VoxelWorld->GetVoxel(V.X, V.Y, V.Z).IsSolid(); }, Hit);
 		}
 	}
-	Senses.bHearsPlayer = Senses.DistanceVoxels <= Definition.HearingRange && Player->IsNoisy(1.5);
+	// A gunshot carries as far as it does for a zombie: game bolts from it.
+	Senses.bHearsPlayer = MadFall::Noise::CarriesTo(Senses.DistanceVoxels, Definition.HearingRange, Player->GetNoiseLoudness());
 	return Senses;
 }
 

@@ -40,7 +40,7 @@ bool FMadViewModelTest::RunTest(const FString& Parameters)
 		++Items;
 		const EMadHeldShape Shape = ChooseShape(&Item);
 		if ((Item.Kind == EMadItemKind::Tool || Item.Kind == EMadItemKind::Weapon)
-			&& Shape != EMadHeldShape::Pickaxe && Shape != EMadHeldShape::Axe && Shape != EMadHeldShape::Shovel && Shape != EMadHeldShape::Hoe && Shape != EMadHeldShape::Bow && Shape != EMadHeldShape::Club)
+			&& Shape != EMadHeldShape::Pickaxe && Shape != EMadHeldShape::Axe && Shape != EMadHeldShape::Shovel && Shape != EMadHeldShape::Hoe && Shape != EMadHeldShape::Bow && Shape != EMadHeldShape::Club && Shape != EMadHeldShape::Gun)
 		{
 			AddError(FString::Printf(TEXT("%s is a tool drawn as a non-tool"), *Item.Id.ToString()));
 		}

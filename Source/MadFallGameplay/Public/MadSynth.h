@@ -42,6 +42,8 @@ enum class EMadSound : uint8
 	ZombieSpit,
 	/** A strained structure, per impact kind: wood creaks, metal groans, stone grinds and ticks, dirt trickles. */
 	Creak, CreakWood, CreakDirt, CreakMetal, CreakFoliage,
+	/** A firearm. Appended last so no existing sound's index or folder moves. */
+	Gunshot,
 	Num
 };
 

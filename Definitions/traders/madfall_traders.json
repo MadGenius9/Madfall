@@ -44,6 +44,14 @@
 				]
 			},
 			{
+				"item": "madfall:pistol_round",
+				"count": [
+					6,
+					18
+				],
+				"chance": 0.7
+			},
+			{
 				"item": "madfall:wooden_bow",
 				"count": 1,
 				"chance": 0.5

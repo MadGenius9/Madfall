@@ -80,6 +80,14 @@ struct MADFALLCORE_API FMadToolStats
 	/** Chance a shot that hits the world can be picked up again. */
 	float RecoverChance = 0.5f;
 
+	/**
+	 * How loud a shot is, as a multiple of a zombie's hearing range. 0 is
+	 * silent, which is what a bow is and stays. A firearm is the opposite
+	 * trade: the most damage in the game for announcing where you are to
+	 * everything within a few hundred metres.
+	 */
+	float Noise = 0.0f;
+
 	bool IsRanged() const { return !Ammo.IsNone(); }
 };
 

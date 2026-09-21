@@ -55,6 +55,34 @@ namespace MadFall
 	 * moment a unity build put two of them in one translation unit.
 	 */
 	MADFALLGAMEPLAY_API class AMadPlayerCharacter* FindLocalPlayer(const UWorld* World);
+
+	/**
+	 * How noise carries. Loudness 1 is a swing or a placed block and reaches a
+	 * listener's own hearing range; a gunshot is several times that. Pure, so
+	 * the rule zombies and animals both hear by is tested without a world.
+	 */
+	namespace Noise
+	{
+		inline constexpr double WindowSeconds = 1.5;
+
+		/** A new noise SinceLast seconds after the previous one: a quiet noise never quietens a loud one inside the window. */
+		inline float Combine(float Current, double SinceLast, float Loudness)
+		{
+			return SinceLast <= WindowSeconds ? FMath::Max(Current, Loudness) : Loudness;
+		}
+
+		/** How loud it still is SinceLast seconds after the last noise. */
+		inline float Heard(float Loudness, double SinceLast)
+		{
+			return SinceLast <= WindowSeconds ? Loudness : 0.0f;
+		}
+
+		/** Whether a listener DistanceVoxels away with this hearing range hears it. */
+		inline bool CarriesTo(float DistanceVoxels, float HearingRange, float Loudness)
+		{
+			return Loudness > 0.0f && DistanceVoxels <= HearingRange * Loudness;
+		}
+	}
 }
 
 /**
@@ -341,8 +369,24 @@ public:
 	UMadInventoryComponent* GetInventory() const { return Inventory; }
 	UMadSurvivalComponent* GetSurvival() const { return Survival; }
 
-	/** Marks a loud action (a swing, a placed block, sprinting). Zombies within hearing range react. */
-	void ReportNoise() { LastNoiseTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0; }
+	/**
+	 * The survivor made a noise. Loudness multiplies how far it carries: 1 is
+	 * a pickaxe or a footfall on wood, and a gunshot is several times that.
+	 * Within the window a quiet noise never quietens a loud one - a swing just
+	 * after a shot does not make the shot any less heard.
+	 */
+	void ReportNoise(float Loudness = 1.0f)
+	{
+		const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+		LastNoiseLoudness = MadFall::Noise::Combine(LastNoiseLoudness, Now - LastNoiseTime, Loudness);
+		LastNoiseTime = Now;
+	}
+
+	/** How loud the survivor has been within the window, or 0 if quiet. */
+	float GetNoiseLoudness() const
+	{
+		return GetWorld() ? MadFall::Noise::Heard(LastNoiseLoudness, GetWorld()->GetTimeSeconds() - LastNoiseTime) : 0.0f;
+	}
 
 	/** True if the survivor made noise within the last WindowSeconds. */
 	bool IsNoisy(double WindowSeconds) const { return GetWorld() && GetWorld()->GetTimeSeconds() - LastNoiseTime <= WindowSeconds; }
@@ -561,6 +605,7 @@ private:
 
 	float RespawnAt = -1.0f;
 	double LastNoiseTime = -1000.0;
+	float LastNoiseLoudness = 0.0f;
 
 	TArray<FMessage> Messages;
 };

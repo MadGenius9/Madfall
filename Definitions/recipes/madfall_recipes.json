@@ -1021,5 +1021,30 @@
 		"station": "madfall:workbench",
 		"craft_seconds": 6.0,
 		"required_level": 4
+	},
+	{
+		"schema": "madfall.recipe/1",
+		"id": "madfall:pistol",
+		"output": {
+			"item": "madfall:pistol",
+			"count": 1
+		},
+		"ingredients": [
+			{
+				"item": "madfall:scrap_iron",
+				"count": 16
+			},
+			{
+				"item": "madfall:wood_plank",
+				"count": 2
+			},
+			{
+				"item": "madfall:mod_reinforced_grip",
+				"count": 1
+			}
+		],
+		"station": "madfall:workbench",
+		"craft_seconds": 12.0,
+		"required_level": 12
 	}
 ]

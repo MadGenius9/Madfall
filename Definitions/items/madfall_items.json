@@ -837,5 +837,54 @@
 			"cold": 2,
 			"armor": 0.12
 		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:pistol",
+		"value": 260,
+		"extends": "madfall:base_tool",
+		"display_name": "@items.pistol",
+		"tags": [
+			"item.weapon",
+			"weapon.ranged",
+			"weapon.firearm"
+		],
+		"kind": "weapon",
+		"weight_kg": 1.1,
+		"tool": {
+			"damage": {
+				"madfall:pierce": 85.0
+			},
+			"durability": 400,
+			"use_seconds": 0.45,
+			"stamina_cost": 1.5,
+			"range": 2.0,
+			"mod_slots": 2,
+			"repair_with": [
+				{
+					"item": "madfall:scrap_iron",
+					"count": 2
+				}
+			],
+			"ranged": {
+				"ammo": "madfall:pistol_round",
+				"speed": 180.0,
+				"gravity": 0.05,
+				"recover_chance": 0.0,
+				"noise": 3.0
+			}
+		}
+	},
+	{
+		"schema": "madfall.item/1",
+		"id": "madfall:pistol_round",
+		"value": 6,
+		"display_name": "@items.pistol_round",
+		"tags": [
+			"item.ammo",
+			"ammo.bullet"
+		],
+		"max_stack": 60,
+		"weight_kg": 0.012
 	}
 ]

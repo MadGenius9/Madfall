@@ -52,7 +52,7 @@ EMadHeldShape MadFall::ViewModel::ChooseShape(const FMadItemDefinition* Item)
 	{
 		return EMadHeldShape::Block;
 	}
-	if (Item->bHasTool && Item->Tool.IsRanged())    { return EMadHeldShape::Bow; }
+	if (Item->bHasTool && Item->Tool.IsRanged())    { return Item->HasTag(FName(TEXT("weapon.firearm"))) ? EMadHeldShape::Gun : EMadHeldShape::Bow; }
 	if (Item->HasTag(FName(TEXT("tool.pickaxe")))) { return EMadHeldShape::Pickaxe; }
 	if (Item->HasTag(FName(TEXT("tool.axe"))))     { return EMadHeldShape::Axe; }
 	if (Item->HasTag(FName(TEXT("tool.shovel"))))  { return EMadHeldShape::Shovel; }
@@ -72,7 +72,8 @@ bool MadFall::ViewModel::NeedsHand(EMadHeldShape Shape)
 bool MadFall::ViewModel::ReachesTheEdge(EMadHeldShape Shape)
 {
 	return Shape == EMadHeldShape::Pickaxe || Shape == EMadHeldShape::Axe || Shape == EMadHeldShape::Shovel
-		|| Shape == EMadHeldShape::Hoe || Shape == EMadHeldShape::Bow || Shape == EMadHeldShape::Club;
+		|| Shape == EMadHeldShape::Hoe || Shape == EMadHeldShape::Bow || Shape == EMadHeldShape::Club
+		|| Shape == EMadHeldShape::Gun;
 }
 
 FTransform MadFall::ViewModel::ComputeOffset(float Swing, float Use, float BobPhase, float Moving)
@@ -325,6 +326,14 @@ void UMadViewModelComponent::Rebuild()
 		AddPart(CubeMesh, FVector(-3.0, 0.0, 34.0), FVector(2.5, 2.5, 20.0), HeldWood * 1.4f, FRotator(-15.0, 0.0, 0.0));
 		AddPart(CubeMesh, FVector(-3.0, 0.0, 6.0), FVector(2.5, 2.5, 20.0), HeldWood * 1.4f, FRotator(15.0, 0.0, 0.0));
 		AddPart(CylinderMesh, FVector(-7.0, 0.0, 20.0), FVector(0.5, 0.5, 46.0), FLinearColor(0.7f, 0.68f, 0.6f));
+		break;
+	case EMadHeldShape::Gun:
+		// No hand-built model: a grip, a slide pointing away down the sight
+		// line, and a dark muzzle. Blocky, like every held part, but nobody
+		// mistakes it for a bow - which is what it was drawn as before.
+		AddPart(CubeMesh, FVector(-2.0, 0.0, 10.0), FVector(3.5, 3.0, 11.0), HeldWood * 0.8f, FRotator(-15.0, 0.0, 0.0));
+		AddPart(CubeMesh, FVector(5.0, 0.0, 18.0), FVector(20.0, 3.2, 4.5), HeldIron * 0.7f);
+		AddPart(CylinderMesh, FVector(15.5, 0.0, 18.5), FVector(1.6, 1.6, 1.2), FLinearColor(0.01f, 0.01f, 0.01f), FRotator(90.0, 0.0, 0.0));
 		break;
 	case EMadHeldShape::Club:
 		AddPart(CylinderMesh, FVector(0.0, 0.0, 14.0), FVector(4.5, 4.5, 40.0), HeldWood);

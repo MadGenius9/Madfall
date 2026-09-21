@@ -255,7 +255,8 @@ namespace MadFall::GameplayDefinitionsJson
 				R.ReadFloat(Ranged, TEXT("speed"), TEXT("/tool/ranged/speed"), Tool.ProjectileSpeed);
 				R.ReadFloat(Ranged, TEXT("gravity"), TEXT("/tool/ranged/gravity"), Tool.ProjectileGravity);
 				R.ReadFloat(Ranged, TEXT("recover_chance"), TEXT("/tool/ranged/recover_chance"), Tool.RecoverChance);
-				R.ReportUnknownFields(Ranged, { TEXT("ammo"), TEXT("speed"), TEXT("gravity"), TEXT("recover_chance") });
+				R.ReadFloat(Ranged, TEXT("noise"), TEXT("/tool/ranged/noise"), Tool.Noise);
+				R.ReportUnknownFields(Ranged, { TEXT("ammo"), TEXT("speed"), TEXT("gravity"), TEXT("recover_chance"), TEXT("noise") });
 				if (Tool.Ammo.IsNone() || Tool.ProjectileSpeed <= 0.0f)
 				{
 					R.AddError(TEXT("/tool/ranged"), TEXT("needs \"ammo\" and a \"speed\" above 0"));

@@ -267,7 +267,8 @@ const TCHAR* MadFall::Synth::GetName(EMadSound Sound)
 		TEXT("collapse"), TEXT("pickup"), TEXT("craft_done"), TEXT("horde_horn"), TEXT("ui_click"), TEXT("bow_release"),
 		TEXT("rain_loop"), TEXT("wind_loop"), TEXT("thunder"),
 		TEXT("zombie_scream"), TEXT("zombie_spit"),
-		TEXT("creak_stone"), TEXT("creak_wood"), TEXT("creak_dirt"), TEXT("creak_metal"), TEXT("creak_foliage")
+		TEXT("creak_stone"), TEXT("creak_wood"), TEXT("creak_dirt"), TEXT("creak_metal"), TEXT("creak_foliage"),
+		TEXT("gunshot")
 	};
 	static_assert(UE_ARRAY_COUNT(Names) == static_cast<int32>(EMadSound::Num), "one name per sound");
 	const int32 Index = static_cast<int32>(Sound);
@@ -441,6 +442,25 @@ void MadFall::Synth::Generate(EMadSound Sound, uint32 Seed, TArray<int16>& OutSa
 			Tone(Buffer, 0, 0.18f, 380.0f, 140.0f, 0.05f, 0.5f);
 			AddImpact(Buffer, 0, EMadImpactKind::Foliage, 1.0f, Rng, 0.6f);
 			break;
+		case EMadSound::Gunshot:
+		{
+			// A hard broadband crack, a low chest thump under it, and a short
+			// ringing tail. Nothing in the CC0 packs is a gunshot, and noise is
+			// the one thing the synth does convincingly - a shot is mostly
+			// noise with an envelope.
+			const int32 Count = static_cast<int32>(0.6f * Fs);
+			Buffer.SetNumZeroed(Count);
+			FLowPass Body(420.0f);
+			for (int32 I = 0; I < Count; ++I)
+			{
+				const float T = static_cast<float>(I) / Fs;
+				const float Crack = Rng.Next() * Decay(T, 0.012f) * 1.6f;
+				const float Thump = Body.Process(Rng.Next()) * Decay(T, 0.07f) * 2.2f;
+				const float Tail = Rng.Next() * Decay(FMath::Max(0.0f, T - 0.02f), 0.22f) * 0.18f;
+				Buffer[I] = Crack + Thump + Tail;
+			}
+			break;
+		}
 		case EMadSound::BowRelease:
 			// The string's low twang, and the rustle of the arrow leaving.
 			Tone(Buffer, 0, 0.22f, Rng.Range(150.0f, 175.0f), 120.0f, 0.06f, 0.8f);

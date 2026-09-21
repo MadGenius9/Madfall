@@ -357,7 +357,9 @@ void AMadZombie::Sense()
 		}
 	}
 
-	if (!bAware && DistanceVoxels <= Definition.HearingRange && Player->IsNoisy(1.5))
+	// A noise carries as far as it is loud: a swing reaches a zombie's own
+	// hearing range, a gunshot several times that.
+	if (!bAware && MadFall::Noise::CarriesTo(DistanceVoxels, Definition.HearingRange, Player->GetNoiseLoudness()))
 	{
 		bAware = true;
 	}

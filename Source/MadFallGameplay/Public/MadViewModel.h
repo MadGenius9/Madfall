@@ -23,7 +23,9 @@ enum class EMadHeldShape : uint8
 	Club,
 	Food,
 	Drink,
-	Resource
+	Resource,
+	/** A firearm: a ranged weapon tagged weapon.firearm. */
+	Gun
 };
 
 namespace MadFall::ViewModel

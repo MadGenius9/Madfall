@@ -33,7 +33,8 @@ namespace MadFall::Icons
 		Can, Meat, Berries, Potato, Corn, Food,
 		Bottle, Medical, Seeds,
 		Hat, Shirt, Trousers, Boots,
-		Coin, Gear, Plank, Rock, Scrap, Cloth, Lump
+		Coin, Gear, Plank, Rock, Scrap, Cloth, Lump,
+		Pistol, Bullet
 	};
 
 	/** Which picture an item gets, from its kind, tags and id. */

@@ -293,6 +293,20 @@ namespace
 			}
 			P.Line(10.5f, 3.0f, 10.5f, 29.0f, 0.8f, FColor(220, 214, 196));
 			break;
+		case EShape::Pistol:
+			P.Rect(6, 9, 27, 14, FColor(70, 72, 76));
+			P.Rect(6, 9, 27, 10, FColor(110, 112, 118));
+			P.Poly({ { 8.0f, 14.0f }, { 14.0f, 14.0f }, { 12.0f, 26.0f }, { 5.0f, 25.0f } }, FColor(92, 62, 40));
+			P.Line(15.0f, 14.0f, 17.0f, 18.0f, 1.2f, FColor(70, 72, 76));
+			break;
+		case EShape::Bullet:
+			for (int32 Round = 0; Round < 3; ++Round)
+			{
+				const int32 X = 8 + Round * 6;
+				P.Rect(X, 14, X + 4, 27, FColor(196, 156, 70));
+				P.Ellipse(X + 2.0f, 13.0f, 2.0f, 3.5f, FColor(170, 110, 70));
+			}
+			break;
 		case EShape::Arrow:
 			P.Line(6.0f, 26.0f, 24.0f, 8.0f, 1.5f, FColor(190, 150, 100));
 			P.Poly({ { 22.0f, 6.0f }, { 29.0f, 3.0f }, { 26.0f, 10.0f } }, Iron);
@@ -484,8 +498,8 @@ EShape MadFall::Icons::ChooseShape(const FMadItemDefinition& Item)
 	if (Tag(TEXT("tool.axe"))) { return EShape::Axe; }
 	if (Tag(TEXT("tool.shovel"))) { return EShape::Shovel; }
 	if (Tag(TEXT("tool.hoe"))) { return EShape::Hoe; }
-	if (Item.bHasTool && Item.Tool.IsRanged()) { return EShape::Bow; }
-	if (Tag(TEXT("item.ammo"))) { return EShape::Arrow; }
+	if (Item.bHasTool && Item.Tool.IsRanged()) { return Tag(TEXT("weapon.firearm")) ? EShape::Pistol : EShape::Bow; }
+	if (Tag(TEXT("item.ammo"))) { return Tag(TEXT("ammo.bullet")) ? EShape::Bullet : EShape::Arrow; }
 	if (Item.bHasTool || Item.Kind == EMadItemKind::Tool || Item.Kind == EMadItemKind::Weapon)
 	{
 		const float* Pierce = Item.Tool.Damage.Find(FName(TEXT("madfall:pierce")));

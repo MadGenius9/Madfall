@@ -1450,12 +1450,18 @@ bool AMadPlayerCharacter::FireRanged(const FMadItemDefinition& Weapon, double No
 		Tool.Ammo, Tool.RecoverChance);
 	verify(Items.Remove(Tool.Ammo, 1));
 
-	// A bow is quiet: unlike a swing, a shot is not a noise zombies or deer hear.
+	// A bow is quiet - a shot from one is not a noise anything hears. A gun
+	// is the opposite, and that is the whole trade: Tool.Noise carries the
+	// shot to every zombie within that many times its hearing range.
 	Survival->NoteExertion(0.3f);
 	ViewModel->PlayUse();
+	if (Tool.Noise > 0.0f)
+	{
+		ReportNoise(Tool.Noise);
+	}
 	if (UMadAudioSubsystem* Audio = GetWorld()->GetSubsystem<UMadAudioSubsystem>())
 	{
-		Audio->PlayAt(EMadSound::BowRelease, Start, 0.7f);
+		Audio->PlayAt(Tool.Noise > 0.0f ? EMadSound::Gunshot : EMadSound::BowRelease, Start, Tool.Noise > 0.0f ? 1.0f : 0.7f);
 	}
 
 	if (Held.Durability >= 0)
