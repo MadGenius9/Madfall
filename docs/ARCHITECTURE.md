@@ -3039,14 +3039,18 @@ there are textures and meshes to work with. What is there instead:
 
 ### Known gaps after Phase 1
 
-1. **No world generator.** A chunk with nothing on disk loads as empty air
+1. ~~**No world generator.**~~ Resolved in Phase 3 (`MadWorldGenerator`; see
+   "Phase 3 delivered"). History: a chunk with nothing on disk loaded as empty air
    rather than terrain. That is Phase 3. `mad.debug.fillterrain` writes a
    sine-based heightfield into a loaded chunk as a mesher test fixture — it is
    explicitly not a generator, and it stays useful for reproducing meshing bugs
    in isolation after Phase 3 exists.
-2. **No write-ahead journal, no region compaction, no backups.** See
-   [Durability](#durability).
-3. **The 2 ms game-thread budget is unmeasured.** Edits are O(1) plus at most
+2. ~~**No write-ahead journal, no region compaction, no backups.**~~ All three
+   exist - see [Durability](#durability); tested by
+   `MadFall.Core.Serialization.RegionDurability` and `MadFall.Session.Backups`.
+3. ~~**The 2 ms game-thread budget is unmeasured.**~~ Measured in Phase 2 (see
+   "Known gaps after Phase 2", item 3) and enforced by the CI frame-budget gate.
+   History: edits are O(1) plus at most
    one 32 KiB side-array allocation, and chunk loads have an async path, but no
    Unreal Insights trace has been captured. That measurement belongs with
    Phase 2, when there is meshing work to profile alongside it.
@@ -3672,7 +3676,8 @@ journal, after it and half way through the in-place index, plants a torn
 journal, damages an index with no journal, and compacts a region, checking
 every chunk each time.
 
-**Not yet implemented:**
+**Backups** (this list was headed "Not yet implemented" when written; the
+backups below are implemented and tested):
 
 - **Backups.** A plain copy of world.json, gameplay.json and regions/ into
   `<world>/backups/<UTC timestamp>/`, made as the world opens for play and
