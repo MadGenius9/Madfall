@@ -27,9 +27,26 @@ namespace
 	FCriticalSection GSessionLock;
 }
 
+FString MadFall::Session::ChooseWorldsRoot(bool bPackaged, const FString& Override, const FString& ProjectSavedDir, const FString& UserDir)
+{
+	if (!Override.IsEmpty())
+	{
+		return FPaths::ConvertRelativePathToFull(Override);
+	}
+	if (bPackaged)
+	{
+		return FPaths::ConvertRelativePathToFull(FPaths::Combine(UserDir, TEXT("MadFall"), TEXT("Worlds")));
+	}
+	return FPaths::ConvertRelativePathToFull(FPaths::Combine(ProjectSavedDir, TEXT("MadFallWorlds")));
+}
+
 FString MadFall::Session::GetWorldsRoot()
 {
-	return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("MadFallWorlds")));
+	FString Override;
+	FParse::Value(FCommandLine::Get(), TEXT("MadWorldsDir="), Override);
+	// A cooked build is what a player runs; the editor, -game from the editor
+	// binaries and automation all run uncooked.
+	return ChooseWorldsRoot(FPlatformProperties::RequiresCookedData(), Override, FPaths::ProjectSavedDir(), FPlatformProcess::UserSettingsDir());
 }
 
 bool MadFall::Session::IsValidWorldName(const FString& Name)

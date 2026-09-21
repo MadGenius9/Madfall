@@ -83,7 +83,10 @@ uint64 FMadWorldGenSettings::GetGenerationVersion() const
 	// 8: iron outcrops on the upper slopes of the highlands (a second, richer
 	//    band from z 61 up), so a mountain is worth climbing rather than only
 	//    worth looking at.
-	Mix(8u);
+	// 9: trees and bushes anchored - the ground under each trunk and bush, and
+	//    round it, is made fully solid so the smooth surface meets the cube's
+	//    underside instead of dipping up to half a voxel below it.
+	Mix(9u);
 
 	return (static_cast<uint64>(Hash) << 32) | MadFall::Noise::HashInt(Hash);
 }
@@ -702,6 +705,37 @@ void FMadWorldGenerator::GenerateScatter(const FMadChunkCoord& Coord, const floa
 		Storage.SetVoxel(Index, Voxel);
 	};
 
+	// Cubes planted on smooth ground float. The surface crosses between a
+	// ground voxel's centre and the cube's at the density threshold, so it
+	// meets the cube's underside only when the ground voxel is full; the top
+	// voxel of a slope is often barely over half, and the surface then passes
+	// up to half a voxel under the trunk or bush. Filling the voxel under the
+	// base and its eight neighbours flattens a footprint the cube stands on.
+	// Neighbours that are air (the downhill side) stay air, so the ground still
+	// falls away from the trunk rather than growing a pedestal.
+	auto AnchorFootprint = [&](const FIntVector& Ground)
+	{
+		for (int32 DY = -1; DY <= 1; ++DY)
+		{
+			for (int32 DX = -1; DX <= 1; ++DX)
+			{
+				const int32 LX = Ground.X + DX - BaseX, LY = Ground.Y + DY - BaseY, LZ = Ground.Z - BaseZ;
+				if (LX < 0 || LX >= ChunkSize || LY < 0 || LY >= ChunkSize || LZ < 0 || LZ >= ChunkSize)
+				{
+					continue;
+				}
+				const int32 Index = MadFall::VoxelIndex(LX, LY, LZ);
+				FMadVoxel Voxel = Storage.GetVoxel(Index);
+				if (!Voxel.IsSolid() || Voxel.HasFlag(EMadVoxelFlags::Cubic) || Voxel.HasFlag(EMadVoxelFlags::Liquid))
+				{
+					continue;
+				}
+				Voxel.Density = 255;
+				Storage.SetVoxel(Index, Voxel);
+			}
+		}
+	};
+
 	TArray<FMadBiomeSample> Samples;
 	TArray<FIntVector> Trunk;
 	TArray<FIntVector> Leaves;
@@ -788,8 +822,34 @@ void FMadWorldGenerator::GenerateScatter(const FMadChunkCoord& Coord, const floa
 				MadFall::Scatter::BuildTree(Random.NextUInt(), Height, Radius, LeavesBlock != MadFall::BlockTypeAir, Trunk, Leaves,
 					Palette.ScatterLeafSpans[FeatureIndex]);
 
+				// Every column the trunk rises from stands on anchored ground.
+				int32 LowestTrunk = MAX_int32;
+				for (const FIntVector& Offset : Trunk)
+				{
+					LowestTrunk = FMath::Min(LowestTrunk, Offset.Z);
+				}
+				for (const FIntVector& Offset : Trunk)
+				{
+					if (Offset.Z == LowestTrunk)
+					{
+						// Where the trunk becomes visible, not where it was rooted:
+						// a warped bump of hillside can fill the trunk's first voxel,
+						// and the trunk then shows from the voxel above it. The
+						// ground top comes from the terrain function, not this
+						// chunk's storage, so neighbouring chunks agree on it.
+						const FIntVector Column = Root + FIntVector(Offset.X, Offset.Y, 0);
+						const int32 Ground = FindTerrainTopBelow(Column.X, Column.Y, Root.Z + Height, Height + WarpSlack * 2);
+						AnchorFootprint(FIntVector(Column.X, Column.Y, Root.Z + Offset.Z - 1));
+						if (Ground != INDEX_NONE && Ground > Root.Z + Offset.Z - 1)
+						{
+							AnchorFootprint(FIntVector(Column.X, Column.Y, Ground));
+						}
+					}
+				}
+
 				// Trunk over leaves, leaves only into air: two crowns that meet
 				// merge, and a trunk is never interrupted by a neighbour's canopy.
+				TMap<FIntPoint, int32> LowestWritten;
 				for (const FIntVector& Offset : Trunk)
 				{
 					const FIntVector World = Root + Offset;
@@ -801,8 +861,17 @@ void FMadWorldGenerator::GenerateScatter(const FMadChunkCoord& Coord, const floa
 						if (bFree)
 						{
 							WriteVoxel(World, Block, true, 255, false);
+							int32& Lowest = LowestWritten.FindOrAdd(FIntPoint(World.X, World.Y), World.Z);
+							Lowest = FMath::Min(Lowest, World.Z);
 						}
 					}
+				}
+				// And under whatever the trunk actually ended up standing on in
+				// this chunk: a neighbouring boulder can have put a soft edge of
+				// stone where the trunk's first voxel was meant to go.
+				for (const TPair<FIntPoint, int32>& Base : LowestWritten)
+				{
+					AnchorFootprint(FIntVector(Base.Key.X, Base.Key.Y, Base.Value - 1));
 				}
 				for (const FIntVector& Offset : Leaves)
 				{
@@ -845,6 +914,7 @@ void FMadWorldGenerator::GenerateScatter(const FMadChunkCoord& Coord, const floa
 			}
 			case EMadScatterKind::Plant:
 			default:
+				AnchorFootprint(Root);
 				WriteVoxel(Root + FIntVector(0, 0, 1), Block, true, 255, true);
 				break;
 			}

@@ -2675,7 +2675,10 @@ else {
 
         $packagedExe = Join-Path $packageOut 'Windows\MadFall.exe'
         $packagedLog = Join-Path $LogDir 'packaged-run.log'
-        $packagedWorld = Join-Path $packageOut 'Windows\MadFall\Saved\MadFallWorlds'
+        # Its own worlds folder, passed explicitly: a packaged game otherwise
+        # saves to the player's %LOCALAPPDATA%\MadFall\Worlds, and CI must never
+        # create or delete anything there.
+        $packagedWorld = Join-Path $packageOut 'CIWorlds'
         if (Test-Path $packagedWorld) { Remove-Item -Recurse -Force $packagedWorld }
 
         $probe = @(
@@ -2686,7 +2689,7 @@ else {
             'quit'
         ) -join '; '
         $packagedProcess = Start-Process -FilePath $packagedExe -PassThru -NoNewWindow -RedirectStandardOutput $packagedLog `
-            -ArgumentList @('-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes', "-ExecCmds=`"mad.onspawn $probe`"")
+            -ArgumentList @('-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes', "-MadWorldsDir=`"$packagedWorld`"", "-ExecCmds=`"mad.onspawn $probe`"")
 
         if (-not $packagedProcess.WaitForExit(240000)) {
             $packagedProcess | Stop-Process -Force

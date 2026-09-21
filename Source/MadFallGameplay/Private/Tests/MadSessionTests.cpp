@@ -23,6 +23,19 @@ bool FMadSessionWorldsTest::RunTest(const FString& Parameters)
 {
 	using namespace MadFall::Session;
 
+	// --- where worlds live ---
+	// A packaged game's worlds are the player's, not the build's: rebuilding the
+	// folder a game was played from deleted a player's first world.
+	{
+		const FString Packaged = ChooseWorldsRoot(true, FString(), TEXT("C:/Game/MadFall/Saved/"), TEXT("C:/Users/P/AppData/Local/"));
+		TestTrue(TEXT("a packaged game saves in the player's folder"), Packaged.StartsWith(TEXT("C:/Users/P/AppData/Local/MadFall")));
+		TestFalse(TEXT("and not beside the executable"), Packaged.StartsWith(TEXT("C:/Game")));
+		TestTrue(TEXT("the editor keeps the project's Saved folder"),
+			ChooseWorldsRoot(false, FString(), TEXT("C:/Project/Saved/"), TEXT("C:/Users/P/AppData/Local/")).StartsWith(TEXT("C:/Project/Saved/MadFallWorlds")));
+		TestEqual(TEXT("-MadWorldsDir wins, so CI never touches a player's worlds"),
+			ChooseWorldsRoot(true, TEXT("C:/CI/Worlds"), TEXT("C:/Game/Saved/"), TEXT("C:/Users/P/AppData/Local/")), FString(TEXT("C:/CI/Worlds")));
+	}
+
 	// --- names and seeds ---
 	TestEqual(TEXT("spaces become underscores"), MakeWorldName(TEXT("  My First  World ")), FString(TEXT("My_First_World")));
 	TestEqual(TEXT("unsafe characters dropped"), MakeWorldName(TEXT("../..\\evil:world")), FString(TEXT("evilworld")));

@@ -75,7 +75,11 @@ SOUNDS = {
     "break_foliage": [RPG + "chop.ogg", RPG + "knifeSlice.ogg", RPG + "knifeSlice2.ogg"],
     "step_stone": numbered(IMPACT + "footstep_concrete_"),
     "step_wood": numbered(IMPACT + "footstep_wood_"),
-    "step_dirt": ["{}footstep{:02d}.ogg".format(RPG, i) for i in range(10)],
+    # Grass, dirt, sand and gravel all step as "dirt". This was the RPG pack's
+    # footsteps - a hard sole on an indoor floor - and in play it sounded like
+    # "someone running in an empty hallway" on open grassland. The impact pack's
+    # grass steps are soft outdoor footfalls.
+    "step_dirt": numbered(IMPACT + "footstep_grass_"),
     "step_metal": numbered(IMPACT + "impactPlate_light_"),
     "step_foliage": numbered(IMPACT + "footstep_grass_"),
     "place": numbered(IMPACT + "impactPlank_medium_"),

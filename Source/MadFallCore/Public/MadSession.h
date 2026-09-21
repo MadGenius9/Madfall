@@ -47,7 +47,18 @@ namespace MadFall::Session
 	inline const TCHAR* TitleWorldName = TEXT("_Title");
 	inline constexpr int64 TitleWorldSeed = 20260913;
 
+	/**
+	 * Where worlds are saved. A packaged game keeps them in the player's own
+	 * folder (%LOCALAPPDATA%\MadFall\Worlds), not beside the executable: a
+	 * player's first world was lost when the game folder it was played from
+	 * was rebuilt, because the saves lived inside it. The editor and tests keep
+	 * using the project's Saved folder. -MadWorldsDir= overrides both, which is
+	 * how CI runs a packaged build without touching anyone's real worlds.
+	 */
 	MADFALLCORE_API FString GetWorldsRoot();
+
+	/** The rule GetWorldsRoot applies, as a pure function so it can be tested. */
+	MADFALLCORE_API FString ChooseWorldsRoot(bool bPackaged, const FString& Override, const FString& ProjectSavedDir, const FString& UserDir);
 
 	/** Letters, digits, - and _, 1-64 characters, not starting with '_' (reserved). */
 	MADFALLCORE_API bool IsValidWorldName(const FString& Name);

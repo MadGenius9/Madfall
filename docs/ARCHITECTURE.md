@@ -3747,6 +3747,40 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### First playtest: floating trees, hallway footsteps, a lost world
+
+The first session played by someone other than the author, 2026-09-21. Its
+log had no errors; what it found, it found by eye and ear.
+
+- **Trees and bushes floated.** Scatter places cube blocks on smooth terrain,
+  and the smooth surface crosses between a ground voxel's centre and the
+  cube's at the density threshold - so it meets the cube's underside only when
+  the ground voxel is full. The top voxel of a slope is often just over half,
+  and the surface then ran up to half a voxel under the trunk or bush: a field
+  of bushes hanging in the air. The generator now fills the voxel under every
+  trunk column and bush and its eight neighbours (air neighbours stay air, so
+  the ground still falls away downhill), under the trunk's intended base, the
+  terrain function's ground top, and whatever voxel the trunk actually ended up
+  on - the last because a neighbouring boulder's soft edge had taken a trunk's
+  first voxel. `MadFall.WorldGen.Scatter` fails if any trunk or bush stands on
+  a ground voxel below 255, and names it with its column. Generator revision
+  9: explored land keeps its shape; new land is anchored. Photographed on the
+  playtest seed before (bushes hovering over the field) and after (flush,
+  shadow underneath, at 4x magnification).
+- **"Like someone running in an empty hallway."** Grass, dirt, sand and gravel
+  all step as "dirt", and dirt's footsteps were the RPG pack's - a hard sole on
+  an indoor floor. They are the impact pack's grass footsteps now. The import
+  also left the old recordings 06-10 in place (its delete failed silently), so
+  half the steps would have kept the hallway; `import_audio.py` now reports
+  stale recordings as an error, and `MADFALL_SOUNDS=` limits an import.
+- **The world was lost - by us.** The packaged game saved worlds inside its
+  own folder, and the player was pointed at the CI package, which the CI
+  packaging gate deletes and rebuilds. A packaged game now saves to
+  `%LOCALAPPDATA%\MadFall\Worlds` (`MadFall::Session::ChooseWorldsRoot`,
+  tested in `MadFall.Session.Worlds`), and CI's packaged run passes
+  `-MadWorldsDir=` into its own folder so it can never create or delete a
+  player's worlds. The editor and tests keep the project's Saved folder.
+
 ### Something lives in the desert and on the beach
 
 The desert had the fox, which lives everywhere, and the beach had nothing at

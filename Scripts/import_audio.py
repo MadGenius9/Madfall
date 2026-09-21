@@ -27,9 +27,12 @@ def main():
 
     imported = 0
     failures = 0
+    # MADFALL_SOUNDS=step_dirt,step_foliage reimports just those (and no music):
+    # a full import rewrites every .uasset even where nothing changed.
+    only = [s.strip() for s in os.environ.get("MADFALL_SOUNDS", "").split(",") if s.strip()]
     for sound in sorted(os.listdir(SOURCE)):
         folder = os.path.join(SOURCE, sound)
-        if not os.path.isdir(folder):
+        if not os.path.isdir(folder) or (only and sound not in only):
             continue
         destination = "{}/{}".format(DEST, sound)
         if library.does_directory_exist(destination):
@@ -56,12 +59,20 @@ def main():
             wave.set_editor_property("looping", sound in LOOPS)
             library.save_asset("{}/{}".format(destination, name), only_if_is_dirty=False)
             imported += 1
+        # The delete above can fail silently (a loaded asset): when step_dirt
+        # went from ten recordings to five, the old 06-10 survived and half the
+        # footsteps kept the sound being replaced. Say so rather than ship it.
+        wavs = {"SW_" + os.path.splitext(f)[0] for f in os.listdir(folder) if f.lower().endswith(".wav")}
+        stale = [a for a in library.list_assets(destination, recursive=False) if a.split(".")[-1] not in wavs]
+        if stale:
+            unreal.log_error("[MadFall] {}: stale recording(s) left behind, delete them: {}".format(sound, stale))
+            failures += len(stale)
         unreal.log("[MadFall] {}: {} recording(s)".format(sound, len(library.list_assets(destination, recursive=False))))
 
     # Music: /Game/Music/SW_Music_<track>, played by UMadMusicSubsystem. Only the
     # horde track loops; day and night tracks play through and leave a silence.
     music_source = os.path.join(PROJECT, "SourceArt", "audio", "prepared_music")
-    if os.path.isdir(music_source):
+    if os.path.isdir(music_source) and not only:
         for file_name in sorted(os.listdir(music_source)):
             if not file_name.lower().endswith(".wav"):
                 continue

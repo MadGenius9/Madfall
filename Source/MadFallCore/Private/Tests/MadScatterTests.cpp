@@ -219,7 +219,7 @@ bool FMadScatterGenerationTest::RunTest(const FString& Parameters)
 	// Every tree voxel in the centre chunk, and the grounded trunk voxels anywhere.
 	TArray<FIntVector> CentreTree;
 	TArray<FIntVector> Grounded;
-	int32 Logs = 0, LeafCount = 0, Bushes = 0, NonCubic = 0;
+	int32 Logs = 0, LeafCount = 0, Bushes = 0, NonCubic = 0, Perched = 0;
 	for (const TPair<FMadChunkCoord, FMadChunkStorage>& Pair : Chunks)
 	{
 		for (int32 Z = 0; Z < MadFall::ChunkSize; ++Z)
@@ -247,6 +247,12 @@ bool FMadScatterGenerationTest::RunTest(const FString& Parameters)
 						{
 							AddError(FString::Printf(TEXT("berry bush at %s is not standing on terrain"), *World.ToString()));
 						}
+						else if (bKnown && Below.Density < 255)
+						{
+							// A partly full ground voxel puts the smooth surface below
+							// the cube: the bush floats (seen in play, 2026-09-21).
+							++Perched;
+						}
 						continue;
 					}
 
@@ -263,6 +269,18 @@ bool FMadScatterGenerationTest::RunTest(const FString& Parameters)
 					if (Below.IsSolid() && !Below.HasFlag(EMadVoxelFlags::Cubic))
 					{
 						Grounded.Add(World);
+						if (Voxel.BlockTypeID == Log && Below.Density < 255)
+						{
+							++Perched;
+							FString Column;
+							for (int32 CZ = World.Z - 5; CZ <= World.Z + 2; ++CZ)
+							{
+								bool bK = false;
+								const FMadVoxel V = GetVoxel(FIntVector(World.X, World.Y, CZ), bK);
+								Column += FString::Printf(TEXT(" z%d:%s/%d%s"), CZ, *Blocks.GetStringId(V.BlockTypeID).ToString(), V.Density, V.HasFlag(EMadVoxelFlags::Cubic) ? TEXT("c") : TEXT(""));
+							}
+							AddWarning(FString::Printf(TEXT("log at %s stands on density %d:%s"), *World.ToString(), Below.Density, *Column));
+						}
 					}
 				}
 			}
@@ -273,6 +291,7 @@ bool FMadScatterGenerationTest::RunTest(const FString& Parameters)
 		ForestColumn.X, ForestColumn.Y, *Centre.ToString(), Logs, LeafCount, Bushes));
 	TestTrue(TEXT("a forest grows trees"), Logs > 20 && LeafCount > 100);
 	TestEqual(TEXT("scattered trees and plants are construction-style (cubic) voxels"), NonCubic, 0);
+	TestEqual(TEXT("every trunk and bush stands on a full ground voxel, so the surface meets it"), Perched, 0);
 
 	// Connectivity across chunk borders: flood from grounded trunks through
 	// logs and leaves in all 27 chunks. A tree cut off at a border - its canopy
