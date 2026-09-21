@@ -221,6 +221,8 @@ bool UMadHumanoidRigComponent::BuildSkeletal()
 		}
 	}
 	Skeletal = Body;
+	// A silhouette set before the body existed still applies to it.
+	Skeletal->SetRelativeScale3D(BodyBuild);
 	ApplyTint(0.0f);
 	return true;
 }
@@ -238,6 +240,17 @@ void UMadHumanoidRigComponent::SetLiving(bool bInLiving)
 {
 	bLiving = bInLiving;
 	ApplyTint(HitFlash > 0.0f ? 1.0f : 0.0f);
+}
+
+void UMadHumanoidRigComponent::SetSilhouette(const FVector& InBuild, float InLeanDegrees, float InReach)
+{
+	BodyBuild = InBuild.ComponentMax(FVector(0.5)).ComponentMin(FVector(2.0));
+	LeanDegrees = FMath::Clamp(InLeanDegrees, -30.0f, 60.0f);
+	Reach = FMath::Clamp(InReach, 0.0f, 1.0f);
+	if (Skeletal != nullptr)
+	{
+		Skeletal->SetRelativeScale3D(BodyBuild);
+	}
 }
 
 void UMadHumanoidRigComponent::SetSeed(int32 InSeed)
@@ -349,6 +362,8 @@ void UMadHumanoidRigComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 			Anim->Inputs.SinceHit = SinceHit;
 			Anim->Inputs.SinceDeath = SinceDeath;
 			Anim->Inputs.bZombie = !bLiving;
+			Anim->Inputs.LeanDegrees = LeanDegrees;
+			Anim->Inputs.ReachAmount = Reach;
 		}
 		return;
 	}

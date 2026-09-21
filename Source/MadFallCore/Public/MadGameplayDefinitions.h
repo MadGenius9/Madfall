@@ -313,6 +313,11 @@ struct MADFALLCORE_API FMadZombieDefinition
 	 */
 	TArray<FName> Biomes;
 
+	/** Body build (width, depth, height), chest lean in degrees and arm reach 0..1. See UMadHumanoidRigComponent::SetSilhouette. */
+	FVector Build = FVector::OneVector;
+	float Lean = 12.0f;
+	float Reach = 0.9f;
+
 	float Health = 100.0f;
 
 	/** Metres per second. */

@@ -79,6 +79,14 @@ public:
 	/** Varies blotches and stains between characters. */
 	void SetSeed(int32 InSeed);
 
+	/**
+	 * The body's build and posture. Build scales the drawn body only - width,
+	 * depth, height - never the actor or its capsule, so a broad brute still
+	 * fits through the doorway its collision says it does, and pathing does not
+	 * change. Lean is the chest pitch in degrees, Reach how far the arms go.
+	 */
+	void SetSilhouette(const FVector& InBuild, float InLeanDegrees, float InReach);
+
 	/** A swing of both arms (an attack on the player or a block). */
 	void PlayAttack();
 
@@ -124,6 +132,11 @@ private:
 	/** The mannequin, when drawn instead of the boxes. */
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> Skeletal;
+
+	/** See SetSilhouette. Not "Build": that is the method that builds the rig. */
+	FVector BodyBuild = FVector::OneVector;
+	float LeanDegrees = 12.0f;
+	float Reach = 0.9f;
 
 	/** One per part (size and part differ), parallel to PartKinds. */
 	UPROPERTY(Transient)

@@ -550,7 +550,23 @@ namespace MadFall::GameplayDefinitionsJson
 					R.AddError(TEXT("/appearance/tint"), TEXT("expected [r, g, b] with numbers from 0 to 1"));
 				}
 			}
-			R.ReportUnknownFields(S, { TEXT("scale"), TEXT("tint") });
+
+			TArray<TSharedPtr<FJsonValue>> BuildValues;
+			if (R.ReadArray(S, TEXT("build"), TEXT("/appearance/build"), BuildValues))
+			{
+				if (BuildValues.Num() == 3 && BuildValues[0]->Type == EJson::Number
+					&& BuildValues[1]->Type == EJson::Number && BuildValues[2]->Type == EJson::Number)
+				{
+					Data.Build = FVector(BuildValues[0]->AsNumber(), BuildValues[1]->AsNumber(), BuildValues[2]->AsNumber());
+				}
+				else
+				{
+					R.AddError(TEXT("/appearance/build"), TEXT("expected [width, depth, height] as numbers"));
+				}
+			}
+			R.ReadFloat(S, TEXT("lean"), TEXT("/appearance/lean"), Data.Lean);
+			R.ReadFloat(S, TEXT("reach"), TEXT("/appearance/reach"), Data.Reach);
+			R.ReportUnknownFields(S, { TEXT("scale"), TEXT("tint"), TEXT("build"), TEXT("lean"), TEXT("reach") });
 		}
 
 		R.ReportUnknownFields(Object, { TEXT("schema"), TEXT("id"), TEXT("display_name"), TEXT("tags"), TEXT("spawn_groups"),

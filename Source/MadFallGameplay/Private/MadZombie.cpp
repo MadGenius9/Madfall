@@ -242,6 +242,7 @@ void AMadZombie::InitialiseFromDefinition(const FMadZombieDefinition& InDefiniti
 		Body->SetColours(Definition.Tint, Shirts[Hash % UE_ARRAY_COUNT(Shirts)], Trousers[(Hash >> 8) % UE_ARRAY_COUNT(Trousers)],
 			Hair[(Hash >> 16) % UE_ARRAY_COUNT(Hair)]);
 		Body->SetSeed(static_cast<int32>(Hash & 0x7FFFFFFF));
+		Body->SetSilhouette(Definition.Build, Definition.Lean, Definition.Reach);
 	}
 	GetCharacterMovement()->MaxWalkSpeed = (bHorde ? Definition.RunSpeed : Definition.WalkSpeed) * 100.0f;
 }

@@ -2294,10 +2294,19 @@ Console (used by the survival gate): `mad.player.store <item>`,
 3. **Two worlds initialise in `-game`** (the startup world, then the map), so
    world subsystems log their startup twice. Harmless - the first is torn down
    before play - but it doubles registry-independent startup work.
-4. **Placeholder presentation.** The HUD is canvas drawing (scaled to the
-   window, see "The HUD is laid out for the window") and surfaces are flat
-   vertex colours on one placeholder material (the Phase 2 grey-surface bug is
-   fixed). Sound is synthesised (see "Sound" below) rather than recorded. Zombies were tinted cylinders; they are now
+4. **Placeholder presentation - LARGELY FIXED; read this first.** This item
+   opens with how the game used to look, and three separate summaries of the
+   project repeated that opening as current. As of now: humanoids are the UE5
+   mannequin with full animation sets (`mad.characters.Skeletal`, default 1),
+   the four animals are skeletal models, surfaces are PBR texture sets
+   (51 assets under `Content/Surfaces`), and 31 of 36 sounds are CC0
+   recordings. What is still procedural is the HUD (canvas drawing), item
+   icons (painted from item data) and five deliberate synthesised sounds.
+   Everything below is history.
+
+   Originally: the HUD was canvas drawing (scaled to the window, see "The HUD
+   is laid out for the window") and surfaces were flat vertex colours on one
+   placeholder material. Sound was synthesised. Zombies were tinted cylinders; they are now
    `UMadHumanoidRigComponent` figures - six boxes on hip, shoulder and neck
    joints, posed in code each frame (`MadFall::Humanoid::ComputePose`,
    `MadFall.AI.HumanoidPose`): a shamble with arms reaching forward scaled by
@@ -3723,6 +3732,45 @@ rather than the bare word, so UBT progress chatter does not trip it.
 run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
+
+### Something you can read at a distance
+
+Eight zombie archetypes shared one body and one pose. They differed by tint and
+by overall size, so a brute was a taller copy of everybody else, and none of
+them could be told apart at the range where knowing what is coming actually
+helps - which is the only reason to have archetypes at all.
+
+Each now carries a silhouette in its `appearance`: `build` (width, depth,
+height), `lean` (chest pitch in degrees) and `reach` (how far the arms go,
+0..1). The brute is broad, deep and squat, hunched like an ape with its arms
+hanging; the soldier stands upright with its arms at its sides; the spitter is
+bent double over its own gut; the screamer is gaunt and tall with its head
+thrown back and its arms flung wide; the climber is long and thin, crouched
+low, reaching as far as it can; the husk is narrow and stooped; the
+frostbitten stands square and bolt upright.
+
+- **Build scales the drawn body, never the capsule.** A broad brute still fits
+  through the doorway its collision says it does, and pathing, attack reach
+  and the moat rule do not change. `UMadHumanoidRigComponent::SetSilhouette`
+  applies it to the mannequin mesh alone.
+- **Lean and reach were decoupled.** They were one number: the lean was scaled
+  by the reach weight, so a zombie that did not reach did not stoop either,
+  which ruled out exactly the upright-arms-down soldier and the
+  hunched-arms-hanging brute. They are separate inputs to the anim instance
+  now, fed per character each frame.
+- **Looked at, not just asserted.** All eight spawned in a line and
+  photographed, then photographed again with the silhouettes removed from the
+  data: before, eight copies of one forward shamble at one arm height; after,
+  a broad hunched brute, a screamer with its arms thrown wide, a spitter bent
+  over and a climber crouched low. The comparison is what makes the claim -
+  without the before shot the after one could have been wishful reading.
+- `MadFall.Items.ShippedContent` fails if any two first-party archetypes come
+  within 0.2 of each other across build, lean and reach together. Verified by
+  giving the husk the civilian's exact silhouette: "madfall:zombie_civilian and
+  madfall:zombie_husk have different silhouettes (0.00)". Mod zombies are
+  exempt - they may look like whatever they like.
+- One collision worth recording: the field was first called `Build`, which is
+  already the name of the method that builds the rig. It is `BodyBuild`.
 
 ### The dead belong somewhere
 

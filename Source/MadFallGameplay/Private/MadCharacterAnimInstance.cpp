@@ -293,15 +293,22 @@ bool FMadCharacterAnimProxy::Evaluate(FPoseContext& Output)
 
 	// The shamble: arms held out in front and the chest pitched forward, fading
 	// out as the body falls.
-	const float ReachWeight = Inputs.bZombie ? (1.0f - DeathWeight) * 0.9f : 0.0f;
-	if (ReachWeight > 0.0f)
+	const float ReachWeight = Inputs.bZombie ? (1.0f - DeathWeight) * FMath::Clamp(Inputs.ReachAmount, 0.0f, 1.0f) : 0.0f;
+	const float PostureWeight = Inputs.bZombie ? (1.0f - DeathWeight) : 0.0f;
+	// Posture and reach are separate on purpose: a soldier stands upright with
+	// its arms down, a climber crouches low with them out. Tying the lean to
+	// the reach, as it was, meant a zombie that did not reach did not stoop.
+	if (PostureWeight > 0.0f)
 	{
 		FCSPose<FCompactPose> ComponentPose;
 		ComponentPose.InitPose(Output.Pose);
-		const FVector Target = MadFall::CharacterAnim::ArmReachDirection(Inputs.Attack);
-		ReachArm(Output.Pose, ComponentPose, TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), Target, ReachWeight);
-		ReachArm(Output.Pose, ComponentPose, TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), Target, ReachWeight);
-		LeanBone(Output.Pose, ComponentPose, TEXT("spine_03"), ZombieLeanDegrees * ReachWeight);
+		if (ReachWeight > 0.0f)
+		{
+			const FVector Target = MadFall::CharacterAnim::ArmReachDirection(Inputs.Attack);
+			ReachArm(Output.Pose, ComponentPose, TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), Target, ReachWeight);
+			ReachArm(Output.Pose, ComponentPose, TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), Target, ReachWeight);
+		}
+		LeanBone(Output.Pose, ComponentPose, TEXT("spine_03"), Inputs.LeanDegrees * PostureWeight);
 	}
 	return true;
 }

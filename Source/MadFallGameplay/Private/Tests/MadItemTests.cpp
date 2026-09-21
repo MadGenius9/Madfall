@@ -413,6 +413,46 @@ bool FMadShippedItemContentTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("an unknown biome still spawns the common dead"), Nowhere.Num() > 0);
 	}
 
+	// --- every archetype has a shape of its own -------------------------------
+	//
+	// All eight zombies used to share one body and one pose, told apart only by
+	// tint and overall size - a brute was a taller copy of everybody else, and
+	// none of them could be read at a distance, which is the only range where
+	// knowing what is coming helps. Each now carries a build, a lean and a
+	// reach. This fails if two first-party archetypes end up close enough in
+	// all three to read as the same thing; mod zombies are free to look like
+	// whatever they like.
+	{
+		TArray<const FMadZombieDefinition*> Ours;
+		for (const FMadZombieDefinition& Zombie : Defs.GetZombies())
+		{
+			if (Zombie.Id.ToString().StartsWith(TEXT("madfall:")))
+			{
+				Ours.Add(&Zombie);
+			}
+		}
+		TestTrue(*FString::Printf(TEXT("the first-party zombies load (%d)"), Ours.Num()), Ours.Num() >= 6);
+
+		auto Distance = [](const FMadZombieDefinition& A, const FMadZombieDefinition& B)
+		{
+			// Build in body proportions, lean in thirty-degree steps and reach
+			// as a fraction: roughly "one noticeable change" each.
+			return (A.Build - B.Build).GetAbs().GetMax()
+				+ FMath::Abs(A.Lean - B.Lean) / 30.0f
+				+ FMath::Abs(A.Reach - B.Reach);
+		};
+
+		for (int32 I = 0; I < Ours.Num(); ++I)
+		{
+			for (int32 J = I + 1; J < Ours.Num(); ++J)
+			{
+				const float D = Distance(*Ours[I], *Ours[J]);
+				TestTrue(*FString::Printf(TEXT("%s and %s have different silhouettes (%.2f)"),
+					*Ours[I]->Id.ToString(), *Ours[J]->Id.ToString(), D), D >= 0.2f);
+			}
+		}
+	}
+
 	TestNull(TEXT("bedrock (indestructible) has no item"), Defs.FindItemForBlock(FName(TEXT("madfall:bedrock"))));
 	TestNull(TEXT("water (liquid) has no item"), Defs.FindItemForBlock(FName(TEXT("madfall:water"))));
 

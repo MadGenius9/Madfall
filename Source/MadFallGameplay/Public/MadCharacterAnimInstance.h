@@ -24,6 +24,16 @@ struct FMadCharacterAnimInputs
 	bool bZombie = true;
 	/** Head down at the grass (animals with a graze clip), instead of idling. */
 	bool bGrazing = false;
+
+	/**
+	 * How far the chest pitches forward, degrees, and how far the arms stretch
+	 * ahead, 0..1. They were constants every zombie shared, so a brute, a
+	 * climber and a screamer all stood and reached exactly alike and could only
+	 * be told apart by colour and overall size. Now each archetype carries its
+	 * own, and a silhouette on the horizon says what is coming.
+	 */
+	float LeanDegrees = 12.0f;
+	float ReachAmount = 0.9f;
 };
 
 /** Locomotion weights and play rates for a ground speed. */
