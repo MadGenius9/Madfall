@@ -115,7 +115,7 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 	// and every land biome has something living in it by day and by night.
 	const FMadGameplayDefinitions& Defs = MadFall::GetGameplayDefinitions();
 	const FMadBiomeRegistry& Biomes = UMadVoxelWorldSubsystem::GetBiomeRegistry();
-	TestTrue(TEXT("four shipped animals"), Defs.GetAnimals().Num() >= 4);
+	TestTrue(TEXT("seven shipped animals"), Defs.GetAnimals().Num() >= 7);
 	for (const FMadAnimalDefinition& Animal : Defs.GetAnimals())
 	{
 		TestFalse(*FString::Printf(TEXT("%s spawns somewhere"), *Animal.Id.ToString()), Animal.Biomes.IsEmpty());
@@ -139,7 +139,8 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 			}
 		}
 	}
-	for (const TCHAR* Biome : { TEXT("madfall:plains"), TEXT("madfall:forest"), TEXT("madfall:desert"), TEXT("madfall:tundra"), TEXT("madfall:highlands") })
+	// The beach was the one land biome with nothing living on it until the crab.
+	for (const TCHAR* Biome : { TEXT("madfall:plains"), TEXT("madfall:forest"), TEXT("madfall:desert"), TEXT("madfall:tundra"), TEXT("madfall:highlands"), TEXT("madfall:beach") })
 	{
 		for (const bool bNight : { false, true })
 		{
@@ -157,6 +158,12 @@ bool FMadAnimalDefinitionsTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("and lifted so its lowest point (-50 cm, halved) is on the ground"), Fit.GetLocation().Z, 25.0, 1e-6);
 		TestEqual(TEXT("and turned by its yaw"), Fit.GetRotation().Rotator().Yaw, 90.0, 1e-4);
 	}
+
+	// The desert had only the fox, which also lives everywhere else.
+	TArray<const FMadAnimalDefinition*> Desert;
+	UMadAnimalSubsystem::GetCandidates(Defs.GetAnimals(), FName(TEXT("madfall:desert")), false, Desert);
+	TestTrue(TEXT("the desert has animals of its own by day"), Desert.ContainsByPredicate(
+		[](const FMadAnimalDefinition* A) { return A->Biomes.Num() == 1 && A->Biomes[0] == FName(TEXT("madfall:desert")); }));
 
 	TArray<const FMadAnimalDefinition*> Plains;
 	UMadAnimalSubsystem::GetCandidates(Defs.GetAnimals(), FName(TEXT("madfall:plains")), false, Plains);

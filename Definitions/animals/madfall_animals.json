@@ -63,5 +63,195 @@
 			"body": [90, 26, 36], "legs": 48, "neck": 24, "tint": [0.47, 0.46, 0.44],
 			"model": { "mesh": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/Wolf.Wolf", "idle": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfIdle.WolfIdle", "walk": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfWalk.WolfWalk", "run": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfGallop.WolfGallop", "attack": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfAttack.WolfAttack", "hit": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfIdle_HitReact_Left.WolfIdle_HitReact_Left", "death": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfDeath.WolfDeath", "graze": "/Game/Animals/Wolf/Wolf/SkeletalMeshes/WolfEating.WolfEating", "walk_cycle_speed": 1.3, "run_cycle_speed": 6.5, "yaw": 90 }
 		}
+	},
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:donkey",
+		"display_name": "@animals.donkey",
+		"tags": [
+			"animal.game",
+			"animal.dangerous"
+		],
+		"behaviour": "defensive",
+		"spawn": {
+			"biomes": [
+				"madfall:desert"
+			],
+			"weight": 1.5,
+			"herd": [
+				2,
+				4
+			],
+			"active": "day"
+		},
+		"stats": {
+			"health": 90,
+			"walk_speed": 1.0,
+			"run_speed": 6.5,
+			"attack_damage": 11,
+			"attack_seconds": 1.6,
+			"damage_type": "madfall:blunt"
+		},
+		"senses": {
+			"sight": 20,
+			"hearing": 26,
+			"flee": 6
+		},
+		"rewards": {
+			"experience": 25,
+			"loot_table": "madfall:loot/donkey"
+		},
+		"appearance": {
+			"body": [
+				100,
+				32,
+				44
+			],
+			"legs": 58,
+			"neck": 36,
+			"tint": [
+				0.45,
+				0.4,
+				0.36
+			],
+			"model": {
+				"mesh": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/Donkey.Donkey",
+				"idle": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyIdle.DonkeyIdle",
+				"walk": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyWalk.DonkeyWalk",
+				"run": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyGallop.DonkeyGallop",
+				"attack": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyAttack_Kick.DonkeyAttack_Kick",
+				"hit": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyIdle_HitReact_Left.DonkeyIdle_HitReact_Left",
+				"death": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyDeath.DonkeyDeath",
+				"graze": "/Game/Animals/Donkey/Donkey/SkeletalMeshes/DonkeyEating.DonkeyEating",
+				"walk_cycle_speed": 1.3,
+				"run_cycle_speed": 7.0,
+				"yaw": 90
+			}
+		}
+	},
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:snake",
+		"display_name": "@animals.snake",
+		"tags": [
+			"animal.predator",
+			"animal.dangerous",
+			"animal.small"
+		],
+		"behaviour": "aggressive",
+		"spawn": {
+			"biomes": [
+				"madfall:desert"
+			],
+			"weight": 1.5,
+			"herd": [
+				1,
+				1
+			],
+			"active": "always"
+		},
+		"stats": {
+			"health": 25,
+			"walk_speed": 0.6,
+			"run_speed": 1.6,
+			"attack_damage": 8,
+			"attack_seconds": 1.2,
+			"damage_type": "madfall:pierce"
+		},
+		"senses": {
+			"sight": 3,
+			"hearing": 4,
+			"flee": 0
+		},
+		"rewards": {
+			"experience": 12,
+			"loot_table": "madfall:loot/snake"
+		},
+		"appearance": {
+			"body": [
+				110,
+				12,
+				40
+			],
+			"legs": 0,
+			"neck": 20,
+			"tint": [
+				0.55,
+				0.45,
+				0.28
+			],
+			"model": {
+				"mesh": "/Game/Animals/Snake/Snake/SkeletalMeshes/Snake.Snake",
+				"idle": "/Game/Animals/Snake/Snake/SkeletalMeshes/SnakeSnakeArmature_Snake_Idle.SnakeSnakeArmature_Snake_Idle",
+				"walk": "/Game/Animals/Snake/Snake/SkeletalMeshes/SnakeSnakeArmature_Snake_Walk.SnakeSnakeArmature_Snake_Walk",
+				"attack": "/Game/Animals/Snake/Snake/SkeletalMeshes/SnakeSnakeArmature_Snake_Attack.SnakeSnakeArmature_Snake_Attack",
+				"walk_cycle_speed": 0.6,
+				"run_cycle_speed": 1.6,
+				"yaw": 90
+			}
+		}
+	},
+	{
+		"schema": "madfall.animal/1",
+		"id": "madfall:crab",
+		"display_name": "@animals.crab",
+		"tags": [
+			"animal.game",
+			"animal.small"
+		],
+		"behaviour": "defensive",
+		"spawn": {
+			"biomes": [
+				"madfall:beach"
+			],
+			"weight": 3,
+			"herd": [
+				2,
+				4
+			],
+			"active": "always"
+		},
+		"stats": {
+			"health": 15,
+			"walk_speed": 0.5,
+			"run_speed": 2.5,
+			"attack_damage": 3,
+			"attack_seconds": 1.0,
+			"damage_type": "madfall:pierce"
+		},
+		"senses": {
+			"sight": 8,
+			"hearing": 10,
+			"flee": 4
+		},
+		"rewards": {
+			"experience": 5,
+			"loot_table": "madfall:loot/crab"
+		},
+		"appearance": {
+			"body": [
+				30,
+				38,
+				18
+			],
+			"legs": 10,
+			"neck": 0,
+			"tint": [
+				0.75,
+				0.3,
+				0.18
+			],
+			"model": {
+				"mesh": "/Game/Animals/Crab/Crab/SkeletalMeshes/Crab.Crab",
+				"idle": "/Game/Animals/Crab/Crab/SkeletalMeshes/CrabMonsterArmature_Idle.CrabMonsterArmature_Idle",
+				"walk": "/Game/Animals/Crab/Crab/SkeletalMeshes/CrabMonsterArmature_Walk.CrabMonsterArmature_Walk",
+				"attack": "/Game/Animals/Crab/Crab/SkeletalMeshes/CrabMonsterArmature_Bite_Front.CrabMonsterArmature_Bite_Front",
+				"hit": "/Game/Animals/Crab/Crab/SkeletalMeshes/CrabMonsterArmature_HitRecieve.CrabMonsterArmature_HitRecieve",
+				"death": "/Game/Animals/Crab/Crab/SkeletalMeshes/CrabMonsterArmature_Death.CrabMonsterArmature_Death",
+				"walk_cycle_speed": 0.5,
+				"run_cycle_speed": 2.5,
+				"yaw": 90
+			}
+		}
 	}
 ]

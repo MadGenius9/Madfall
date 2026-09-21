@@ -3747,6 +3747,44 @@ run on GitHub-hosted runners. Setting the repository variable `REQUIRE_SERVER`
 to `true` promotes the server build to a hard gate — which also means the runner
 then needs a source engine build.
 
+### Something lives in the desert and on the beach
+
+The desert had the fox, which lives everywhere, and the beach had nothing at
+all. Three more CC0 Quaternius models (Poly Pizza, fetched by
+`Scripts/fetch_animals.ps1 -Only Donkey,Snake,Crab`, ~1.5 MB):
+
+- **Donkey** (desert, day, herds of 2-4): the same animal pack as the deer, so
+  the same pipeline; `defensive` - kicks when hurt, like the stag.
+- **Rattlesnake** (desert, always, alone): `aggressive` with a 3-voxel sight,
+  so it strikes whoever steps close and gives up past 4.5 voxels; slow, so
+  walking away works. No new behaviour code - the numbers make the temperament.
+- **Crab** (beach, always, 2-4): small game, `defensive`.
+
+What it took, and what was measured rather than assumed:
+
+- **The monster rig.** Snake and crab come from a different pack whose glTF
+  carries each clip only once, as "<Rig>Armature|<Clip>". The importer deleted
+  every `AnimalArmature_` clip as a duplicate, which on these would have
+  deleted every clip. A prefixed clip is now deleted only when its plain twin
+  exists. `MADFALL_ANIMALS=Snake,Crab` imports just those, so adding an animal
+  no longer rewrites the committed assets of the rest.
+- **Recoloured at preparation.** A green-and-purple cartoon snake is not a
+  desert animal, and the maroon crab was invisible from eye height: the first
+  render found it only by its shadow. `prepare_animals.py` rewrites named
+  materials' base colours (`RECOLOUR`) - brown back, sand belly; brighter red.
+- **Sized by what the model is.** The fit scales a model to the figure's
+  height. The snake is modelled coiled and reared, taller than it is long, so a
+  snake-sized height (16 cm) made it 14 cm long. It is fitted to 56 cm tall.
+- **Dying without a death clip.** The snake has none, and an animal without
+  one kept idling after it died. The rig now freezes the pose and rolls the
+  model on to its side, lifted by half its width so it does not sink.
+  Photographed 0.6 s after the killing blow: a brown snake on its side.
+- **Seen and spawned.** Each rendered in front of the survivor; the snake
+  closed from 2 voxels and went to `attack`. Two 150 s desert visits spawned
+  donkey herds, a snake and foxes naturally; crabs spawn on the beach by
+  spawn. `MadFall.Animals.Definitions` now requires wildlife on the beach by
+  day and night and a desert-only animal.
+
 ### A shot is heard
 
 The pistol is the first firearm, and the design is a trade rather than an

@@ -246,6 +246,30 @@
 	},
 	{
 		"schema": "madfall.loot/1",
+		"id": "madfall:loot/donkey",
+		"entries": [
+			{ "item": "madfall:raw_meat", "count": [3, 5], "always": true },
+			{ "item": "madfall:animal_hide", "count": [1, 2], "always": true }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/snake",
+		"entries": [
+			{ "item": "madfall:raw_meat", "always": true },
+			{ "item": "madfall:animal_hide", "weight": 1 },
+			{ "item": "madfall:plant_fiber", "weight": 1 }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
+		"id": "madfall:loot/crab",
+		"entries": [
+			{ "item": "madfall:raw_meat", "always": true }
+		]
+	},
+	{
+		"schema": "madfall.loot/1",
 		"id": "madfall:loot/deer",
 		"entries": [
 			{ "item": "madfall:raw_meat", "count": [3, 5], "always": true },

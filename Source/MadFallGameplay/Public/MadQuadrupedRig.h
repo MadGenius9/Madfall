@@ -122,6 +122,9 @@ private:
 	FMadAnimalModel Model;
 	float AttackClipSeconds = 0.0f;
 	float DeathClipSeconds = 0.0f;
+	/** The model's fitted rotation, which a clipless death rolls from. */
+	FQuat ModelRotation = FQuat::Identity;
+	FVector ModelLocation = FVector::ZeroVector;
 	float SinceHit = 1000.0f;
 	float SinceDeath = -1.0f;
 	float AssetWaitSeconds = 0.0f;

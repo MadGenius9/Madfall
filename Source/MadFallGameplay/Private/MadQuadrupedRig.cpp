@@ -167,6 +167,8 @@ bool UMadQuadrupedRigComponent::BuildSkeletal()
 	Anim->Inputs.bZombie = false;
 	AttackClipSeconds = Anim->Attack ? Anim->Attack->GetPlayLength() : 0.0f;
 	DeathClipSeconds = Anim->Death ? Anim->Death->GetPlayLength() : 0.0f;
+	ModelRotation = Component->GetRelativeRotation().Quaternion();
+	ModelLocation = Component->GetRelativeLocation();
 	Skeletal = Component;
 	return true;
 }
@@ -306,6 +308,18 @@ void UMadQuadrupedRigComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		if (bDying)
 		{
 			DeathProgress = FMath::Min(1.0f, DeathProgress + DeltaTime / FMath::Max(DeathClipSeconds, QuadDeathSeconds));
+			if (DeathClipSeconds <= 0.0f)
+			{
+				// A model with no death clip (the snake) would otherwise go on
+				// idling where it died. Freeze the pose and roll it on to its
+				// side, the way the box rig falls: a corpse has to read as one.
+				// The model pivots at its feet, so it is lifted by half its
+				// width as it turns or half of it would sink into the ground.
+				Skeletal->bPauseAnims = true;
+				const float Roll = FMath::DegreesToRadians(90.0f * DeathProgress * DeathProgress);
+				Skeletal->SetRelativeRotation(FQuat(FVector::ForwardVector, Roll) * ModelRotation);
+				Skeletal->SetRelativeLocation(ModelLocation + FVector(0.0, 0.0, BodySize.Y * 0.5 * FMath::Sin(Roll)));
+			}
 		}
 		SinceHit += DeltaTime;
 		SinceDeath = bDying ? FMath::Max(SinceDeath, 0.0f) + DeltaTime : -1.0f;

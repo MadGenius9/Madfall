@@ -37,7 +37,23 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SourceArt", "animals")
 OUT = os.path.join(ROOT, "prepared")
-ANIMALS = ["Deer", "Wolf", "Fox", "Stag"]
+ANIMALS = ["Deer", "Wolf", "Fox", "Stag", "Donkey", "Snake", "Crab"]
+
+# Linear base colours replacing the authored ones, by material name. The snake
+# and crab come from a monster pack: a green-and-purple cartoon snake reads as
+# nothing that lives in a desert, and the maroon crab vanished into the ground
+# from a standing survivor's eye height - it was found only by its shadow.
+RECOLOUR = {
+    "Snake": {
+        "DarkGreen": [0.30, 0.20, 0.09],   # back: rattlesnake brown
+        "LightGreen": [0.62, 0.50, 0.30],  # belly: sand
+        "Purple": [0.08, 0.05, 0.03],      # blotches: near black
+    },
+    "Crab": {
+        "Main": [0.62, 0.14, 0.04],
+        "Main_Dark": [0.32, 0.06, 0.02],
+    },
+}
 
 COMPONENTS = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
 
@@ -256,6 +272,10 @@ def bind_rigid_children(document, binary, skin):
 
 def prepare(name):
     document, binary = read_glb(os.path.join(ROOT, name + ".glb"))
+    for material in document.get("materials", []):
+        colour = RECOLOUR.get(name, {}).get(material.get("name"))
+        if colour is not None:
+            material.setdefault("pbrMetallicRoughness", {})["baseColorFactor"] = colour + [1.0]
     nodes = document["nodes"]
     skin = document["skins"][0]
     joints = set(skin["joints"])
