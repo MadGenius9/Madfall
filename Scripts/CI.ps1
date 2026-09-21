@@ -1657,6 +1657,74 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Water and ground: a swimmer can jump out, and nobody stays inside the ground
+# ---------------------------------------------------------------------------
+#
+# Both from the first playtests. Space did nothing in the water - swimming runs
+# in flying mode, where the engine's jump is ignored - so a survivor could not
+# climb out onto the bank. And a survivor who mined sand at the water's edge
+# ended up 55 voxels down inside solid ground: terrain collision is a surface,
+# and a capsule that gets under it falls until something stops it. A pool is
+# dug into a stone pad; the survivor jumps from it and must come up out of the
+# water, then is put inside the rock and must be lifted back out.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: water jump and ground rescue (headless -game)'
+
+    $waterScript = "mad.clock.set 10; mad.ai.Sleepers 0; mad.ai.MaxZombies 1; mad.ai.killall; mad.scene.anchor; mad.scene.pad 10 8; wait 3; " +
+        "mad.scene.box madfall:stone -8 -8 -6 8 8 -1; wait 4; mad.scene.box madfall:water -3 -3 -4 3 3 -1; wait 8; " +
+        "mad.scene.tp 0 0 -3; wait 4; mad.player.status; mad.player.jump 0.3; wait 0.3; mad.player.status; " +
+        "mad.scene.tp 0 0 -3; wait 4; mad.player.walk 4 1 0; wait 4.5; mad.player.status; " +
+        "mad.player.jump 3; mad.player.walk 3 1 0; wait 3.5; mad.player.status; " +
+        "mad.scene.tp 6 6 -5; wait 2; mad.player.status; quit"
+    $waterLog = Join-Path $LogDir 'water-jump.log'
+    $waterWorld = Join-Path $RepoRoot 'Saved\MadFallWorlds\ci-waterjump'
+    if (Test-Path $waterWorld) { Remove-Item -Recurse -Force $waterWorld }
+    $waterProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $waterLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-waterjump', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn wait 8; $waterScript`"")
+
+    if (-not $waterProcess.WaitForExit(240000)) {
+        $waterProcess | Stop-Process -Force
+        Write-Host 'FAILED: the water script did not finish within 240 s.' -ForegroundColor Red
+        $script:Failures += 'water-jump'
+    }
+    else {
+        $waterOk = $true
+        $heights = @(Select-String -Path $waterLog -Pattern 'Player at voxel X=-?\d+ Y=-?\d+ Z=(-?\d+)' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        $states = @(Select-String -Path $waterLog -Pattern '  breath \d+  (\w+)' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $xs = @(Select-String -Path $waterLog -Pattern 'Player at voxel X=(-?\d+)' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        if ($heights.Count -lt 5 -or $states.Count -lt 5) {
+            Write-Host "FAILED: expected five status reports, got $($heights.Count)." -ForegroundColor Red
+            $waterOk = $false
+        }
+        else {
+            if ($states[0] -ne 'swimming') { Write-Host "FAILED: the survivor was not swimming in the pool ($($states[0]))." -ForegroundColor Red; $waterOk = $false }
+            elseif ($heights[1] -gt $heights[0] -and $states[1] -eq 'on') { Write-Host "OK: a jump lifted the swimmer out of the water (z $($heights[0]) -> $($heights[1]))" -ForegroundColor Green }
+            else { Write-Host "FAILED: a jump did not lift the swimmer out (z $($heights[0]) -> $($heights[1]), $($states[1]))." -ForegroundColor Red; $waterOk = $false }
+            # Swimming at the pool wall leaves the survivor in the water; holding
+            # jump as well climbs them out onto the bank. The first half is the
+            # control: without it, "climbed out" could be the walk alone.
+            if ($states[2] -eq 'swimming' -and $states[3] -eq 'on' -and $xs[3] -gt 3) {
+                Write-Host "OK: swimming at the wall stayed in the water; with jump held the survivor climbed onto the bank (x $($xs[2]) -> $($xs[3]))" -ForegroundColor Green
+            }
+            else {
+                Write-Host "FAILED: bank climb - without jump $($states[2]) at x $($xs[2]), with jump $($states[3]) at x $($xs[3])." -ForegroundColor Red
+                $waterOk = $false
+            }
+        }
+        if (Select-String -Path $waterLog -Pattern 'inside solid ground at .*; lifted to' -Quiet) {
+            Write-Host "OK: a survivor put inside solid rock was lifted out (to z $($heights[-1]))" -ForegroundColor Green
+        }
+        else {
+            Write-Host 'FAILED: a survivor inside solid rock was left there.' -ForegroundColor Red
+            $waterOk = $false
+        }
+        if (-not $waterOk) { $script:Failures += 'water-jump' }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Altitude: a mountain is colder than the valley it stands in
 # ---------------------------------------------------------------------------
 #

@@ -550,6 +550,18 @@ void AMadPlayerCharacter::Tick(float DeltaSeconds)
 	{
 		return;
 	}
+	if (TickEntombed(DeltaSeconds))
+	{
+		return;
+	}
+	if (ScriptedJumpSeconds > 0.0f)
+	{
+		ScriptedJumpSeconds -= DeltaSeconds;
+		if (ScriptedJumpSeconds <= 0.0f)
+		{
+			OnJumpReleased();
+		}
+	}
 
 	if (ScriptedWalkSeconds > 0.0f)
 	{
@@ -716,7 +728,9 @@ void AMadPlayerCharacter::TickSwimming(float DeltaSeconds)
 		return;
 	}
 
-	const float Dive = DiveInput;
+	// Holding jump in the water swims up, as it does in every block game.
+	SwimHopCooldown = FMath::Max(0.0f, SwimHopCooldown - DeltaSeconds);
+	const float Dive = bJumpHeld && bSwimming ? 1.0f : DiveInput;
 	DiveInput = 0.0f;
 
 	float WaterTopZ = 0.0f;
@@ -725,7 +739,15 @@ void AMadPlayerCharacter::TickSwimming(float DeltaSeconds)
 	const FMadSwimTuning Tuning;
 	const float EyeZ = static_cast<float>(GetActorLocation().Z) + BaseEyeHeight;
 	const bool bSprint = Survival->IsSprinting();
-	const FMadSwimState State = MadFall::Swim::Evaluate(Fraction, EyeZ, WaterTopZ, Dive, bSwimming, bSprint, Tuning);
+	FMadSwimState State = MadFall::Swim::Evaluate(Fraction, EyeZ, WaterTopZ, Dive, bSwimming, bSprint, Tuning);
+	// A hop out of the water leaves the legs in it for a moment. Re-entering
+	// the swim then would hand the survivor straight back to buoyancy, which
+	// overwrote the jump the frame after it began: in water deeper than a
+	// voxel, Space still did nothing. While the hop is rising, it is a jump.
+	if (!bSwimming && SwimHopCooldown > 0.0f && Movement->MovementMode == MOVE_Falling && Movement->Velocity.Z > 0.0f)
+	{
+		State.bSwimming = false;
+	}
 
 	Survival->SetSubmersion(Fraction, State.bSwimming && State.bHeadUnder);
 
@@ -800,6 +822,20 @@ void AMadPlayerCharacter::TickSwimming(float DeltaSeconds)
 			Vertical = 0.0f;
 		}
 		Movement->Velocity.Z = Vertical;
+
+		// At the surface, jump lifts the survivor out: enough to clear a
+		// one-voxel bank. Out in open water they fall back in and bob, which
+		// is what a jump from treading water looks like anyway. Before this,
+		// Space did nothing at all in the water (flying mode ignores Jump), and
+		// the first playtest found a survivor unable to get out onto the shore.
+		if (bJumpHeld && !State.bHeadUnder && SwimHopCooldown <= 0.0f)
+		{
+			SwimHopCooldown = 0.6f;
+			bSwimming = false;
+			Movement->SetMovementMode(MOVE_Falling);
+			Movement->Velocity.Z = Movement->JumpZVelocity * 0.9f;
+			return;
+		}
 	}
 	else if (bSwimming)
 	{
@@ -817,6 +853,101 @@ void AMadPlayerCharacter::TickSwimming(float DeltaSeconds)
 		// Wading: slower, but still walking.
 		Movement->MaxWalkSpeed = (bSprint ? SprintSpeed : WalkSpeed) * State.SpeedMultiplier;
 	}
+}
+
+void AMadPlayerCharacter::OnJumpPressed()
+{
+	bJumpHeld = true;
+	if (!bSwimming)
+	{
+		Jump();
+	}
+}
+
+void AMadPlayerCharacter::OnJumpReleased()
+{
+	bJumpHeld = false;
+	StopJumping();
+}
+
+bool AMadPlayerCharacter::TickEntombed(float DeltaSeconds)
+{
+	// Terrain collision is a surface, not a volume: a capsule that ever ends
+	// up under it - a hard dive into the sea bed, a chunk's collision rebuilt
+	// round a survivor who was pressed into it - meets nothing inside the
+	// ground and falls until something stops it. A playtester mined sand at
+	// the water's edge and was found 55 voxels down inside solid sand. Rather
+	// than chase every way in, the way out is guaranteed: a survivor wholly
+	// inside solid ground (feet, middle and head all in solid voxels) for a
+	// quarter of a second is lifted to the first open space above.
+	const UWorld* World = GetWorld();
+	const UMadVoxelWorldSubsystem* VoxelWorld = World ? World->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
+	if (VoxelWorld == nullptr)
+	{
+		return false;
+	}
+	auto Solid = [VoxelWorld](const FVector& Point)
+	{
+		const FIntVector V(FMath::FloorToInt(Point.X / MadFall::VoxelSizeUU), FMath::FloorToInt(Point.Y / MadFall::VoxelSizeUU),
+			FMath::FloorToInt(Point.Z / MadFall::VoxelSizeUU));
+		// Water is dense but not ground: a swimmer is not entombed in it.
+		const FMadVoxel Voxel = VoxelWorld->IsVoxelLoaded(V.X, V.Y, V.Z) ? VoxelWorld->GetVoxel(V.X, V.Y, V.Z) : FMadVoxel::Air();
+		return Voxel.IsSolid() && !Voxel.HasFlag(EMadVoxelFlags::Liquid);
+	};
+	const FVector Centre = GetActorLocation();
+	const float Half = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const bool bInside = Solid(Centre - FVector(0.0, 0.0, Half - 20.0)) && Solid(Centre) && Solid(Centre + FVector(0.0, 0.0, Half - 20.0));
+	EntombedSeconds = bInside ? EntombedSeconds + DeltaSeconds : 0.0f;
+	if (EntombedSeconds < 0.25f)
+	{
+		return false;
+	}
+
+	const int32 X = FMath::FloorToInt(Centre.X / MadFall::VoxelSizeUU);
+	const int32 Y = FMath::FloorToInt(Centre.Y / MadFall::VoxelSizeUU);
+	const int32 Z = FMath::FloorToInt(Centre.Z / MadFall::VoxelSizeUU);
+	const int32 Free = MadFall::Player::FindHeadroomAbove(Z, 2, 256,
+		[VoxelWorld, X, Y](int32 AtZ)
+		{
+			const FMadVoxel Voxel = VoxelWorld->IsVoxelLoaded(X, Y, AtZ) ? VoxelWorld->GetVoxel(X, Y, AtZ) : FMadVoxel::Air();
+			return Voxel.IsSolid() && !Voxel.HasFlag(EMadVoxelFlags::Liquid);
+		});
+	if (Free == INDEX_NONE)
+	{
+		return false;
+	}
+	EntombedSeconds = 0.0f;
+	++TotalRescues;
+	const FVector To((X + 0.5) * MadFall::VoxelSizeUU, (Y + 0.5) * MadFall::VoxelSizeUU, Free * MadFall::VoxelSizeUU + Half + 2.0);
+	UE_LOG(LogMadFallGameplay, Warning, TEXT("Survivor was inside solid ground at %s; lifted to %s."),
+		*FIntVector(X, Y, Z).ToString(), *FIntVector(X, Y, Free).ToString());
+	SetActorLocation(To, false, nullptr, ETeleportType::TeleportPhysics);
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->Velocity = FVector::ZeroVector;
+		Move->SetMovementMode(MOVE_Falling);
+	}
+	return true;
+}
+
+int32 MadFall::Player::FindHeadroomAbove(int32 FromZ, int32 Clearance, int32 MaxRise, const TFunctionRef<bool(int32)>& IsSolid)
+{
+	int32 Open = 0;
+	for (int32 Z = FromZ; Z <= FromZ + MaxRise; ++Z)
+	{
+		Open = IsSolid(Z) ? 0 : Open + 1;
+		if (Open >= Clearance)
+		{
+			// The lowest voxel of the gap, which is where the feet go - and it
+			// must sit on something, or the "rescue" is a drop.
+			const int32 Floor = Z - Clearance + 1;
+			if (IsSolid(Floor - 1))
+			{
+				return Floor;
+			}
+		}
+	}
+	return INDEX_NONE;
 }
 
 void AMadPlayerCharacter::TickSounds(float DeltaSeconds)
@@ -981,6 +1112,8 @@ bool AMadPlayerCharacter::TickTerrainHold(float DeltaSeconds)
 	Move->SetMovementMode(MOVE_Falling);
 	return false;
 }
+
+int32 AMadPlayerCharacter::TotalRescues = 0;
 
 AMadPlayerCharacter* MadFall::FindLocalPlayer(const UWorld* World)
 {
@@ -2178,8 +2311,8 @@ void AMadPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 	Input->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMadPlayerCharacter::OnMove);
 	Input->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMadPlayerCharacter::OnLook);
-	Input->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-	Input->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	Input->BindAction(JumpAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnJumpPressed);
+	Input->BindAction(JumpAction, ETriggerEvent::Completed, this, &AMadPlayerCharacter::OnJumpReleased);
 	Input->BindAction(SprintAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnSprint);
 	Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &AMadPlayerCharacter::OnSprint);
 	Input->BindAction(PrimaryAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnPrimaryStarted);

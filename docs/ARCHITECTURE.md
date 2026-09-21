@@ -3781,6 +3781,41 @@ log had no errors; what it found, it found by eye and ear.
   `-MadWorldsDir=` into its own folder so it can never create or delete a
   player's worlds. The editor and tests keep the project's Saved folder.
 
+### Second playtest: jumping in water, falling through the world, berry bushes
+
+- **Space did nothing in the water.** Swimming runs in flying mode, where
+  `ACharacter::Jump` is ignored, and the key was bound straight to it. Jump
+  now goes through `OnJumpPressed`: on land the engine's jump; swimming,
+  holding it swims up, and at the surface it hops out at 0.9x jump speed. The
+  first version of the hop was cancelled the frame after it began - the legs
+  were still in the water, the swim re-entered, and buoyancy overwrote the
+  jump - which the CI gate caught in a four-voxel pool; a rising hop now stays
+  a jump. `mad.player.jump <seconds>` drives the key's own path.
+- **Falling through the world.** The playtester mined sand at the water's
+  edge and was found at z -42 inside solid sand, 55 voxels down. It could not
+  be reproduced by mining the bed, the edge, or a hole across a chunk corner;
+  the swimming code already recorded that a hard dive pushes the capsule into
+  the sea bed, and terrain collision is a surface, so a capsule under it meets
+  nothing. Rather than chase every way in, the way out is guaranteed:
+  `TickEntombed` lifts a survivor whose feet, middle and head are all in solid
+  (non-liquid) voxels for 0.25 s to the first two open voxels above that stand
+  on something (`MadFall::Player::FindHeadroomAbove`), and logs a warning.
+  Loading the playtester's own save lifts them from z -42 to the beach at 14.
+  Water counted as solid in the first version, and a swimmer teleported into
+  the sea was "rescued"; liquid is excluded.
+- **Static water.** Digging under the sea leaves an air pocket - water does not
+  flow. Recorded here as found, not changed.
+- **Berry bushes were green cubes** - the engine cube, tinted. `SM_BerryBush`
+  (`build_prop_meshes.py`, `MADFALL_PROPS=BerryBush` rebuilds just it) is
+  leafy clumps with red berries in a new `madfall:berries` surface.
+- **Floating trees again** - that session was played on the old build, from
+  `Saved\CIPackage`, before the anchoring fix; the play build is
+  `Saved\Packaged`.
+- Tests: `MadFall.Survival.EntombedRescue`; CI gate "water jump and ground
+  rescue": a jump lifts a swimmer (z 20 -> 21), swimming at a pool wall stays
+  in the water while the same swim with jump held climbs onto the bank (x 3 ->
+  10), and a survivor put inside rock is lifted out.
+
 ### Something lives in the desert and on the beach
 
 The desert had the fox, which lives everywhere, and the beach had nothing at

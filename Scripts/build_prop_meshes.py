@@ -251,7 +251,42 @@ def ladder():
     return prop
 
 
-PROPS = [campfire, torch, door_closed, door_open, bedroll, ladder]
+def berry_bush():
+    """A rounded shrub of overlapping leafy clumps, red berries dotted over it.
+
+    It replaced an engine cube tinted green: in play it read as "green squares
+    that could be a bush". About 76 cm across and 58 cm tall, so it stays a
+    one-voxel block that a survivor walks round, not through.
+    """
+    prop = Prop("BerryBush")
+    rand = Jitter(23)
+    # A few short stems at the base, so it grows out of the ground.
+    for index in range(4):
+        angle = 2.0 * math.pi * index / 4 + 0.3
+        prop.cylinder("madfall:bark", (0, 0, 0), (9 * math.cos(angle), 9 * math.sin(angle), 18), 2.2, 6)
+    # Clumps: a ring low down and a crown on top, overlapping into one mass.
+    clumps = [(0.0, 0.0, 34.0, 50.0, 50.0, 40.0)]
+    for index in range(6):
+        angle = 2.0 * math.pi * index / 6 + rand(-0.2, 0.2)
+        radius = 20 + rand(-2, 3)
+        clumps.append((radius * math.cos(angle), radius * math.sin(angle), 24 + rand(-3, 4), rand(32, 38), rand(32, 38), rand(28, 34)))
+    for x, y, z, sx, sy, sz in clumps:
+        prop.blob("madfall:leaves", (x, y, z), (sx, sy, sz), rand(0, 360))
+    # Berries in small bunches on the outside of the clumps, where they show.
+    for index in range(16):
+        angle = 2.0 * math.pi * index / 16 + rand(-0.15, 0.15)
+        height = rand(16, 50)
+        # On the surface of the mass: wider low down, narrower near the crown.
+        radius = 36 - max(0.0, height - 30) * 0.55 + rand(-1.5, 1.0)
+        centre = (radius * math.cos(angle), radius * math.sin(angle), height)
+        for berry in range(3):
+            offset = (rand(-2.5, 2.5), rand(-2.5, 2.5), rand(-2.5, 2.5))
+            size = rand(4.2, 5.4)
+            prop.blob("madfall:berries", (centre[0] + offset[0], centre[1] + offset[1], centre[2] + offset[2]), (size, size, size))
+    return prop
+
+
+PROPS = [campfire, torch, door_closed, door_open, bedroll, ladder, berry_bush]
 
 
 # ---------------------------------------------------------------------------
@@ -370,8 +405,16 @@ def main():
     meshes = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
     preview = library.load_asset(PREVIEW_MATERIAL)
     failures = 0
+    # MADFALL_PROPS=BerryBush,Torch rebuilds just those: rebuilding the rest
+    # rewrites every prop asset for nothing.
+    import os
+    only = [n.strip() for n in os.environ.get("MADFALL_PROPS", "").split(",") if n.strip()]
+    built = 0
     for build in PROPS + HELD:
         prop = build()
+        if only and prop.name not in only:
+            continue
+        built += 1
         path = "{}/SM_{}".format(HELD_DEST if build in HELD else DEST, prop.name)
         if library.does_asset_exist(path):
             library.delete_asset(path)
@@ -400,7 +443,7 @@ def main():
             path, prop.mesh.get_triangle_count(), prop.slots, size.x, size.y, size.z,
             bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z))
 
-    unreal.log("[MadFall] Props: {} built, {} failed".format(len(PROPS) + len(HELD) - failures, failures))
+    unreal.log("[MadFall] Props: {} built, {} failed".format(built - failures, failures))
     return 0 if failures == 0 else 1
 
 

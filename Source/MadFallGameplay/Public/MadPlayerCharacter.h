@@ -56,6 +56,16 @@ namespace MadFall
 	 */
 	MADFALLGAMEPLAY_API class AMadPlayerCharacter* FindLocalPlayer(const UWorld* World);
 
+	namespace Player
+	{
+		/**
+		 * The lowest voxel above FromZ (in one column) that starts Clearance open
+		 * voxels resting on something solid, within MaxRise; INDEX_NONE if none.
+		 * Where a survivor found inside the ground is put back.
+		 */
+		MADFALLGAMEPLAY_API int32 FindHeadroomAbove(int32 FromZ, int32 Clearance, int32 MaxRise, const TFunctionRef<bool(int32)>& IsSolid);
+	}
+
 	/**
 	 * How noise carries. Loudness 1 is a swing or a placed block and reaches a
 	 * listener's own hearing range; a gunshot is several times that. Pure, so
@@ -175,6 +185,12 @@ public:
 	 */
 	float GetHurtFlash() const;
 	bool IsSwimming() const { return bSwimming; }
+
+	/** Times a survivor was lifted out from inside solid ground (TickEntombed), for tests and CI. */
+	static int32 TotalRescues;
+
+	/** Press jump and hold it for HoldSeconds: the key's own path, for scripts and CI. */
+	void ScriptJump(float HoldSeconds) { OnJumpPressed(); ScriptedJumpSeconds = FMath::Max(0.05f, HoldSeconds); }
 
 	/** Takes the ingredients now and queues the job; the output arrives after the recipe's craft time. */
 	EMadCraftResult CraftRecipe(FName RecipeId, int32 Times = 1);
@@ -523,6 +539,21 @@ private:
 	float HurtAmount = 0.0f;
 	/** Up (jump) or down (sprint) while swimming, consumed by TickSwimming. */
 	float DiveInput = 0.0f;
+
+	/**
+	 * Jump is held. On land it is the engine's jump; swimming (which runs in
+	 * flying mode, where ACharacter::Jump does nothing) it swims up, and at the
+	 * surface it hops out - so a survivor can climb a bank out of the water.
+	 */
+	bool bJumpHeld = false;
+	float ScriptedJumpSeconds = 0.0f;
+	float SwimHopCooldown = 0.0f;
+	void OnJumpPressed();
+	void OnJumpReleased();
+
+	/** Seconds the survivor has been wholly inside solid ground; see TickEntombed. */
+	float EntombedSeconds = 0.0f;
+	bool TickEntombed(float DeltaSeconds);
 	/** The Z of a scripted walk's direction, so a script can dive. */
 	float ScriptedDive = 0.0f;
 

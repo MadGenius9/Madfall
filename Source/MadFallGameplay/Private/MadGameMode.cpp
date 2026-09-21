@@ -1597,6 +1597,16 @@ namespace
 			if (P && ParseVoxel(Args, 0, V)) { P->TeleportToVoxel(V); }
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs CmdPlayerJump(
+		TEXT("mad.player.jump"), TEXT("mad.player.jump [hold seconds=0.2] - press jump and hold it, through the same path as the key."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (AMadPlayerCharacter* P = GetPlayer(World))
+			{
+				P->ScriptJump(Args.Num() > 0 ? FCString::Atof(*Args[0]) : 0.2f);
+			}
+		}));
+
 	/**
 	 * Scenes built around an anchor rather than at fixed world coordinates.
 	 *

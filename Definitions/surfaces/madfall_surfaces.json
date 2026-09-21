@@ -21,5 +21,6 @@
 	{ "schema": "madfall.surface/1", "id": "madfall:cloth",       "color": [0.42, 0.24, 0.16], "impact": "foliage", "pattern": "cloth", "material": "/Game/Materials/M_MadVoxelPBRArray.M_MadVoxelPBRArray", "texture_layer": 8 },
 	{ "schema": "madfall.surface/1", "id": "madfall:farmland",    "color": [0.26, 0.18, 0.11], "impact": "dirt", "pattern": "farmland" },
 	{ "schema": "madfall.surface/1", "id": "madfall:crop",        "color": [0.28, 0.50, 0.14], "impact": "foliage", "pattern": "leaves" },
-	{ "schema": "madfall.surface/1", "id": "madfall:corn",        "color": [0.60, 0.58, 0.24], "impact": "foliage", "pattern": "leaves" }
+	{ "schema": "madfall.surface/1", "id": "madfall:corn",        "color": [0.60, 0.58, 0.24], "impact": "foliage", "pattern": "leaves" },
+	{ "schema": "madfall.surface/1", "id": "madfall:berries",     "color": [0.62, 0.04, 0.07], "impact": "foliage", "pattern": "plain" }
 ]

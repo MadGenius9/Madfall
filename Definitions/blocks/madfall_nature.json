@@ -95,7 +95,7 @@
 		"display_name": "@blocks.berry_bush",
 		"tags": ["block.natural", "block.foliage"],
 		"shape": { "kind": "model", "rotation_mode": "none", "variants": [], "occludes_neighbors": false },
-		"render": { "mesh": "/Engine/BasicShapes/Cube.Cube", "offset": [0.0, 0.0, -0.15], "scale": [0.8, 0.8, 0.7] },
+		"render": { "mesh": "/Game/Models/Props/SM_BerryBush.SM_BerryBush", "offset": [0.0, 0.0, -0.5] },
 		"material": {
 			"class": "madfall:leaves",
 			"mass_kg": 8.0,
