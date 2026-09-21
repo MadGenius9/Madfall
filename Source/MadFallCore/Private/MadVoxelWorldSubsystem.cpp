@@ -240,6 +240,7 @@ void UMadVoxelWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		WorldSeed = static_cast<uint64>(Info.Seed);
 		Difficulty = Info.Difficulty;
+		bCreative = Info.bCreative;
 	}
 	else
 	{
@@ -250,6 +251,9 @@ void UMadVoxelWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 			Info.Name = WorldName;
 			Info.DisplayName = WorldName;
 			Info.Seed = static_cast<int64>(WorldSeed);
+			// Scripts and CI make a creative world the way the menu does.
+			Info.bCreative = !bExisting && FParse::Param(FCommandLine::Get(), TEXT("MadCreative"));
+			bCreative = Info.bCreative;
 			Info.Created = FDateTime::UtcNow();
 			Info.LastPlayed = Info.Created;
 			Info.Directory = WorldDirectory;

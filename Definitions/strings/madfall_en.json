@@ -3,6 +3,12 @@
 	"language": "en",
 	"strings": {
 		"menu.difficulty": "Difficulty",
+		"menu.mode": "Mode",
+		"menu.mode_survival": "Survival",
+		"menu.mode_creative": "Creative",
+		"menu.mode_survival_description": "Gather, craft and build to live through the hordes. Hunger, thirst, cold and zombies can all kill you.",
+		"menu.mode_creative_description": "Build freely. Double-tap Space to fly, nothing can hurt you, blocks are never used up and break in one hit, and the inventory has a Creative tab with every item.",
+		"menu.key_fly_down": "Fly down (creative)",
 		"menu.difficulty_easy": "Easy",
 		"menu.difficulty_normal": "Normal",
 		"menu.difficulty_hard": "Hard",

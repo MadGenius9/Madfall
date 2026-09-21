@@ -3,6 +3,7 @@
 #include "MadSurvivorComponents.h"
 
 #include "MadFrameBudget.h"
+#include "MadDifficulty.h"
 #include "AbilitySystemInterface.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -223,6 +224,11 @@ void UMadSurvivalComponent::ApplyEffects(const TMap<FName, float>& Effects)
 
 void UMadSurvivalComponent::ApplyDamage(float Amount)
 {
+	// Every source of harm - zombies, animals, debris, traps, arrows - ends here.
+	if (MadFall::Difficulty::IsCreative(GetWorld()))
+	{
+		return;
+	}
 	FMadSurvivalStats Stats = GetStats();
 	Stats.Health = FMath::Clamp(Stats.Health - Amount, 0.0f, Stats.MaxHealth);
 	SetStats(Stats);
@@ -239,6 +245,10 @@ float UMadSurvivalComponent::ApplyAttackDamage(float Amount)
 
 bool UMadSurvivalComponent::TrySpendStamina(float Amount)
 {
+	if (MadFall::Difficulty::IsCreative(GetWorld()))
+	{
+		return true;
+	}
 	FMadSurvivalStats Stats = GetStats();
 	if (Stats.Stamina < Amount)
 	{
@@ -305,6 +315,20 @@ void UMadSurvivalComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	Environment.bExerting = ExertionRemaining > 0.0f;
 
 	FMadSurvivalStats Stats = GetStats();
+	if (MadFall::Difficulty::IsCreative(GetWorld()))
+	{
+		// No needs: everything held full, and nothing to die of.
+		Stats.Health = Stats.MaxHealth;
+		Stats.Stamina = Stats.MaxStamina;
+		Stats.Food = 100.0f;
+		Stats.Water = 100.0f;
+		Stats.Breath = 100.0f;
+		Stats.CoreTemperature = 37.0f;
+		Stats.Infection = 0.0f;
+		SetStats(Stats);
+		bWasDead = false;
+		return;
+	}
 	LastCauses = MadFall::Survival::Step(Stats, Environment, Tuning, DeltaTime);
 	SetStats(Stats);
 

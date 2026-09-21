@@ -30,4 +30,7 @@ namespace MadFall::Difficulty
 
 	/** The multiplier for the world being played. */
 	MADFALLCORE_API float GetWorldScale(const UWorld* World, FName Key);
+
+	/** True while playing a creative world (FMadWorldInfo::bCreative). */
+	MADFALLCORE_API bool IsCreative(const UWorld* World);
 }

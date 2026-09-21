@@ -69,6 +69,7 @@ bool FMadSessionWorldsTest::RunTest(const FString& Parameters)
 	Newer.Seed = -42;
 	Newer.LastPlayed = FDateTime(2026, 9, 1);
 	Newer.Directory = FPaths::Combine(Root, Newer.Name);
+	Newer.bCreative = true;
 	TestTrue(TEXT("second world.json written"), WriteWorldInfo(Newer, Error));
 
 	FMadWorldInfo Read;
@@ -79,6 +80,12 @@ bool FMadSessionWorldsTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("day"), Read.Day, 12);
 		TestEqual(TEXT("difficulty"), Read.Difficulty, FName(TEXT("hard")));
 		TestEqual(TEXT("last played"), Read.LastPlayed, Older.LastPlayed);
+		TestFalse(TEXT("a survival world stays survival"), Read.bCreative);
+	}
+	FMadWorldInfo ReadCreative;
+	if (TestTrue(TEXT("the creative world.json reads back"), ReadWorldInfo(Newer.Directory, ReadCreative)))
+	{
+		TestTrue(TEXT("a creative world stays creative"), ReadCreative.bCreative);
 	}
 
 	// Difficulty levels scale what they say they scale, and normal changes nothing.

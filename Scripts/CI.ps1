@@ -1725,6 +1725,61 @@ if (-not $SkipTests) {
 }
 
 # ---------------------------------------------------------------------------
+# Creative mode: every promise the new-world page makes, checked
+# ---------------------------------------------------------------------------
+#
+# The page says: fly with a double-tap, nothing hurts, blocks are never used
+# up and break in one hit, and every item is on a tab. A creative world made
+# with -MadCreative (the same world.json flag the menu writes) is checked on
+# each, through the same paths the keys and the mouse use.
+
+if (-not $SkipTests) {
+    Write-Section 'ACCEPTANCE: creative mode (headless -game)'
+
+    $creativeScript = "mad.clock.set 10; mad.ai.Sleepers 0; mad.ai.MaxZombies 1; mad.ai.killall; mad.scene.anchor; mad.scene.pad 8 6; wait 3; " +
+        "mad.player.damage 60; wait 0.5; mad.player.status; " +
+        "mad.player.openinventory; mad.hud.click tab.creative; mad.hud.click creative.item.madfall:concrete_frame; mad.hud.click creative.item.madfall:base_tool; mad.player.openinventory; " +
+        "mad.player.hold madfall:concrete_frame; mad.scene.aim 2 0 -1; mad.player.place; wait 0.5; mad.player.status; " +
+        "mad.scene.get 2 0 0; mad.scene.aim 2 0 0; mad.player.use 1; wait 0.5; mad.scene.get 2 0 0; " +
+        "mad.player.jump 0.05; wait 0.12; mad.player.jump 2; wait 2.2; mad.player.status; wait 2; mad.player.status; quit"
+    $creativeLog = Join-Path $LogDir 'creative.log'
+    $creativeWorld = Join-Path $RepoRoot 'Saved\MadFallWorlds\ci-creative'
+    if (Test-Path $creativeWorld) { Remove-Item -Recurse -Force $creativeWorld }
+    $creativeProcess = Start-Process -FilePath $EditorCmd -PassThru -NoNewWindow -RedirectStandardOutput $creativeLog `
+        -ArgumentList @("`"$ProjectFile`"", '-game', '-nullrhi', '-unattended', '-nosplash', '-stdout', '-NoLogTimes',
+                        '-MadWorld=ci-creative', '-MadCreative', '-MadDefaultSettings', "-ExecCmds=`"mad.onspawn wait 8; $creativeScript`"")
+
+    if (-not $creativeProcess.WaitForExit(240000)) {
+        $creativeProcess | Stop-Process -Force
+        Write-Host 'FAILED: the creative script did not finish within 240 s.' -ForegroundColor Red
+        $script:Failures += 'creative'
+    }
+    else {
+        $creativeOk = $true
+        $health = @(Select-String -Path $creativeLog -Pattern '  health ([\d.]+)/' | ForEach-Object { [double]$_.Matches[0].Groups[1].Value })
+        $heights = @(Select-String -Path $creativeLog -Pattern 'Player at voxel X=-?\d+ Y=-?\d+ Z=(-?\d+)' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        $frames = @(Select-String -Path $creativeLog -Pattern 'madfall:concrete_frame x(\d+)' | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        # The frame read back before the swing and after it: placed, then gone.
+        $spot = @(Select-String -Path $creativeLog -Pattern 'LogMadFallVoxel: Display: \(-?\d+, -?\d+, -?\d+\) = (\S+)' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $rose = $heights.Count -ge 3 -and $heights[-2] -gt $heights[0] + 5
+        $checks = @(
+            @{ Ok = ($health.Count -gt 0 -and $health[0] -ge 100);                           Why = "60 damage did nothing (health $($health[0]))" },
+            @{ Ok = ($frames.Count -gt 0 -and $frames[0] -gt 1);                              Why = "the creative tab gave a full stack ($($frames[0]) concrete frames)" },
+            @{ Ok = -not (Select-String -Path $creativeLog -Pattern 'madfall:base_tool x' -Quiet); Why = 'item templates are not handed out' },
+            @{ Ok = ($frames.Count -gt 0 -and $frames[-1] -eq $frames[0]);                   Why = "placing a block used none up ($($frames[0]) -> $($frames[-1]))" },
+            @{ Ok = ($spot.Count -ge 2 -and $spot[0] -eq 'madfall:concrete_frame' -and $spot[1] -eq 'madfall:air'); Why = "the placed frame broke in one swing ($($spot -join ' -> '))" },
+            @{ Ok = $rose;                                                                    Why = "double-tap and hold jump flew up (z $($heights[0]) -> $($heights[-2]))" },
+            @{ Ok = ($rose -and $heights[-1] -eq $heights[-2]);                               Why = "and hovered there after letting go (z $($heights[-1]))" }
+        )
+        foreach ($check in $checks) {
+            if ($check.Ok) { Write-Host "OK: $($check.Why)" -ForegroundColor Green }
+            else { Write-Host "FAILED: $($check.Why)" -ForegroundColor Red; $creativeOk = $false }
+        }
+        if (-not $creativeOk) { $script:Failures += 'creative' }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Altitude: a mountain is colder than the valley it stands in
 # ---------------------------------------------------------------------------
 #

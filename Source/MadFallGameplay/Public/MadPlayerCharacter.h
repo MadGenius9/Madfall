@@ -35,8 +35,23 @@ enum class EMadTradeResult : uint8;
 enum class EMadInventoryTab : uint8
 {
 	Crafting,
-	Skills
+	Skills,
+	/** Every item, free: creative worlds only. */
+	Creative
 };
+
+namespace MadFall::Creative
+{
+	/**
+	 * The items the creative tab offers, sorted by display name. Templates that
+	 * other items extend ("madfall:base_tool") are not things to hold and are
+	 * left out.
+	 */
+	MADFALLGAMEPLAY_API void GetItems(TArray<const struct FMadItemDefinition*>& Out);
+
+	/** Two presses of jump within this many seconds toggle flight. */
+	inline constexpr double DoubleTapSeconds = 0.3;
+}
 
 /** Which grid of the inventory screen a slot index refers to. */
 enum class EMadInventorySide : uint8
@@ -188,6 +203,11 @@ public:
 
 	/** Times a survivor was lifted out from inside solid ground (TickEntombed), for tests and CI. */
 	static int32 TotalRescues;
+
+	bool IsFlying() const { return bFlying; }
+
+	/** Creative: a full stack of Item into the backpack. False if it is not an item or there is no room. */
+	bool TakeCreativeItem(FName Item);
 
 	/** Press jump and hold it for HoldSeconds: the key's own path, for scripts and CI. */
 	void ScriptJump(float HoldSeconds) { OnJumpPressed(); ScriptedJumpSeconds = FMath::Max(0.05f, HoldSeconds); }
@@ -495,6 +515,7 @@ private:
 	UInputAction* CraftAction = nullptr;
 	UInputAction* RepairAction = nullptr;
 	UInputAction* DropAction = nullptr;
+	UInputAction* FlyDownAction = nullptr;
 	UInputAction* InventoryAction = nullptr;
 	UInputAction* PauseAction = nullptr;
 	UInputAction* MapAction = nullptr;
@@ -547,6 +568,14 @@ private:
 	 */
 	bool bJumpHeld = false;
 	float ScriptedJumpSeconds = 0.0f;
+
+	/** Creative flight: toggled by a double-tap of jump; jump rises, fly_down sinks. */
+	bool bFlying = false;
+	bool bFlyDownHeld = false;
+	double LastJumpPressTime = -10.0;
+	void TickCreativeFlight(float DeltaSeconds);
+	void OnFlyDownPressed() { bFlyDownHeld = true; }
+	void OnFlyDownReleased() { bFlyDownHeld = false; }
 	float SwimHopCooldown = 0.0f;
 	void OnJumpPressed();
 	void OnJumpReleased();

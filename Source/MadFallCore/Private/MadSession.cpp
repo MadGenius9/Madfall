@@ -136,6 +136,9 @@ bool MadFall::Session::ReadWorldInfo(const FString& Directory, FMadWorldInfo& Ou
 	{
 		Out.Difficulty = FName(*Difficulty.ToLower());
 	}
+	// Absent in every world made before creative mode: those are survival.
+	Out.bCreative = false;
+	Json->TryGetBoolField(TEXT("creative"), Out.bCreative);
 	return true;
 }
 
@@ -155,6 +158,7 @@ bool MadFall::Session::WriteWorldInfo(const FMadWorldInfo& Info, FString& OutErr
 	Json->SetStringField(TEXT("last_played"), Info.LastPlayed.ToIso8601());
 	Json->SetNumberField(TEXT("day"), Info.Day);
 	Json->SetStringField(TEXT("difficulty"), Info.Difficulty.ToString());
+	Json->SetBoolField(TEXT("creative"), Info.bCreative);
 
 	FString Text;
 	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Text);

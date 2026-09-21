@@ -124,6 +124,9 @@ public:
 	/** From world.json; normal for the title backdrop and worlds from before difficulty. */
 	FName GetDifficulty() const { return Difficulty; }
 
+	/** From world.json; see FMadWorldInfo::bCreative. -MadCreative makes a new world creative. */
+	bool IsCreative() const { return bCreative; }
+
 	UFUNCTION(BlueprintCallable, Category = "MadFall|World")
 	void SetSeed(int64 InSeed);
 
@@ -329,6 +332,7 @@ private:
 	/** Never written to disk: the title screen's backdrop world. */
 	bool bReadOnly = false;
 	FName Difficulty = FName(TEXT("normal"));
+	bool bCreative = false;
 	uint64 WorldGenVersion = 0;
 
 	TMap<FMadChunkCoord, FMadChunkPtr> LoadedChunks;

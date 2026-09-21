@@ -3781,6 +3781,44 @@ log had no errors; what it found, it found by eye and ear.
   `-MadWorldsDir=` into its own folder so it can never create or delete a
   player's worlds. The editor and tests keep the project's Saved folder.
 
+### Creative mode
+
+Asked for after the second playtest. A world is creative or not for good: the
+New World page's "Mode" button sets `FMadWorldInfo::bCreative`, written to
+world.json as `"creative"` (absent in older worlds, which read as survival),
+loaded into `UMadVoxelWorldSubsystem::IsCreative`, asked through
+`MadFall::Difficulty::IsCreative(World)`. `-MadCreative` makes a new world
+creative from the command line, which is how CI builds one.
+
+Each promise is enforced at the one place it can be kept:
+
+- **Nothing hurts.** `UMadSurvivalComponent::ApplyDamage` - the funnel every
+  zombie, animal, debris, trap and arrow hit ends in - returns at once.
+- **No needs.** The survival tick holds health, stamina, food, water, breath,
+  core temperature and infection at their best instead of stepping the model;
+  `TrySpendStamina` always succeeds.
+- **Flight.** Two presses of jump within 0.3 s toggle `bFlying`
+  (`OnJumpPressed`). `TickCreativeFlight` runs instead of swimming and
+  climbing, which both want the movement mode: jump rises, `fly_down`
+  (Left Ctrl, rebindable) sinks, sprint flies 2.5x walking pace, and letting
+  go hovers.
+- **Free building.** Placing skips taking the block from the stack; a swing
+  destroys the target outright (1e7 damage, 0.18 s between swings) with no
+  drops, experience or tool wear.
+- **Every item.** A third inventory tab, drawn only in creative worlds
+  (`AMadHUD::DrawCreativePanel`), lists `MadFall::Creative::GetItems` - every
+  item sorted by name, minus templates such as `madfall:base_tool` - and a
+  click gives a full stack (`TakeCreativeItem`, refused outside creative).
+
+Tests: `MadFall.Creative.Items`; `MadFall.Session.Worlds` round-trips the flag
+both ways. CI gate "creative mode" checks all seven promises through the key
+and mouse paths (`mad.player.jump`, `mad.hud.click`, `mad.scene.get` added for
+it), and was run once against a survival world as a control: six of seven
+fail there, the seventh (templates are never handed out) holding in both. The
+first version of the gate passed "broke in one swing" in survival too - the
+spot was air because nothing had been placed - so it now reads the frame back
+before and after the swing.
+
 ### Second playtest: jumping in water, falling through the world, berry bushes
 
 - **Space did nothing in the water.** Swimming runs in flying mode, where

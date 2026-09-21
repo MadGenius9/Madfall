@@ -1,6 +1,7 @@
 // Copyright MadFall. All Rights Reserved.
 
 #include "MadGameMode.h"
+#include "MadDifficulty.h"
 
 #include "CanvasItem.h"
 #include "Engine/Canvas.h"
@@ -254,9 +255,10 @@ void AMadHUD::DrawHUD()
 			Clock->IsHordeNight() ? FLinearColor(1.0f, 0.25f, 0.2f) : FLinearColor::White,
 			Layout.Clock.Min.X + Px(10.0f), Layout.Clock.Min.Y + Px(6.0f), Font);
 	}
-	DrawScaled(FString::Printf(TEXT("Level %d  (%d/%d xp)  game stage %d%s"), Player->GetLevel(), Player->GetExperience(),
+	DrawScaled(FString::Printf(TEXT("Level %d  (%d/%d xp)  game stage %d%s%s"), Player->GetLevel(), Player->GetExperience(),
 		Player->GetExperienceForNextLevel(), Player->GetGameStage(),
-		Player->GetUnspentPerkPoints() > 0 ? *FString::Printf(TEXT("  [%d perk point(s)]"), Player->GetUnspentPerkPoints()) : TEXT("")),
+		Player->GetUnspentPerkPoints() > 0 ? *FString::Printf(TEXT("  [%d perk point(s)]"), Player->GetUnspentPerkPoints()) : TEXT(""),
+		MadFall::Difficulty::IsCreative(GetWorld()) ? (Player->IsFlying() ? TEXT("  CREATIVE - flying") : TEXT("  CREATIVE")) : TEXT("")),
 		FLinearColor(0.8f, 0.8f, 0.8f), Layout.Clock.Min.X + Px(10.0f), Layout.Clock.Min.Y + Px(34.0f), Small);
 
 	// --- compass --------------------------------------------------------------
@@ -850,19 +852,32 @@ void AMadHUD::DrawInventoryScreen(const AMadPlayerCharacter& Player)
 	{
 		const float ColumnH = FMath::Max(PanelH, FMath::Min(H - P(100.0f), Layout.Hotbar.Min.Y - P(12.0f)) - PanelY);
 		const float TabH = P(26.0f);
-		const EMadInventoryTab Tab = Player.GetInventoryTab();
-		for (int32 Index = 0; Index < 2; ++Index)
+		EMadInventoryTab Tab = Player.GetInventoryTab();
+		const bool bCreative = MadFall::Difficulty::IsCreative(GetWorld());
+		if (Tab == EMadInventoryTab::Creative && !bCreative)
+		{
+			Tab = EMadInventoryTab::Crafting;
+		}
+		const int32 Tabs = bCreative ? 3 : 2;
+		const float TabW = SkillsWidth / Tabs;
+		for (int32 Index = 0; Index < Tabs; ++Index)
 		{
 			const bool bActive = static_cast<int32>(Tab) == Index;
-			const float TabX = SkillsX + Index * (SkillsWidth * 0.5f);
-			DrawRect(bActive ? FLinearColor(0.9f, 0.8f, 0.3f, 0.9f) : FLinearColor(0.1f, 0.1f, 0.12f, 0.9f), TabX, PanelY, SkillsWidth * 0.5f - P(2.0f), TabH);
-			DrawText(Index == 0 ? FString::Printf(TEXT("CRAFTING (%s)"), *MadFall::Input::GetKeyLabel(TEXT("craft"))) : FString(TEXT("SKILLS")),
-				bActive ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor(0.8f, 0.8f, 0.8f), TabX + P(12.0f), PanelY + P(6.0f), Small, Sc);
-			AddHitBox(FVector2D(TabX, PanelY), FVector2D(SkillsWidth * 0.5f - P(2.0f), TabH), FName(Index == 0 ? TEXT("tab.crafting") : TEXT("tab.skills")), true);
+			const float TabX = SkillsX + Index * TabW;
+			static const TCHAR* const Boxes[] = { TEXT("tab.crafting"), TEXT("tab.skills"), TEXT("tab.creative") };
+			const FString Label = Index == 0 ? FString::Printf(TEXT("CRAFTING (%s)"), *MadFall::Input::GetKeyLabel(TEXT("craft")))
+				: Index == 1 ? FString(TEXT("SKILLS")) : FString(TEXT("CREATIVE"));
+			DrawRect(bActive ? FLinearColor(0.9f, 0.8f, 0.3f, 0.9f) : FLinearColor(0.1f, 0.1f, 0.12f, 0.9f), TabX, PanelY, TabW - P(2.0f), TabH);
+			DrawText(Label, bActive ? FLinearColor(0.05f, 0.05f, 0.05f) : FLinearColor(0.8f, 0.8f, 0.8f), TabX + P(12.0f), PanelY + P(6.0f), Small, Sc);
+			AddHitBox(FVector2D(TabX, PanelY), FVector2D(TabW - P(2.0f), TabH), FName(Boxes[Index]), true);
 		}
 		if (Tab == EMadInventoryTab::Crafting)
 		{
 			DrawCraftingPanel(Player, SkillsX, PanelY + TabH + P(2.0f), ColumnH - TabH - P(2.0f));
+		}
+		else if (Tab == EMadInventoryTab::Creative)
+		{
+			DrawCreativePanel(Player, SkillsX, PanelY + TabH + P(2.0f), ColumnH - TabH - P(2.0f));
 		}
 		else
 		{
@@ -1059,6 +1074,39 @@ void AMadHUD::DrawSkillsPanel(const AMadPlayerCharacter& Player, float X, float 
 	{
 		DrawText(FString::Printf(TEXT("%d above, %d below - mouse wheel to scroll"), First, Below),
 			FLinearColor(0.55f, 0.55f, 0.55f), X + P(14.0f), Y + Height - P(20.0f), Small, Sc);
+	}
+}
+
+void AMadHUD::DrawCreativePanel(const AMadPlayerCharacter& Player, float X, float Y, float Height)
+{
+	// Every item in the game, a click away: a full stack into the backpack.
+	UFont* Small = GEngine->GetSmallFont();
+	const float Sc = Bag.Scale;
+	auto P = [Sc](float DesignPixels) { return DesignPixels * Sc; };
+	const float Width = Bag.Side.GetSize().X;
+	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
+	DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.9f), X, Y, Width, Height);
+	DrawText(TEXT("Click an item for a full stack."), FLinearColor(0.75f, 0.75f, 0.75f), X + P(12.0f), Y + P(8.0f), Small, Sc);
+
+	TArray<const FMadItemDefinition*> Items;
+	MadFall::Creative::GetItems(Items);
+	constexpr float RowH = 20.0f;
+	const float ListY = Y + P(30.0f);
+	const int32 Visible = FMath::Max(1, FMath::FloorToInt32((Y + Height - P(26.0f) - ListY) / RowH));
+	const int32 First = FMath::Clamp(Player.GetColumnScroll(), 0, FMath::Max(0, Items.Num() - 1));
+	for (int32 Index = First; Index < Items.Num() && Index < First + Visible; ++Index)
+	{
+		const FMadItemDefinition& Item = *Items[Index];
+		const float RowY = ListY + (Index - First) * RowH;
+		const bool bIcon = DrawItemIcon(Item.Id, X + P(12.0f), RowY, RowH - P(2.0f), 1.0f);
+		DrawText(Definitions.GetItemName(Item.Id), FLinearColor::White, X + (bIcon ? 36.0f : 14.0f), RowY, Small, Sc);
+		DrawText(FString::Printf(TEXT("x%d"), FMath::Max(1, Item.MaxStack)), FLinearColor(0.5f, 0.85f, 0.4f), X + Width - P(44.0f), RowY, Small, Sc);
+		AddHitBox(FVector2D(X + P(6.0f), RowY - P(1.0f)), FVector2D(Width - P(12.0f), RowH), FName(*FString::Printf(TEXT("creative.item.%s"), *Item.Id.ToString())), true);
+	}
+	if (First > 0 || First + Visible < Items.Num())
+	{
+		DrawText(FString::Printf(TEXT("%d above, %d below - mouse wheel to scroll"), First, FMath::Max(0, Items.Num() - First - Visible)),
+			FLinearColor(0.55f, 0.55f, 0.55f), X + P(12.0f), Y + Height - P(20.0f), Small, Sc);
 	}
 }
 
@@ -1273,9 +1321,15 @@ void AMadHUD::ClickBox(FName BoxName, bool bQuick, bool bHalf, bool bCtrl)
 	}
 
 	const FString Name = BoxName.ToString();
-	if (Name == TEXT("tab.crafting") || Name == TEXT("tab.skills"))
+	if (Name == TEXT("tab.crafting") || Name == TEXT("tab.skills") || Name == TEXT("tab.creative"))
 	{
-		Player->SetInventoryTab(Name == TEXT("tab.crafting") ? EMadInventoryTab::Crafting : EMadInventoryTab::Skills);
+		Player->SetInventoryTab(Name == TEXT("tab.crafting") ? EMadInventoryTab::Crafting
+			: Name == TEXT("tab.skills") ? EMadInventoryTab::Skills : EMadInventoryTab::Creative);
+		return;
+	}
+	if (Name.StartsWith(TEXT("creative.item.")))
+	{
+		Player->TakeCreativeItem(FName(*Name.Mid(14)));
 		return;
 	}
 	if (Name.StartsWith(TEXT("craft.cat.")))
@@ -1645,6 +1699,22 @@ namespace
 			bGSceneAnchored = false;
 			const FIntVector Anchor = SceneAnchor(P);
 			UE_LOG(LogMadFallGameplay, Display, TEXT("Scene anchored at X=%d Y=%d Z=%d."), Anchor.X, Anchor.Y, Anchor.Z);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CmdSceneGet(
+		TEXT("mad.scene.get"),
+		TEXT("mad.scene.get <dx> <dy> <dz> - mad.voxel.get, offset from the scene anchor."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic([](const TArray<FString>& Args, UWorld* World)
+		{
+			AMadPlayerCharacter* P = GetPlayer(World);
+			FIntVector Delta;
+			if (P == nullptr || !ParseVoxel(Args, 0, Delta))
+			{
+				UE_LOG(LogMadFallGameplay, Error, TEXT("Usage: mad.scene.get <dx> <dy> <dz>"));
+				return;
+			}
+			const FIntVector At = SceneAnchor(P) + Delta;
+			GEngine->Exec(World, *FString::Printf(TEXT("mad.voxel.get %d %d %d"), At.X, At.Y, At.Z));
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CmdSceneSet(

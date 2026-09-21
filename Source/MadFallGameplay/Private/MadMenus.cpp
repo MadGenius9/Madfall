@@ -222,6 +222,7 @@ private:
 	TSharedPtr<SEditableTextBox> NameBox;
 	TSharedPtr<SEditableTextBox> SeedBox;
 	FName NewDifficulty = MadFall::Difficulty::Normal;
+	bool bNewCreative = false;
 	TSharedPtr<SVerticalBox> WorldList;
 	FString ConfirmDelete;
 	FString ConfirmRestore;
@@ -373,10 +374,20 @@ private:
 			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 16) [ SNew(STextBlock)
 				.Text_Lambda([this]() { return L(*FString::Printf(TEXT("@menu.difficulty_%s_description"), *NewDifficulty.ToString())); })
 				.ColorAndOpacity(FLinearColor(0.75f, 0.75f, 0.75f)).AutoWrapText(true) ]
+			+ SVerticalBox::Slot().AutoHeight() [ Button(
+				TAttribute<FText>::CreateLambda([this]()
+				{
+					return FText::FromString(FString::Printf(TEXT("%s: %s"), *MadFall::Localize(TEXT("@menu.mode")),
+						*MadFall::Localize(bNewCreative ? TEXT("@menu.mode_creative") : TEXT("@menu.mode_survival"))));
+				}),
+				[this]() { bNewCreative = !bNewCreative; }) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 16) [ SNew(STextBlock)
+				.Text_Lambda([this]() { return L(bNewCreative ? TEXT("@menu.mode_creative_description") : TEXT("@menu.mode_survival_description")); })
+				.ColorAndOpacity(FLinearColor(0.75f, 0.75f, 0.75f)).AutoWrapText(true) ]
 			+ SVerticalBox::Slot().AutoHeight() [ Button(L(TEXT("@menu.create")), [this]()
 				{
 					FString Reason;
-					if (!Owner->CreateWorld(NameBox->GetText().ToString(), SeedBox->GetText().ToString(), NewDifficulty, Reason))
+					if (!Owner->CreateWorld(NameBox->GetText().ToString(), SeedBox->GetText().ToString(), NewDifficulty, Reason, bNewCreative))
 					{
 						Error = FText::FromString(Reason);
 					}
@@ -784,7 +795,7 @@ const TArray<FMadWorldInfo>& UMadMenuSubsystem::GetWorlds()
 	return Worlds;
 }
 
-bool UMadMenuSubsystem::CreateWorld(const FString& DisplayName, const FString& SeedText, FName Difficulty, FString& OutError)
+bool UMadMenuSubsystem::CreateWorld(const FString& DisplayName, const FString& SeedText, FName Difficulty, FString& OutError, bool bCreative)
 {
 	if (!MadFall::Difficulty::IsValid(Difficulty))
 	{
@@ -810,6 +821,7 @@ bool UMadMenuSubsystem::CreateWorld(const FString& DisplayName, const FString& S
 	Info.DisplayName = DisplayName.TrimStartAndEnd();
 	Info.Seed = MadFall::Session::ParseSeed(SeedText);
 	Info.Difficulty = Difficulty;
+	Info.bCreative = bCreative;
 	Info.Created = FDateTime::UtcNow();
 	Info.LastPlayed = Info.Created;
 	Info.Directory = Directory;
@@ -818,7 +830,8 @@ bool UMadMenuSubsystem::CreateWorld(const FString& DisplayName, const FString& S
 		return false;
 	}
 
-	UE_LOG(LogMadFallGameplay, Display, TEXT("Creating world %s (%s), seed %lld, %s."), *Name, *Info.DisplayName, Info.Seed, *Difficulty.ToString());
+	UE_LOG(LogMadFallGameplay, Display, TEXT("Creating world %s (%s), seed %lld, %s%s."), *Name, *Info.DisplayName, Info.Seed, *Difficulty.ToString(),
+		bCreative ? TEXT(", creative") : TEXT(""));
 	MadFall::Session::SelectWorld(Name, Info.Seed);
 	TravelToCurrentMap();
 	return true;

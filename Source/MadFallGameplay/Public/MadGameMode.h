@@ -66,6 +66,7 @@ private:
 	void DrawCount(int32 Count, float RightX, float Y, float Scale = 1.0f);
 	void DrawSkillsPanel(const class AMadPlayerCharacter& Player, float X, float Y, float Height);
 	void DrawCraftingPanel(const class AMadPlayerCharacter& Player, float X, float Y, float Height);
+	void DrawCreativePanel(const class AMadPlayerCharacter& Player, float X, float Y, float Height);
 	void DrawTooltip(const FMadItemStack& Stack);
 	/** The held stack's icon and count beside the mouse, over everything else on the screen. */
 	void DrawHeldStack(const class AMadPlayerCharacter& Player);

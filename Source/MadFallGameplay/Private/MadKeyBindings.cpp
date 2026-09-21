@@ -26,6 +26,8 @@ const TArray<FMadRebindableAction>& FMadKeyBindings::GetActions()
 		MakeAction(TEXT("map"), EKeys::M),
 		MakeAction(TEXT("repair"), EKeys::R),
 		MakeAction(TEXT("drop"), EKeys::Q),
+		// Creative flight only: sinks while held.
+		MakeAction(TEXT("fly_down"), EKeys::LeftControl),
 	};
 	return Actions;
 }

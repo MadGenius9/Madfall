@@ -570,8 +570,16 @@ void AMadPlayerCharacter::Tick(float DeltaSeconds)
 		ClimbInput = 1.0f;
 		DiveInput = ScriptedDive;
 	}
-	TickSwimming(DeltaSeconds);
-	TickClimbing();
+	if (bFlying)
+	{
+		// Swimming and ladders both want the movement mode; flying outranks them.
+		TickCreativeFlight(DeltaSeconds);
+	}
+	else
+	{
+		TickSwimming(DeltaSeconds);
+		TickClimbing();
+	}
 	TickSounds(DeltaSeconds);
 
 	const FMadItemStack* HeldStack = Inventory->GetSelectedStack();
@@ -858,10 +866,94 @@ void AMadPlayerCharacter::TickSwimming(float DeltaSeconds)
 void AMadPlayerCharacter::OnJumpPressed()
 {
 	bJumpHeld = true;
-	if (!bSwimming)
+	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	if (MadFall::Difficulty::IsCreative(GetWorld()) && Now - LastJumpPressTime <= MadFall::Creative::DoubleTapSeconds)
+	{
+		// Double-tap: take off, or come down and walk.
+		bFlying = !bFlying;
+		LastJumpPressTime = -10.0;
+		if (UCharacterMovementComponent* Move = GetCharacterMovement())
+		{
+			Move->SetMovementMode(bFlying ? MOVE_Flying : MOVE_Falling);
+			Move->Velocity.Z = 0.0f;
+		}
+		PushMessage(bFlying ? TEXT("Flying - Space to rise, Ctrl to sink, double-tap Space to land.") : TEXT("Walking."), 2.0f);
+		return;
+	}
+	LastJumpPressTime = Now;
+	if (!bSwimming && !bFlying)
 	{
 		Jump();
 	}
+}
+
+void AMadPlayerCharacter::TickCreativeFlight(float DeltaSeconds)
+{
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (Move == nullptr)
+	{
+		return;
+	}
+	if (!MadFall::Difficulty::IsCreative(GetWorld()))
+	{
+		bFlying = false;
+		return;
+	}
+	if (Move->MovementMode != MOVE_Flying)
+	{
+		Move->SetMovementMode(MOVE_Flying);
+	}
+	// Fast enough to build across a valley; sprint doubles it for travel.
+	const bool bFast = Survival->IsSprinting();
+	Move->MaxFlySpeed = SprintSpeed * (bFast ? 2.5f : 1.3f);
+	Move->BrakingDecelerationFlying = 4000.0f;
+	const float Vertical = (bJumpHeld ? 1.0f : 0.0f) - (bFlyDownHeld ? 1.0f : 0.0f);
+	Move->Velocity.Z = Vertical * Move->MaxFlySpeed * 0.8f;
+}
+
+namespace
+{
+	bool IsCreativeTemplate(const FMadItemDefinition& Item)
+	{
+		const FString Id = Item.Id.ToString();
+		int32 Colon = INDEX_NONE;
+		return Id.FindChar(TEXT(':'), Colon) && Id.Mid(Colon + 1).StartsWith(TEXT("base_"));
+	}
+}
+
+void MadFall::Creative::GetItems(TArray<const FMadItemDefinition*>& Out)
+{
+	const FMadGameplayDefinitions& Definitions = MadFall::GetGameplayDefinitions();
+	Out.Reset();
+	for (const FMadItemDefinition& Item : Definitions.GetItems())
+	{
+		if (!IsCreativeTemplate(Item))
+		{
+			Out.Add(&Item);
+		}
+	}
+	Out.Sort([&Definitions](const FMadItemDefinition& A, const FMadItemDefinition& B)
+	{
+		return Definitions.GetItemName(A.Id) < Definitions.GetItemName(B.Id);
+	});
+}
+
+bool AMadPlayerCharacter::TakeCreativeItem(FName Item)
+{
+	const FMadItemDefinition* Definition = MadFall::GetGameplayDefinitions().FindItem(Item);
+	if (!MadFall::Difficulty::IsCreative(GetWorld()) || Definition == nullptr || IsCreativeTemplate(*Definition))
+	{
+		return false;
+	}
+	const int32 Count = FMath::Max(1, Definition->MaxStack);
+	const int32 Left = Inventory->AddItem(Item, Count);
+	if (Left >= Count)
+	{
+		PushMessage(TEXT("Your backpack is full."), 2.0f);
+		return false;
+	}
+	PushMessage(FString::Printf(TEXT("Took %d x %s."), Count - Left, *MadFall::GetGameplayDefinitions().GetItemName(Item)), 1.5f);
+	return true;
 }
 
 void AMadPlayerCharacter::OnJumpReleased()
@@ -1503,13 +1595,25 @@ bool AMadPlayerCharacter::UsePrimary(bool bIgnoreCooldown)
 		PushMessage(FString::Printf(TEXT("Wrong tool for %s - it will not drop anything."), *FMadGameplayDefinitions::GetBlockName(Block->Id)), 2.0f);
 	}
 
-	const FMadBlockDamageResult Result = Structural->ApplyBlockDamage(Target.Voxel, Hit.Amount * GetPerkMultiplier(FName(TEXT("mining_damage"))), Hit.DamageType);
+	// Creative breaks whatever is aimed at in one swing, with any tool or none.
+	const bool bCreative = MadFall::Difficulty::IsCreative(GetWorld());
+	if (bCreative)
+	{
+		NextUseTime = Now + 0.18;
+	}
+	const float Amount = bCreative ? 1.0e7f : Hit.Amount * GetPerkMultiplier(FName(TEXT("mining_damage")));
+	const FMadBlockDamageResult Result = Structural->ApplyBlockDamage(Target.Voxel, Amount, Hit.DamageType);
 	if (UMadAudioSubsystem* Audio = GetWorld()->GetSubsystem<UMadAudioSubsystem>())
 	{
 		Audio->PlayForMaterial(Result.bDestroyed ? EMadSound::Break : EMadSound::Hit, Block->MaterialClass,
 			(FVector(Target.Voxel) + FVector(0.5)) * MadFall::VoxelSizeUU);
 	}
 
+	if (Result.bDestroyed && bCreative)
+	{
+		UpdateTarget();
+		return true;
+	}
 	if (Result.bDestroyed)
 	{
 		TArray<FMadItemStack> Drops;
@@ -1749,9 +1853,13 @@ bool AMadPlayerCharacter::UseSecondary()
 		Audio->PlayAt(EMadSound::Place, (FVector(Place) + FVector(0.5)) * MadFall::VoxelSizeUU);
 	}
 
-	FMadItemStack Held = *HeldPtr;
-	Held.Count -= 1;
-	Inventory->SetSelectedStack(Held);
+	if (!MadFall::Difficulty::IsCreative(GetWorld()))
+	{
+		// Creative builds from an endless stack.
+		FMadItemStack Held = *HeldPtr;
+		Held.Count -= 1;
+		Inventory->SetSelectedStack(Held);
+	}
 	UpdateTarget();
 	NotifyQuest(EMadQuestObjectiveType::Place, Block->Id, Block->Tags, 1, Place);
 	return true;
@@ -2209,6 +2317,7 @@ void AMadPlayerCharacter::EnsureInput()
 	CraftAction = MakeAction(TEXT("IA_Craft"), EInputActionValueType::Boolean);
 	RepairAction = MakeAction(TEXT("IA_Repair"), EInputActionValueType::Boolean);
 	DropAction = MakeAction(TEXT("IA_Drop"), EInputActionValueType::Boolean);
+	FlyDownAction = MakeAction(TEXT("IA_FlyDown"), EInputActionValueType::Boolean);
 	InventoryAction = MakeAction(TEXT("IA_Inventory"), EInputActionValueType::Boolean);
 	PauseAction = MakeAction(TEXT("IA_Pause"), EInputActionValueType::Boolean);
 	MapAction = MakeAction(TEXT("IA_Map"), EInputActionValueType::Boolean);
@@ -2265,6 +2374,7 @@ void AMadPlayerCharacter::MapKeys()
 	MappingContext->MapKey(CraftAction, Keys.Get(TEXT("craft")));
 	MappingContext->MapKey(RepairAction, Keys.Get(TEXT("repair")));
 	MappingContext->MapKey(DropAction, Keys.Get(TEXT("drop")));
+	MappingContext->MapKey(FlyDownAction, Keys.Get(TEXT("fly_down")));
 	MappingContext->MapKey(InventoryAction, Keys.Get(TEXT("inventory")));
 	MappingContext->MapKey(MapAction, Keys.Get(TEXT("map")));
 
@@ -2313,6 +2423,8 @@ void AMadPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	Input->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMadPlayerCharacter::OnLook);
 	Input->BindAction(JumpAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnJumpPressed);
 	Input->BindAction(JumpAction, ETriggerEvent::Completed, this, &AMadPlayerCharacter::OnJumpReleased);
+	Input->BindAction(FlyDownAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnFlyDownPressed);
+	Input->BindAction(FlyDownAction, ETriggerEvent::Completed, this, &AMadPlayerCharacter::OnFlyDownReleased);
 	Input->BindAction(SprintAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnSprint);
 	Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &AMadPlayerCharacter::OnSprint);
 	Input->BindAction(PrimaryAction, ETriggerEvent::Started, this, &AMadPlayerCharacter::OnPrimaryStarted);
@@ -2452,6 +2564,12 @@ void AMadPlayerCharacter::OnScroll(const FInputActionValue& Value)
 			TArray<FMadRecipeRow> Recipes;
 			GetRecipeRows(Recipes);
 			Rows = Recipes.Num();
+		}
+		else if (InventoryTab == EMadInventoryTab::Creative)
+		{
+			TArray<const FMadItemDefinition*> Items;
+			MadFall::Creative::GetItems(Items);
+			Rows = Items.Num();
 		}
 		ColumnScroll = FMath::Clamp(ColumnScroll + Step, 0, FMath::Max(0, Rows - 1));
 		return;

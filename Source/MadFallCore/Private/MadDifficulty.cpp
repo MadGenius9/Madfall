@@ -25,6 +25,12 @@ float MadFall::Difficulty::GetScale(FName Level, FName Key)
 	return Value ? FMath::Max(0.0f, *Value) : 1.0f;
 }
 
+bool MadFall::Difficulty::IsCreative(const UWorld* World)
+{
+	const UMadVoxelWorldSubsystem* VoxelWorld = World ? World->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;
+	return VoxelWorld != nullptr && VoxelWorld->IsCreative();
+}
+
 float MadFall::Difficulty::GetWorldScale(const UWorld* World, FName Key)
 {
 	const UMadVoxelWorldSubsystem* VoxelWorld = World ? World->GetSubsystem<UMadVoxelWorldSubsystem>() : nullptr;

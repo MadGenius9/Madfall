@@ -109,6 +109,13 @@ once the ground under them has streamed in.
 | R, Q | Repair the held tool, drop the held stack |
 | Esc or P | Close the open screen, or the pause menu (resume, settings, save and quit) |
 
+**Creative mode** is chosen on the New World page (Mode: Survival / Creative)
+and kept with the world. In a creative world: double-tap Space to fly (hold
+Space to rise, Left Ctrl to sink - rebindable - and double-tap again to land),
+nothing hurts you and hunger, thirst and cold do not apply, placed blocks are
+never used up, any block breaks in one hit, and the inventory (I) has a
+**Creative** tab listing every item - click one for a full stack.
+
 Each time a world opens, the game backs it up first (the newest three are kept); **Restore** in the world list undoes the last session.
 
 Every keyboard action above can be rebound in **Settings > Controls** (the mouse, Escape, P and 1-9 stay fixed).

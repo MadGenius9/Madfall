@@ -24,6 +24,13 @@ struct MADFALLCORE_API FMadWorldInfo
 	/** easy, normal or hard (MadFall::Difficulty). */
 	FName Difficulty = FName(TEXT("normal"));
 
+	/**
+	 * A creative world: flight, no harm and no needs, free building, and every
+	 * item on a tab of the inventory. Chosen when the world is made and kept
+	 * with it, so a survival world never picks it up by accident.
+	 */
+	bool bCreative = false;
+
 	/** Absolute directory. Filled in by ReadWorldInfo / ListWorlds. */
 	FString Directory;
 };

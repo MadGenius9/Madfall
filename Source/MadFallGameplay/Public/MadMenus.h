@@ -55,7 +55,7 @@ public:
 	// --- title actions -----------------------------------------------------
 
 	/** Creates and enters a new world. False (with a reason) for a bad name or an existing world. */
-	bool CreateWorld(const FString& DisplayName, const FString& SeedText, FName Difficulty, FString& OutError);
+	bool CreateWorld(const FString& DisplayName, const FString& SeedText, FName Difficulty, FString& OutError, bool bCreative = false);
 	bool LoadWorld(const FString& Name, FString& OutError);
 	bool DeleteWorld(const FString& Name, FString& OutError);
 
