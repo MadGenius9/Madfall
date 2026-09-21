@@ -2294,6 +2294,15 @@ Console (used by the survival gate): `mad.player.store <item>`,
 3. **Two worlds initialise in `-game`** (the startup world, then the map), so
    world subsystems log their startup twice. Harmless - the first is torn down
    before play - but it doubles registry-independent startup work.
+
+   **MEASURED, NOT A PROBLEM.** Timestamped `-game` startup (2026-09-21): the
+   engine's placeholder world 'Untitled' lives from 01.239 to 01.589, but
+   MadFall's own work inside it - surface material registration, the only
+   subsystem work it logs - spans 01.134 to 01.140, about 6 ms. The rest of
+   that window is engine and editor-module initialisation that happens with or
+   without it. Gating every subsystem on "not the placeholder world" would buy
+   6 ms of a 1.3 s spawn at the cost of a special case in fourteen
+   `ShouldCreateSubsystem`s; not done.
 4. **Placeholder presentation - LARGELY FIXED; read this first.** This item
    opens with how the game used to look, and three separate summaries of the
    project repeated that opening as current. As of now: humanoids are the UE5
