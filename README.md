@@ -172,3 +172,10 @@ Dependency direction is strictly one way:
 `MadFallModAPI` must never gain an `Engine` dependency — that is what lets it
 load early enough to mount mod paks, and what keeps internal types out of the
 mod surface.
+
+## MadVoxel (separate project)
+
+[MadGenius9/MadVoxel](https://github.com/MadGenius9/MadVoxel) is an independent
+**Unity 6 / URP** single-player survival sandbox in the same genre, developed in its
+own repository. It shares no code, assets or engine with MadFall — the two are
+unrelated builds of a similar idea.
