@@ -48,6 +48,9 @@ import sys
 
 import unreal
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from style import SPECULAR, STYLE_VERSION, hlsl as style_hlsl  # noqa: E402
+
 # The cracks are shared with the textured material, so the two cannot drift.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crack_shader import CRACK_APPLY, CRACK_METHOD  # noqa: E402
@@ -59,7 +62,7 @@ FOLIAGE_ASSET_NAME = "M_MadVoxelFoliage"   # leaves: the same, lit through from 
 WATER_ASSET_NAME = "M_MadVoxelWater"       # water: the same, but you can see through it and under it
 
 VERSION_TAG = "MadFallVoxelMaterialVersion"
-MATERIAL_VERSION = "12"
+MATERIAL_VERSION = "13s" + STYLE_VERSION
 
 # Pattern index from vertex alpha: alpha = 255 - index * 16.
 PATTERN_ID = "int Id = (int)round((1.0 - VA) * 255.0 / 16.0);\n"
@@ -324,6 +327,7 @@ BumpNormal = normalize(lerp(BumpNormal, NN, SnowMask * 0.8));
 // The cracks want the same names the textured material's do.
 float3 Col = C;
 float3 WN = BumpNormal;
+%STYLISE%
 %CRACK_APPLY%
 BumpNormal = WN;
 return saturate(Col) * AO;
@@ -373,7 +377,7 @@ def connect(editing, source, source_pin, target, target_pin):
 def build(material, editing, held, foliage=False, water=False):
     editing.delete_all_material_expressions(material)
 
-    albedo = custom_node(material, editing, ALBEDO_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY), unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+    albedo = custom_node(material, editing, ALBEDO_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY).replace("%STYLISE%", style_hlsl()), unreal.CustomMaterialOutputType.CMOT_FLOAT3,
                          ["WP", "N", "VC", "VA", "Dist", "Occ", "Wet", "Snow", "Dmg"], -450, -100, "MadFall surface pattern",
                          extra_outputs=[("BumpNormal", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                                         ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
@@ -486,6 +490,10 @@ def build(material, editing, held, foliage=False, water=False):
     material.set_editor_property("tangent_space_normal", False)
     # Roughness now comes from the pattern node, which knows about wet and snow.
     ok &= editing.connect_material_property(albedo, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
+    # Matt: the default 0.5 specular put a plastic sheen on every block under a low sun.
+    specular = editing.create_material_expression(material, unreal.MaterialExpressionConstant, -450, 420)
+    specular.set_editor_property("r", SPECULAR)
+    ok &= editing.connect_material_property(specular, "", unreal.MaterialProperty.MP_SPECULAR)
     ok &= editing.connect_material_property(metallic, "", unreal.MaterialProperty.MP_METALLIC)
     if foliage:
         # Two-sided foliage transmits light arriving at the back of a face, so

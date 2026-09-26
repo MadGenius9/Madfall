@@ -41,6 +41,7 @@ import unreal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from surface_sets import ARRAY_LAYERS, SETS  # noqa: E402
 from crack_shader import CRACK_APPLY, CRACK_METHOD  # noqa: E402
+from style import SPECULAR, STYLE_VERSION, hlsl as style_hlsl  # noqa: E402
 
 PACKAGE_PATH = "/Game/Materials"
 ASSET_NAME = "M_MadVoxelPBR"
@@ -53,7 +54,7 @@ HELD_ASSET_NAME = "M_MadVoxelPBRHeld"
 ARRAY_ASSET_NAME = "M_MadVoxelPBRArray"
 ARRAY_HELD_ASSET_NAME = "M_MadVoxelPBRArrayHeld"
 VERSION_TAG = "MadFallPBRVersion"
-MATERIAL_VERSION = "10"
+MATERIAL_VERSION = "11s" + STYLE_VERSION
 
 PBR_HLSL = """
 struct FMadPBR
@@ -157,6 +158,7 @@ Col = lerp(Col, float3(0.86, 0.88, 0.92) * (0.94 + 0.08 * Grain), SnowMask);
 Rough = lerp(Rough, 0.65, SnowMask);
 WN = normalize(lerp(WN, NN, SnowMask * 0.8));
 
+%STYLISE%
 %CRACK_APPLY%
 BumpNormal = WN;
 %OUTPUTS%
@@ -207,7 +209,7 @@ def array_layer_code(held):
 
 
 def shader(array, held):
-    code = PBR_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY)
+    code = PBR_HLSL.replace("%CRACK_METHOD%", CRACK_METHOD).replace("%CRACK_APPLY%", CRACK_APPLY).replace("%STYLISE%", style_hlsl())
     if array:
         return code.replace("%LAYER%", array_layer_code(held)).replace("%SAMPLE%", ARRAY_SAMPLE).replace("%OUTPUTS%", "Metal = Metallic;")
     return code.replace("%LAYER%", "").replace("%SAMPLE%", SINGLE_SAMPLE).replace("%OUTPUTS%", "")
@@ -356,6 +358,9 @@ def build(material, editing, library, held, array=False):
     else:
         ok &= editing.connect_material_property(pbr, "BumpNormal", unreal.MaterialProperty.MP_NORMAL)
     ok &= editing.connect_material_property(pbr, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
+    specular = editing.create_material_expression(material, unreal.MaterialExpressionConstant, -450, 520)
+    specular.set_editor_property("r", SPECULAR)
+    ok &= editing.connect_material_property(specular, "", unreal.MaterialProperty.MP_SPECULAR)
     if array:
         ok &= editing.connect_material_property(pbr, "Metal", unreal.MaterialProperty.MP_METALLIC)
     else:

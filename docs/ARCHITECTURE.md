@@ -3781,6 +3781,35 @@ log had no errors; what it found, it found by eye and ear.
   `-MadWorldsDir=` into its own folder so it can never create or delete a
   player's worlds. The editor and tests keep the project's Saved folder.
 
+### A house style, in one shader stage
+
+"We need to work on the graphics" - and the first thing wrong was not detail
+but disagreement: photo-scanned granite and planks in the same frame as flat
+green cubes and drawn patterns, which reads as two games at once. The geometry
+is blocky and stays blocky, so the textures moved to meet it.
+
+`Scripts/style.py` holds the numbers and the HLSL; `make_voxel_material.py`
+(drawn patterns) and `make_pbr_material.py` (photo sets) paste it in just
+before the crack overlay, so every surface leaves through the same filter, and
+`STYLE_VERSION` folds into both material versions so an edit rebuilds both.
+
+What it does, in order: the surface's own colour becomes the base and the
+texture becomes variation around it (`DETAIL` 0.5); what is left is banded
+into steps (`BANDS` 7, `DETAIL_KEEP` 0.45); colour is lifted slightly
+(`SATURATION` 1.06); roughness gets a floor (0.6) and specular a constant 0.28,
+so nothing is glossy under a low sun; and the normal map is flattened by 0.7,
+leaving the block's shape and the baked corner occlusion to carry relief.
+
+Two wrong versions on the way, both worth keeping in mind. Banding absolute
+luminance crushed a scanned rock into black blotches - detail has to be
+measured around the surface's colour, not around zero. And saturation at 1.18
+turned grassland acid green; 1.06 is the most the palette takes.
+
+Photographed from four fixed viewpoints in the playtester's own world before
+and after (`scratchpad/look/`): the mixed-material wall - concrete, planks,
+rebar concrete, stone, steel - now reads as one set of materials instead of
+one photograph among drawings.
+
 ### Third playtest: dead animals and loot in the air, and one copy too many
 
 - **The game was played from the CI package three sessions running.** Every
