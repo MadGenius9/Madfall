@@ -3781,6 +3781,35 @@ log had no errors; what it found, it found by eye and ear.
   `-MadWorldsDir=` into its own folder so it can never create or delete a
   player's worlds. The editor and tests keep the project's Saved folder.
 
+### Third playtest: dead animals and loot in the air, and one copy too many
+
+- **The game was played from the CI package three sessions running.** Every
+  report - no swimming, falling through the world, floating trees - was
+  against a build from before the fix, because `Saved\CIPackage` also had a
+  playable MadFall.exe in it and that is the one being launched. The CI
+  packaging gate now deletes its game after checking it ("removed the CI
+  package's game so only Saved\Packaged is playable"), and the worlds left in
+  it were moved to `%LOCALAPPDATA%\MadFall\Worlds`.
+- **Dead animals hung in the air.** Death switches collision off and freezes
+  movement where the body is, so an animal shot mid-stride, or standing over a
+  rise, stayed there. `AMadAnimal::SettleCorpse` traces the ground under the
+  head, middle and tail and lays the body at the average of the three
+  (`MadFall::Animals::CorpseGroundZ`): across a hump it settles into it rather
+  than balancing on top. Photographed: a stag lying flat on the rock it died on.
+- **Loot hung in the air too, as white cubes.** Two of them over that stag.
+  The bundle settled to the voxel grid, and smooth ground sits below the
+  grid's floor - up to a metre of daylight under it. It now traces to the
+  drawn surface, and it is a tied cloth bundle (`SM_Pickup`) in the world's own
+  surface materials instead of the engine cube in white.
+- **A shadow-map warning was printed over the game.** Virtual shadow maps
+  overflow their marking queue with this much grass, and the engine says so on
+  screen in Development builds. Frame times stay inside the CI budget, so the
+  message is switched off (`r.Shadow.Virtual.AllowScreenOverflowMessages=0`).
+- **Saves recovered.** Both playtest saves had the survivor underground -
+  one at z -41 in sand, one at z -121 in a sealed pocket of water at the
+  bottom of the world, which the rescue leaves alone because it is liquid.
+  Their saved positions were moved back to the beach by hand.
+
 ### Creative mode
 
 Asked for after the second playtest. A world is creative or not for good: the

@@ -492,12 +492,63 @@ bool AMadAnimal::ReceiveHit(float Amount, FName DamageType, AActor* Attacker)
 	return false;
 }
 
+float MadFall::Animals::CorpseGroundZ(const TArray<float>& GroundHits)
+{
+	// The average of where the head, middle and tail would rest: a body lying
+	// across a hump settles into it rather than balancing on the top, and one
+	// across a ditch does not sink to the bottom of it.
+	if (GroundHits.Num() == 0)
+	{
+		return TNumericLimits<float>::Lowest();
+	}
+	float Sum = 0.0f;
+	for (const float Z : GroundHits)
+	{
+		Sum += Z;
+	}
+	return Sum / GroundHits.Num();
+}
+
+void AMadAnimal::SettleCorpse()
+{
+	// Dying turns collision off and freezes movement where the animal was. A
+	// fox killed mid-stride over a rise, or on a slope's high side, then lay
+	// flat in the air (seen in play: a dead fox a body's height above a rock).
+	// So the body is put on the ground first.
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	const float Half = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const FVector Centre = GetActorLocation();
+	const FVector Forward = GetActorForwardVector().GetSafeNormal2D();
+	const float Reach = FMath::Max(20.0f, static_cast<float>(Definition.BodySize.X * Definition.Scale) * 0.4f);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(MadCorpse), false, this);
+	TArray<float> Hits;
+	for (const float Along : { -Reach, 0.0f, Reach })
+	{
+		const FVector At = Centre + Forward * Along;
+		FHitResult Hit;
+		if (World->LineTraceSingleByChannel(Hit, At + FVector(0.0, 0.0, Half), At - FVector(0.0, 0.0, Half + 600.0), ECC_WorldStatic, Params))
+		{
+			Hits.Add(static_cast<float>(Hit.ImpactPoint.Z));
+		}
+	}
+	const float Ground = MadFall::Animals::CorpseGroundZ(Hits);
+	if (Ground > TNumericLimits<float>::Lowest())
+	{
+		SetActorLocation(FVector(Centre.X, Centre.Y, Ground + Half), false, nullptr, ETeleportType::TeleportPhysics);
+	}
+}
+
 void AMadAnimal::Die(AActor* Killer)
 {
 	State = EMadAnimalState::Dead;
 	DespawnTimer = 8.0f;
 	++TotalKills;
 
+	SettleCorpse();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCharacterMovement()->DisableMovement();
 	Body->PlayDeath();

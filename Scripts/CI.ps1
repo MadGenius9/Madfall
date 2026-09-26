@@ -2844,6 +2844,13 @@ else {
                 $script:Failures += 'packaged-run'
             }
         }
+
+        # The package is a test subject, not a game to play. Left in place, it was
+        # the copy the player kept launching - three sessions in a row on an old
+        # build, reporting bugs already fixed in Saved\Packaged. Once checked, the
+        # game is removed; the logs stay.
+        Remove-Item -Recurse -Force (Join-Path $packageOut 'Windows') -ErrorAction SilentlyContinue
+        Write-Host "OK: removed the CI package's game so only Saved\Packaged is playable" -ForegroundColor Green
     }
 }
 

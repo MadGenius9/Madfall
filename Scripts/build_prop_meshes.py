@@ -286,7 +286,26 @@ def berry_bush():
     return prop
 
 
-PROPS = [campfire, torch, door_closed, door_open, bedroll, ladder, berry_bush]
+def pickup():
+    """A tied cloth bundle: what a dropped stack and a dead survivor's pack look like.
+
+    They were the engine cube in white, hanging in the air over whatever they
+    fell on - two of them over a stag carcass in a playtest screenshot.
+    """
+    prop = Prop("Pickup")
+    rand = Jitter(31)
+    prop.blob("madfall:cloth", (0, 0, 13), (30, 27, 22))
+    for index in range(4):
+        angle = 2.0 * math.pi * index / 4 + 0.5
+        size = rand(9, 13)
+        prop.blob("madfall:cloth", (10 * math.cos(angle), 10 * math.sin(angle), 20 + rand(0, 3)), (size, size, size * 0.8), math.degrees(angle))
+    # The neck of the bundle and the cord round it.
+    prop.cylinder("madfall:cloth", (0, 0, 22), (1.5, 1, 30), 4.5, 8, end_radius=3.0)
+    prop.cylinder("madfall:bark", (-4, 0, 25), (4, 0, 25.5), 1.1, 6)
+    return prop
+
+
+PROPS = [campfire, torch, door_closed, door_open, bedroll, ladder, berry_bush, pickup]
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@
 #include "MadFrameBudget.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "MadSurfaceMaterials.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
@@ -49,18 +50,34 @@ void AMadItemPickup::Tick(float DeltaSeconds)
 
 	if (Mesh->GetStaticMesh() == nullptr)
 	{
-		if (UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
+		// A tied cloth bundle, in the surface materials the world is made of; a
+		// white engine cube read as a missing asset, which is what it was.
+		UStaticMesh* Bundle = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Models/Props/SM_Pickup.SM_Pickup"));
+		Mesh->SetStaticMesh(Bundle != nullptr ? Bundle : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")));
+		if (Bundle != nullptr)
 		{
-			Mesh->SetStaticMesh(Cube);
-		}
-		if (IConsoleVariable* MaterialVar = IConsoleManager::Get().FindConsoleVariable(TEXT("mad.mesh.SectionMaterial")))
-		{
-			if (UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, *MaterialVar->GetString()))
+			const TArray<FStaticMaterial>& Slots = Bundle->GetStaticMaterials();
+			for (int32 Slot = 0; Slot < Slots.Num(); ++Slot)
 			{
-				Mesh->SetMaterial(0, Material);
+				if (UMaterialInterface* Surface = MadFall::SurfaceMaterials::MakeHeld(this, Slots[Slot].MaterialSlotName, 1.0f))
+				{
+					Mesh->SetMaterial(Slot, Surface);
+				}
 			}
+			// A backpack is the same bundle, bigger.
+			Mesh->SetRelativeScale3D(FVector(bIsBackpack ? 1.35 : 0.85));
 		}
-		Mesh->SetRelativeScale3D(FVector(bIsBackpack ? 0.5 : 0.3));
+		else
+		{
+			if (IConsoleVariable* MaterialVar = IConsoleManager::Get().FindConsoleVariable(TEXT("mad.mesh.SectionMaterial")))
+			{
+				if (UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, *MaterialVar->GetString()))
+				{
+					Mesh->SetMaterial(0, Material);
+				}
+			}
+			Mesh->SetRelativeScale3D(FVector(bIsBackpack ? 0.5 : 0.3));
+		}
 	}
 
 	Lifetime -= DeltaSeconds;
@@ -108,6 +125,19 @@ void AMadItemPickup::Tick(float DeltaSeconds)
 	}
 
 	Location.Z = Z * MadFall::VoxelSizeUU + 20.0;
+
+	// The voxel grid is where the ground is cut, not where it is drawn: the
+	// smooth surface of a hill sits below the voxel's floor, and a bundle left
+	// on the grid hung a hand's width to a metre over it (a playtest photo
+	// showed two hanging over a stag). Rest it on the surface itself when there
+	// is one under it; the grid answer stands in while collision is still cooking.
+	FHitResult Hit;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(MadPickupSettle), false, this);
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Location + FVector(0.0, 0.0, MadFall::VoxelSizeUU),
+			Location - FVector(0.0, 0.0, MadFall::VoxelSizeUU * 1.5), ECC_WorldStatic, Params))
+	{
+		Location.Z = Hit.ImpactPoint.Z + 14.0;
+	}
 	SetActorLocation(Location);
 }
 

@@ -41,6 +41,9 @@ namespace MadFall::Animals
 	/** Seconds a hurt animal remembers it: a skittish one keeps running, a defensive one keeps fighting. */
 	inline constexpr float HurtMemorySeconds = 12.0f;
 
+	/** Where a corpse rests from ground heights under its head, middle and tail; Lowest() for none. */
+	MADFALLGAMEPLAY_API float CorpseGroundZ(const TArray<float>& GroundHits);
+
 	/** Metres within which an animal attacks rather than chases. */
 	inline constexpr float AttackReachVoxels = 1.4f;
 
@@ -107,6 +110,8 @@ private:
 	void FollowPath(float DeltaSeconds);
 	void TryAttackPlayer(AMadPlayerCharacter& Player);
 	void Die(AActor* Killer);
+	/** Puts the body on the ground under it before it goes still; see the .cpp. */
+	void SettleCorpse();
 
 	FMadAnimalDefinition Definition;
 	float Health = 1.0f;
